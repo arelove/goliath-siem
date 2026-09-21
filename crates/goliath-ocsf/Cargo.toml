@@ -1,0 +1,20 @@
+[package]
+name = "goliath-ocsf"
+description = "OCSF event types, validation, and observable extraction for the Goliath security platform"
+keywords = ["ocsf", "security", "siem", "schema"]
+categories = ["parser-implementations", "encoding"]
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
