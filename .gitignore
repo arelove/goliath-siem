@@ -1,0 +1,52 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# Go
+/bin/
+*.exe
+*.test
+*.out
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Node / TypeScript
+node_modules/
+dist/
+.next/
+*.tsbuildinfo
+
+# Local state and data
+/data/
+/.local/
+*.db
+*.sqlite
+*.sqlite3
+*.parquet
+
+# Benchmark output and generated datasets
+/bench/out/
+/bench/datasets/
+
+# Secrets and environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Editors and OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
