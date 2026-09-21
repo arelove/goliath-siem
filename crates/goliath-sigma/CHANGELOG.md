@@ -15,3 +15,5 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
   a typed AST carrying source spans on every node.
 - Quantifiers `1 of` and `all of` over `them` or an identifier pattern.
 - Errors carrying byte spans into the source condition.
+- Field modifier parsing, preserving modifier order and refusing unknown
+  names, stray regex flags, and conflicting combinations.
