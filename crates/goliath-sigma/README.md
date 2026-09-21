@@ -3,7 +3,7 @@
 Parses [Sigma](https://github.com/SigmaHQ/sigma) detection rules into a typed,
 inspectable AST.
 
-Part of the [Goliath](https://github.com/goliath-siem/goliath) security
+Part of the [Goliath](https://github.com/arelove/goliath-siem) security
 platform, published separately because it is useful to anyone working with
 Sigma rules in Rust.
 

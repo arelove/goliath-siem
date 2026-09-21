@@ -4,7 +4,7 @@ OCSF (Open Cybersecurity Schema Framework) event types, validation, and
 observable extraction.
 
 This crate is the shared vocabulary of the
-[Goliath](https://github.com/goliath-siem/goliath) security platform. It is
+[Goliath](https://github.com/arelove/goliath-siem) security platform. It is
 published separately because it is useful to anyone working with OCSF events in
 Rust, with or without the rest of the platform.
 

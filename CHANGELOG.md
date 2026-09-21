@@ -22,4 +22,4 @@ Per-crate changelogs live beside each crate in `crates/*/CHANGELOG.md`.
 - `goliath-sigma`: Sigma condition expression language, parsed into a typed AST
   with source spans on every node and every error.
 
-[Unreleased]: https://github.com/goliath-siem/goliath/commits/main
+[Unreleased]: https://github.com/arelove/goliath-siem/commits/main
