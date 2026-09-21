@@ -56,8 +56,8 @@ learns it exists.
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and is produced from
 commit history by the release automation. Hand edits are overwritten.
 
-To change what a release says, change the commit message before it merges. This
-is the reason commit bodies are reviewed rather than skimmed.
+To change what a release says, change the commit subject before it merges. The
+subject is what the changelog renders; commit bodies do not appear in it.
 
 ## Pre-1.0
 
