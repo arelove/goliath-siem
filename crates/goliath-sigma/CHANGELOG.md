@@ -17,3 +17,5 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 - Errors carrying byte spans into the source condition.
 - Field modifier parsing, preserving modifier order and refusing unknown
   names, stray regex flags, and conflicting combinations.
+- Detection values: string patterns with wildcard and escape semantics,
+  integers, floats, booleans, and null.
