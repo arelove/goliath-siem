@@ -75,11 +75,26 @@ jobs:
           args: --no-progress --offline --include-fragments '**/*.md'
           fail: true
 
-  language:
-    name: repository language policy
+  prose:
+    name: prose style policy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Reject emoji
+        run: |
+          # CONTRIBUTING.md: no emoji anywhere that ships.
+          if git grep -nIP '[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{FE0F}\x{2B00}-\x{2BFF}]' \
+              -- ':!LICENSE'; then
+            echo "::error::Emoji found. See CONTRIBUTING.md, Prose style."
+            exit 1
+          fi
+      - name: Reject em and en dashes
+        run: |
+          # CONTRIBUTING.md: plain hyphens only.
+          if git grep -nIP '[\x{2013}\x{2014}]' -- ':!LICENSE'; then
+            echo "::error::Long dash found; use a plain hyphen. See CONTRIBUTING.md."
+            exit 1
+          fi
       - name: Reject non-English text outside localized files
         run: |
           # CONTRIBUTING.md: everything shipped is English except README_<lang>.md.

@@ -19,15 +19,15 @@ the rule matching engine.
 This is not about effort. Storage trade-offs follow from theory.
 
 The **RUM conjecture** (Athanassoulis et al., EDBT 2016) states it generally:
-any data structure pays three overheads — Read, Update, and Memory. Optimizing
+any data structure pays three overheads - Read, Update, and Memory. Optimizing
 two comes at the cost of the third.
 
 Three specific consequences every engine author meets:
 
 | Constraint | Mechanism | Consequence |
 | --- | --- | --- |
-| Storage order is singular | Data is physically laid out in exactly one order | Locality is optimal for one query class. This is why `ORDER BY` dominates ClickHouse performance — it is geometry, not a defect |
-| Compression versus random access | Block compression requires decompressing a block to read one row | 10–30x compression and fast point lookups are not simultaneously achievable |
+| Storage order is singular | Data is physically laid out in exactly one order | Locality is optimal for one query class. This is why `ORDER BY` dominates ClickHouse performance - it is geometry, not a defect |
+| Compression versus random access | Block compression requires decompressing a block to read one row | 10-30x compression and fast point lookups are not simultaneously achievable |
 | Indexes versus write throughput | Every index is an additional write per insert | Elasticsearch's inverted index and its ingest cost are the same phenomenon |
 
 So "no drawbacks" does not describe an achievable object. The useful question
@@ -81,8 +81,8 @@ The adjacent layer has no incumbent at all:
 
 | Layer | Market state | Our opportunity |
 | --- | --- | --- |
-| Event storage | Saturated | None — use what exists |
-| Matching thousands of rules on a stream | No open solution exists | Yes — the core differentiator |
+| Event storage | Saturated | None - use what exists |
+| Matching thousands of rules on a stream | No open solution exists | Yes - the core differentiator |
 | Streaming entity resolution | Fragmentary | Yes |
 | Detections with reproducible CI | Almost absent | Yes |
 | Coherent SIEM + SOAR + IRP in open source | Nobody | Yes |

@@ -10,6 +10,23 @@ The sole exception is localized documentation. Translated files carry a
 language suffix (`README_ru.md`, `README_es.md`) and never replace the English
 original.
 
+## Prose style
+
+These rules apply to everything shipped: code comments, documentation, commit
+messages, changelog entries, error strings, and release notes. All three are
+checked in CI.
+
+**No emoji.** Several changelog and commit tools emit them by default and are
+configured not to. This project asks security teams to run it in regulated
+environments where its output is read during audit review and incident
+reporting. Prose that reads as informal is discounted there.
+
+**No em or en dashes.** Use a plain hyphen. Long dashes survive copy and paste
+badly, render inconsistently in terminals, and are not reliably typeable on
+every keyboard a contributor uses.
+
+**English only**, with the exception stated above.
+
 ## Invariants
 
 These are not style preferences. Breaking one of them has taken down systems of

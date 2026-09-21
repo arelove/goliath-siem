@@ -15,7 +15,7 @@ work. We compete on four things they structurally cannot match:
 
 **Your data stays yours.** Cold storage is Parquet/Iceberg in your own bucket.
 Leaving the platform requires no export, because there is nothing to export
-from — the open format *is* the storage.
+from - the open format *is* the storage.
 
 **Detections are code.** Every rule ships with tests that run in CI against
 labelled attack telemetry. A rule cannot merge without proof that it fires.
@@ -26,7 +26,7 @@ core of the project, not an afterthought behind a search bar.
 
 **You choose the shape.** Collectors, normalizers, detectors, and the API are
 roles, not products. Run them as one binary on a laptop or as separate fleets
-across regions — same code, different composition.
+across regions - same code, different composition.
 
 ## Design targets
 
@@ -34,7 +34,7 @@ across regions — same code, different composition.
 | --- | --- |
 | Throughput | 1,000,000 events/s (~500 MB/s, ~43 TB/day raw) |
 | On-disk volume | ~2.9 TB/day at ~15x compression |
-| Hot retention | 7–30 days, interactive search |
+| Hot retention | 7-30 days, interactive search |
 | Cold retention | 12+ months, open format |
 | Streaming detection latency | p99 < 5 s |
 | Scheduled detection latency | p99 < 5 min |

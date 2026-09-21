@@ -77,7 +77,7 @@ can be identified and the affected range reprocessed.
 | --- | --- | --- | --- |
 | Declarative stages plus WASM escape hatch | Contributable without Rust, testable, compiles to a fast plan | Declarative mapping cannot express everything; needs an escape hatch | **Accepted** |
 | Code-only parsers in Rust | Maximum flexibility and speed | Excludes most contributors; every source needs a release | No |
-| Embedded scripting language | Flexible, no recompile | Slow on the hot path, unsafe, another language to learn | No — WASM covers this safely |
+| Embedded scripting language | Flexible, no recompile | Slow on the hot path, unsafe, another language to learn | No - WASM covers this safely |
 
 ## Consequences
 

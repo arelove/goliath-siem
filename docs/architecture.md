@@ -80,12 +80,12 @@ the dominant barrier to adoption for open-source systems of this class.
 | `goliath-intel` | Rust | crates.io | inside `detector` |
 | `goliath-attack` | Rust | crates.io | inside `api` |
 | `goliath-pipe` | Rust | crates.io | shared transport |
-| `goliath-normalize` | Rust | — | `normalizer` |
-| `control-plane` | Go | — | `api` |
-| `case-service` | Go | — | `cases` |
-| `playbooks` | Python | — | `worker` |
+| `goliath-normalize` | Rust | - | `normalizer` |
+| `control-plane` | Go | - | `api` |
+| `case-service` | Go | - | `cases` |
+| `playbooks` | Python | - | `worker` |
 | `detection-content` | Python | PyPI | CI |
-| `ui` | TypeScript | — | `ui` |
+| `ui` | TypeScript | - | `ui` |
 
 Language choices and the process boundary rule are in
 [ADR-0005](adr/0005-languages-and-process-boundaries.md).

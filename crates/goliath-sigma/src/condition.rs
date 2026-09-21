@@ -10,16 +10,16 @@ use crate::span::Span;
 /// [`ConditionError::UnsupportedQuantifier`](crate::ConditionError::UnsupportedQuantifier).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Quantifier {
-    /// `1 of` — at least one of the targets matches.
+    /// `1 of` - at least one of the targets matches.
     Any,
-    /// `all of` — every target matches.
+    /// `all of` - every target matches.
     All,
 }
 
 /// What a quantifier applies to.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Target {
-    /// `them` — every search identifier defined by the rule.
+    /// `them` - every search identifier defined by the rule.
     Them,
     /// A pattern over identifier names, such as `selection_*`.
     Pattern(String),
@@ -41,7 +41,7 @@ impl Target {
 /// A parsed Sigma condition.
 ///
 /// Every node carries the source range it was parsed from, so that a later
-/// check — such as an identifier the detection block never defines — can point
+/// check - such as an identifier the detection block never defines - can point
 /// at the offending characters.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Condition {

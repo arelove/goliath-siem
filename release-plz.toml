@@ -1,0 +1,27 @@
+# Release automation. See docs/adr/0010-versioning-and-releases.md.
+
+[workspace]
+# Versions are per crate, not shared: a change to the platform must not bump a
+# library that people depend on for Sigma parsing alone.
+dependencies_update = false
+
+# Keep a Changelog section order, with no emoji in any template.
+changelog_config = "cliff.toml"
+
+# Every crate gets its own changelog beside it; the root file aggregates.
+changelog_update = true
+
+# A release is proposed as a pull request, reviewed, then merged. Nothing
+# publishes straight from a push to main.
+release_always = false
+
+git_release_enable = true
+git_tag_enable = true
+
+[[package]]
+name = "goliath-ocsf"
+publish = true
+
+[[package]]
+name = "goliath-sigma"
+publish = true

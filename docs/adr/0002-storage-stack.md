@@ -27,17 +27,17 @@ format (S3/Iceberg), and two embedded engines (RocksDB, DuckDB).
 | W7 | Playbook execution state | Temporal backing store | PostgreSQL |
 | W8 | RBAC and tenancy | Strong consistency | PostgreSQL (row-level security) |
 | W9 | Audit log | Append-only, tamper-evident | PostgreSQL plus hash chain |
-| W10 | Graph traversal | 2–4 hops | PostgreSQL (recursive CTEs) |
+| W10 | Graph traversal | 2-4 hops | PostgreSQL (recursive CTEs) |
 | W11 | Vector search for LLM retrieval | HNSW | PostgreSQL (pgvector) |
 | W12 | Dedup, rate limits, locks | Shared ephemeral state | Valkey |
 | W13 | Cold archive | 12+ months, cheap | S3 plus Parquet/Iceberg |
-| W14 | Per-event indicator lookup | 10⁶–10⁹ indicators at 1M/s | RocksDB (embedded) |
+| W14 | Per-event indicator lookup | 10⁶-10⁹ indicators at 1M/s | RocksDB (embedded) |
 
 W1 and W6 are opposites: immutable petabyte scans against transactional updates
 of small records. No single engine serves both well, which eliminates the
 single-database option before any comparison.
 
-PostgreSQL covers six workloads (W5–W11) in one engine. Volumes there are
+PostgreSQL covers six workloads (W5-W11) in one engine. Volumes there are
 millions of rows, not trillions. Splitting those across six specialized stores
 is an operational tax paid by everyone who deploys the system.
 
@@ -45,12 +45,12 @@ is an operational tax paid by everyone who deploys the system.
 
 | Option | For | Against | Verdict |
 | --- | --- | --- | --- |
-| ClickHouse | 10–30x compression on logs, unmatched scan throughput, incremental materialized views, mature S3 tiering, proven on petabyte-scale logging | Weak joins, asynchronous mutations, manual resharding in the open-source build, Keeper to operate | **Accepted** |
+| ClickHouse | 10-30x compression on logs, unmatched scan throughput, incremental materialized views, mature S3 tiering, proven on petabyte-scale logging | Weak joins, asynchronous mutations, manual resharding in the open-source build, Keeper to operate | **Accepted** |
 | StarRocks | Better joins (cost-based optimizer, runtime filters), primary key model with real upserts, native Iceberg | Worse compression on logs, unproven at petabyte-scale logging, smaller community | Only serious alternative; revisit if joins become the bottleneck |
 | Doris | Simpler to deploy | Weaker optimizer | No |
-| Druid, Pinot | Sub-second streaming queries, rich indexing | JVM, many node types, tuned for user-facing analytics rather than logs | No — operational cost is not repaid |
-| Elasticsearch, OpenSearch | Best free-text search available | JVM, 3–5x worse storage efficiency, much slower aggregations, shard management at 1M events/s | No as primary store |
-| DuckDB | Excellent reader for Parquet and Iceberg on S3 | Single node, not a server, no concurrent writers | Not a storage tier — a tool |
+| Druid, Pinot | Sub-second streaming queries, rich indexing | JVM, many node types, tuned for user-facing analytics rather than logs | No - operational cost is not repaid |
+| Elasticsearch, OpenSearch | Best free-text search available | JVM, 3-5x worse storage efficiency, much slower aggregations, shard management at 1M events/s | No as primary store |
+| DuckDB | Excellent reader for Parquet and Iceberg on S3 | Single node, not a server, no concurrent writers | Not a storage tier - a tool |
 
 ### The cost of dropping Elasticsearch, stated plainly
 
@@ -67,12 +67,12 @@ rather than omitting it.
 Not a storage tier. An embedded library in three places:
 
 1. Querying the cold tier on S3 without standing up Trino or Spark.
-2. **Detection CI** — running rules against sample data in seconds.
+2. **Detection CI** - running rules against sample data in seconds.
 3. Edge pre-aggregation at collectors.
 
 ## What we deliberately exclude
 
-**A graph database.** Bounded-depth traversals (2–4 hops) are served by
+**A graph database.** Bounded-depth traversals (2-4 hops) are served by
 recursive CTEs. Neo4j lacks clustering in its community edition and Memgraph
 ships under BSL; both create a licensing obstacle to enterprise adoption.
 

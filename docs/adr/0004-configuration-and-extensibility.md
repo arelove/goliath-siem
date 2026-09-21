@@ -8,7 +8,7 @@
 The system must be configurable by its operators: which sources to collect,
 how to parse them, how to map fields, what thresholds apply, how long to
 retain. The obvious approach is to describe all of it in JSON and interpret it.
-On a 1M events/s hot path that is wrong twice — on performance and on structure.
+On a 1M events/s hot path that is wrong twice - on performance and on structure.
 
 ## Decision
 
@@ -34,10 +34,10 @@ only the compiled artifact.
 An infinitely configurable system becomes a bad programming language:
 conditionals, loops, and variables expressed in YAML. The boundary rule:
 
-- **Configuration expresses "what"** — which sources, which fields, which
+- **Configuration expresses "what"** - which sources, which fields, which
   thresholds, which retention.
-- **A DSL expresses "how we look"** — a Sigma rule, a CEL expression.
-- **A plugin expresses "how we process"** — arbitrary sandboxed code.
+- **A DSL expresses "how we look"** - a Sigma rule, a CEL expression.
+- **A plugin expresses "how we process"** - arbitrary sandboxed code.
 
 A proposed configuration flag must answer: "what different value would two real
 operators set here?" If there is no such value, it is code, not configuration.
@@ -90,6 +90,6 @@ language model. There is no separate "AI mode" for configuration.
 
 ## When to revisit
 
-WASM call overhead proves significant on the per-event path — measured at more
-than 5% of processing time — in which case those specific extension points move
+WASM call overhead proves significant on the per-event path - measured at more
+than 5% of processing time - in which case those specific extension points move
 to native interfaces.

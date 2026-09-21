@@ -3,12 +3,12 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.1.0"
+# Versions are per crate, not shared. See docs/adr/0010-versioning-and-releases.md.
 edition = "2024"
 rust-version = "1.85"
 license = "Apache-2.0"
 repository = "https://github.com/goliath-siem/goliath"
-authors = ["The Goliath authors"]
+authors = ["arelove"]
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }

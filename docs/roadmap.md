@@ -10,9 +10,9 @@ criterion that is measurable, so "done" is not a judgement call.
 
 ## Current milestone
 
-**M0 — Foundations.** In progress.
+**M0 - Foundations.** In progress.
 
-## M0 — Foundations
+## M0 - Foundations
 
 Make the repository able to hold work.
 
@@ -26,7 +26,7 @@ Make the repository able to hold work.
 **Exit criterion:** `cargo test` passes on Linux, macOS, and Windows in CI, and
 an OCSF event round-trips through serialization with schema validation.
 
-## M1 — Matching engine
+## M1 - Matching engine
 
 The differentiator. Built standalone and publishable without the rest of the
 platform existing.
@@ -42,7 +42,7 @@ platform existing.
 at a measured and published events/s per core, with results identical to
 one-rule-at-a-time evaluation on the same corpus.
 
-## M2 — Ingestion path
+## M2 - Ingestion path
 
 Get real events into real storage.
 
@@ -58,7 +58,7 @@ Get real events into real storage.
 table in both single-process and fully distributed topologies, with the same
 integration suite passing against both.
 
-## M3 — Benchmark rig
+## M3 - Benchmark rig
 
 Without this, nothing after it can be honestly measured.
 
@@ -73,7 +73,7 @@ Without this, nothing after it can be honestly measured.
 every metric listed in [architecture.md](architecture.md#benchmark-method),
 and a 30-minute run sustains 100k events/s on one developer machine.
 
-## M4 — Context
+## M4 - Context
 
 Enrichment that makes an alert actionable rather than a row.
 
@@ -87,7 +87,7 @@ Enrichment that makes an alert actionable rather than a row.
 measurable reduction in throughput, and an ATT&CK Navigator layer exported that
 distinguishes covered techniques from techniques lacking a data source.
 
-## M5 — Detection service
+## M5 - Detection service
 
 | Deliverable | Detail |
 | --- | --- |
@@ -100,7 +100,7 @@ distinguishes covered techniques from techniques lacking a data source.
 streaming path at target throughput, and every shipped rule passing its
 fixtures in CI.
 
-## M6 — Response
+## M6 - Response
 
 | Deliverable | Detail |
 | --- | --- |
@@ -112,7 +112,7 @@ fixtures in CI.
 approval step, and every state transition appears in a tamper-evident audit
 log.
 
-## M7 — Interface
+## M7 - Interface
 
 | Deliverable | Detail |
 | --- | --- |
@@ -124,7 +124,7 @@ log.
 **Exit criterion:** an analyst completes triage of an alert into a closed case
 without leaving the interface.
 
-## M8 — First public release
+## M8 - First public release
 
 | Deliverable | Detail |
 | --- | --- |
