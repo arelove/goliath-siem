@@ -50,3 +50,6 @@ dist/
 !.vscode/extensions.json
 .DS_Store
 Thumbs.db
+
+# Obsidian vault metadata
+.obsidian/
