@@ -70,6 +70,33 @@ methodological error and is rejected at review.
 
 See [docs/architecture.md](docs/architecture.md).
 
+## Branches and pull requests
+
+Nothing lands on `main` directly. Work happens on a branch and merges through a
+pull request, so CI gates every change and the reasoning stays attached to it.
+
+Branch names use the Conventional Commit type of the work, then a short
+description:
+
+```
+feat/sigma-field-modifiers
+fix/normalizer-dead-letter-ordering
+docs/contribution-workflow
+perf/match-engine-predicate-index
+```
+
+Keep a branch to one reviewable change. A branch that has grown two unrelated
+changes is two branches.
+
+Merge with a squash only when the branch's commits are noise; otherwise keep
+them, because each one is a changelog candidate and a bisect point.
+
+### Branch protection
+
+`main` requires a pull request and a passing CI run. Configure this under
+Settings, Branches, in the repository: require a pull request before merging,
+and require the `test`, `lint`, and `prose` checks to pass.
+
 ## Architecture decisions
 
 Significant decisions are recorded as ADRs in [docs/adr/](docs/adr/) using the
