@@ -105,5 +105,12 @@ Types: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`
 
 Scope is the crate or component: `match-engine`, `ocsf`, `docs`, `ci`.
 
-Any change to per-event code paths includes benchmark numbers before and after
-in the commit body.
+Keep the subject sharp and self-contained. It is what reaches the changelog,
+so it must read as a release note on its own.
+
+Add a body only when the reason is not evident from the diff, and keep it to a
+few lines. Long commit messages do not get read, which defeats the point of
+writing them.
+
+Exception: any change to per-event code paths includes benchmark numbers before
+and after in the body.
