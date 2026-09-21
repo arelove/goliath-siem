@@ -105,6 +105,10 @@ Types: `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`
 
 Scope is the crate or component: `match-engine`, `ocsf`, `docs`, `ci`.
 
+Prefer many small commits over few large ones. One logical change per commit:
+a commit that needs "and" in its subject is two commits. Small commits are
+reviewable, revertable in isolation, and bisectable when something breaks.
+
 Keep the subject sharp and self-contained. It is what reaches the changelog,
 so it must read as a release note on its own.
 
