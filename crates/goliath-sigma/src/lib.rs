@@ -50,9 +50,11 @@ pub mod lexer;
 pub mod modifier;
 pub mod parser;
 pub mod span;
+pub mod value;
 
 pub use condition::{Condition, Quantifier, Target};
 pub use error::{ConditionError, ModifierError};
 pub use modifier::{FieldKey, Modifier, ModifierKind, RegexFlags, parse_field_key};
 pub use parser::parse_condition;
 pub use span::Span;
+pub use value::{Pattern, PatternPart, Value};
