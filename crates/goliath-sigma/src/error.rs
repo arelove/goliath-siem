@@ -90,3 +90,50 @@ impl ConditionError {
         }
     }
 }
+
+/// A failure to parse a detection map key into a field and its modifiers.
+///
+/// Modifier mistakes are silent at runtime: a misspelled modifier, or one
+/// applied in the wrong order, produces a rule that loads and never fires.
+/// Refusing the rule is the only way the author finds out.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
+pub enum ModifierError {
+    /// The key had no field name before the first `|`.
+    #[error("`{key}` has no field name")]
+    EmptyFieldName {
+        /// The key as written.
+        key: String,
+    },
+
+    /// A modifier name was not recognized.
+    #[error("unknown modifier `{modifier}` in `{key}`")]
+    Unknown {
+        /// The unrecognized name.
+        modifier: String,
+        /// Its index among the modifiers, counting from zero.
+        position: usize,
+        /// The key as written.
+        key: String,
+    },
+
+    /// A regex flag appeared without a `re` before it.
+    #[error("`{flag}` in `{key}` is a regex flag and must follow `re`")]
+    RegexFlagWithoutRe {
+        /// The flag as written.
+        flag: String,
+        /// The key as written.
+        key: String,
+    },
+
+    /// Two modifiers of the same exclusive role were combined.
+    #[error("`{first}` and `{second}` in `{key}` cannot be combined")]
+    Conflicting {
+        /// The modifier already present.
+        first: String,
+        /// The modifier that conflicts with it.
+        second: String,
+        /// The key as written.
+        key: String,
+    },
+}
