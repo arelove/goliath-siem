@@ -1,60 +1,62 @@
-# 0005. Языки и границы процессов
+# 0005. Languages and process boundaries
 
-- **Статус:** Принято
-- **Дата:** 2026-09-21
+- **Status:** Accepted
+- **Date:** 2026-09-21
 
-## Контекст
+## Context
 
-При 1M eps эффективность горячего пути напрямую конвертируется в количество
-железа у каждого, кто развернёт систему. При этом большая часть кода системы
-горячим путём не является.
+At 1M events/s, hot path efficiency converts directly into the amount of
+hardware every deployer must buy. Most of the system, however, is not on the
+hot path.
 
-## Решение
+## Decision
 
-| Слой | Язык | Обоснование |
+| Layer | Language | Rationale |
 | --- | --- | --- |
-| Движок матчинга правил | **Rust** | CPU-bound, аллокации критичны, нужен контроль layout и SIMD |
-| Обогащение (embedded RocksDB) | **Rust** | Часть горячего пути, живёт в процессе движка |
-| Сбор, парсинг, доставка | **Vector** (готовый, Rust) | Не пишем то, что написано и оттестировано |
-| Нормализация в OCSF | **Rust** | Горячий путь; общие типы с движком |
-| Control plane, API, оркестрация | **Go** | Скорость разработки, зрелые SDK (Temporal, Kafka, ClickHouse) |
-| Кейсы, IRP | **Go** | Не горячий путь, много бизнес-логики |
-| Плейбуки (Temporal workers) | **Python** | Итерации, библиотеки интеграций |
-| Контент детектов, ER, UEBA, LLM | **Python** | Не горячий путь; экосистема |
-| UI | **TypeScript + React** | Виртуализация больших таблиц |
+| Match engine | **Rust** | CPU-bound, allocation-sensitive, needs control over memory layout and SIMD |
+| Enrichment (embedded RocksDB) | **Rust** | Hot path; lives in the engine process |
+| Collection, parsing, delivery | **Vector** (existing, Rust) | Do not rewrite what is written and battle-tested |
+| Normalization to OCSF | **Rust** | Hot path; shares types with the engine |
+| Control plane, API, orchestration | **Go** | Development speed, mature SDKs (Temporal, Kafka, ClickHouse) |
+| Cases, IRP | **Go** | Not hot path, heavy on business logic |
+| Playbooks (Temporal workers) | **Python** | Iteration speed, integration libraries |
+| Detection content, entity resolution, UEBA, LLM layer | **Python** | Not hot path; ecosystem |
+| Web interface | **TypeScript + React** | Virtualized rendering of large tables |
 
-## Правило границы
+## Boundary rule
 
-**Разделение по процессам, а не по вкусу.** Каждый язык владеет своим сервисом
-и общается через Kafka/gRPC. Внутри одного сервиса — один язык.
+**Split by process, not by taste.** Each language owns its services and
+communicates over Kafka or gRPC. Inside one service, one language.
 
-**FFI и cgo между языками запрещены.** Смешивание рантаймов внутри процесса даёт
-неотлаживаемые падения и ломает сборку на всех платформах. Исключение одно:
-WASM-плагины ([ADR-0004](0004-configuration-and-extensibility.md)), где граница
-задана спецификацией и песочницей.
+**FFI and cgo between languages are forbidden.** Mixing runtimes inside a
+process produces undebuggable crashes and breaks cross-platform builds. There
+is exactly one exception: WASM plugins
+([ADR-0004](0004-configuration-and-extensibility.md)), where the boundary is
+specified and sandboxed.
 
-## Публикуемые артефакты
+## Published artifacts
 
-Часть кода полезна вне этого проекта и публикуется отдельно с первого дня:
+Part of the code is useful outside this project and is published separately
+from day one:
 
-| Крейт | Назначение |
+| Crate | Purpose |
 | --- | --- |
-| `ocsf-schema` | Типы OCSF, валидация, кодеки |
-| `sigma-parser` | Разбор Sigma в AST |
-| `sigma-clickhouse` | Компиляция Sigma в ClickHouse SQL |
-| `match-engine` | Индекс предикатов, битмап-матчинг |
+| `goliath-ocsf` | OCSF types, validation, codecs |
+| `goliath-sigma` | Sigma rule parsing into an AST |
+| `goliath-sigma-clickhouse` | Sigma to ClickHouse SQL compilation |
+| `goliath-match` | Predicate index, bitmap matching |
 
-Эти четыре не зависят от остальной системы и дают ранних пользователей до
-появления платформы.
+These four do not depend on the rest of the system. They provide early users
+and real feedback before a platform exists.
 
-## Последствия
+## Consequences
 
-- Четыре языка в репозитории — выше порог входа контрибьютора. Компенсируем
-  тем, что границы совпадают с каталогами верхнего уровня.
-- Общие типы (OCSF) описываются один раз и генерируются в Go/Python/TS из
-  схемы, чтобы не расходились.
+- Four languages raise the barrier for contributors. Mitigated by making
+  language boundaries coincide with top-level directories.
+- Shared types (OCSF) are defined once and generated into Go, Python, and
+  TypeScript from the schema so they cannot drift.
 
-## Когда пересмотреть
+## When to revisit
 
-Замер покажет, что Go-сервис нормализации держит целевой throughput с
-двукратным запасом → рассмотреть перенос нормализации на Go ради упрощения.
+Measurement shows the Go normalization service sustains the target throughput
+with a 2x margin, making a move away from Rust worth the simplification.

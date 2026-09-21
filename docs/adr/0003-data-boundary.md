@@ -1,58 +1,56 @@
-# 0003. Граница данных
+# 0003. Data boundary
 
-- **Статус:** Принято
-- **Дата:** 2026-09-21
+- **Status:** Accepted
+- **Date:** 2026-09-21
 
-## Контекст
+## Context
 
-Система держит два принципиально разных класса данных в разных движках
-([ADR-0002](0002-storage-stack.md)). Без явного инварианта границу размывают, и
-через полгода система тонет в асинхронных мутациях.
+The system holds two fundamentally different classes of data in different
+engines ([ADR-0002](0002-storage-stack.md)). Without an explicit invariant the
+boundary erodes, and within months the system drowns in asynchronous mutations.
 
-## Решение
+## Decision
 
-**ClickHouse — источник истины для событий. PostgreSQL — источник истины для
-состояния. События никогда не обновляются. Состояние никогда не сканируется
-массово.**
+**ClickHouse is the source of truth for events. PostgreSQL is the source of
+truth for state. Events are never updated. State is never bulk-scanned.**
 
-Инвариант идёт в `CONTRIBUTING.md` и проверяется на ревью.
-
-| Свойство | События | Состояние |
+| Property | Events | State |
 | --- | --- | --- |
-| Изменяемость | Иммутабельны | Мутабельно |
-| Объём | Триллионы строк | Миллионы строк |
-| Доступ | Массовый скан | Точечный по ключу |
-| Гарантии | At-least-once + дедуп | ACID |
-| Удаление | Только по TTL целыми партициями | Обычный DELETE |
+| Mutability | Immutable | Mutable |
+| Volume | Trillions of rows | Millions of rows |
+| Access pattern | Bulk scan | Point lookup by key |
+| Guarantees | At-least-once plus dedup | ACID |
+| Deletion | TTL, whole partitions only | Ordinary DELETE |
 
-## Как слои связаны
+## How the layers connect
 
-Связь только по идентификаторам, без распределённых транзакций и без JOIN между
-движками на горячем пути.
+By identifier only. No distributed transactions, and no cross-engine joins on
+the hot path.
 
 ```mermaid
 flowchart LR
-  E["События<br/>ClickHouse"] -->|alert_id| A["Алерты"]
-  A -->|создаёт| C["Кейсы<br/>PostgreSQL"]
-  C -->|entity_id| N["Сущности<br/>PostgreSQL"]
-  N -->|снапшот в память| R["Обогащение<br/>RocksDB"]
-  R -->|при приёме| E
+  E["Events<br/>ClickHouse"] -->|alert_id| A["Alerts"]
+  A -->|creates| C["Cases<br/>PostgreSQL"]
+  C -->|entity_id| N["Entities<br/>PostgreSQL"]
+  N -->|periodic snapshot| R["Enrichment<br/>RocksDB"]
+  R -->|at ingest| E
 ```
 
-Сущности попадают в горячий путь не запросом в Postgres, а периодическим
-снапшотом в локальный RocksDB каждой ноды. Следствие, которое принимаем
-осознанно: **обогащение работает на данных, отстающих на интервал обновления**
-(цель — 30 секунд). Это цена за отсутствие сетевого вызова на событие.
+Entities reach the hot path not through a PostgreSQL query but through a
+periodic snapshot into each node's local RocksDB. The consequence is accepted
+deliberately: **enrichment operates on data stale by up to one refresh
+interval** (target: 30 seconds). That is the price of having no network call
+per event, and it is worth paying.
 
-## Запрещено код-ревью
+## Rejected at review
 
-- Любой `ALTER ... UPDATE` в ClickHouse вне миграций.
-- Хранение статусов, назначений и комментариев в ClickHouse.
-- Запрос в PostgreSQL из кода, исполняющегося на каждое событие.
-- Полный скан таблицы сущностей в запросе к UI.
+- Any `ALTER ... UPDATE` against ClickHouse outside a migration.
+- Case status, assignment, or comments stored in ClickHouse.
+- A PostgreSQL query issued from code that runs per event.
+- A full scan of the entity table serving a UI request.
 
-## Когда пересмотреть
+## When to revisit
 
-Появится требование транзакционной согласованности между событием и состоянием
-(например, юридически значимое подтверждение приёма). Тогда — отдельный ADR о
-паттерне outbox, а не размытие границы.
+A requirement appears for transactional consistency between an event and state,
+such as legally significant acknowledgement of receipt. That calls for a
+separate ADR on the outbox pattern, not for blurring this boundary.

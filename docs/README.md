@@ -1,32 +1,31 @@
-# Документация проекта
+# Documentation
 
-Открытая платформа безопасности: приём событий, детект, оркестрация реагирования
-и работа с инцидентами в одной системе.
+Goliath is an open security data platform: event ingestion, detection, response
+orchestration, and incident handling in one system.
 
-## Структура
+## Contents
 
-| Файл | Содержание |
+| Document | Contents |
 | --- | --- |
-| [architecture.md](architecture.md) | Контекст, целевые показатели, карта компонентов, методика бенчмарка, стратегия выхода |
-| [adr/](adr/) | Архитектурные решения (ADR), по файлу на решение |
+| [architecture.md](architecture.md) | Targets, data flow, component map, benchmark method, go-to-market |
+| [roadmap.md](roadmap.md) | Delivery plan, milestones, current focus |
+| [adr/](adr/) | Architecture decision records, one file per decision |
 
-## Архитектурные решения
+## Decisions
 
-| ADR | Решение | Статус |
+| ADR | Decision | Status |
 | --- | --- | --- |
-| [0001](adr/0001-no-custom-database.md) | Собственную СУБД не пишем | Принято |
-| [0002](adr/0002-storage-stack.md) | Связка хранилищ: ClickHouse + PostgreSQL + Valkey + S3/Iceberg | Принято |
-| [0003](adr/0003-data-boundary.md) | Граница данных: иммутабельные события против мутабельного состояния | Принято |
-| [0004](adr/0004-configuration-and-extensibility.md) | Конфигурация компилируется, расширения — WASM | Принято |
-| [0005](adr/0005-languages-and-process-boundaries.md) | Языки и границы процессов | Принято |
+| [0001](adr/0001-no-custom-database.md) | Do not write our own database engine | Accepted |
+| [0002](adr/0002-storage-stack.md) | Storage stack: ClickHouse, PostgreSQL, Valkey, S3/Iceberg | Accepted |
+| [0003](adr/0003-data-boundary.md) | Data boundary: immutable events versus mutable state | Accepted |
+| [0004](adr/0004-configuration-and-extensibility.md) | Configuration compiles; extensions are WASM | Accepted |
+| [0005](adr/0005-languages-and-process-boundaries.md) | Languages and process boundaries | Accepted |
+| [0006](adr/0006-deployment-topology.md) | Roles compose; topology is configuration | Accepted |
+| [0007](adr/0007-source-and-parser-model.md) | Source and parser model | Accepted |
+| [0008](adr/0008-threat-intelligence-model.md) | Threat intelligence and indicator model | Accepted |
+| [0009](adr/0009-attack-knowledge-model.md) | MITRE ATT&CK knowledge model | Accepted |
 
-## Формат ADR
+## Writing an ADR
 
-Используем [MADR](https://adr.github.io/madr/). Новое решение — копия
-[adr/0000-template.md](adr/0000-template.md) со следующим номером.
-
-Правила:
-
-- ADR неизменяем после принятия. Передумали — новый ADR со статусом, отменяющим старый.
-- Каждый ADR содержит раздел «Когда пересмотреть» с проверяемым условием.
-- Решение, меняющее ADR, не вливается без правки соответствующего файла в том же PR.
+Copy [adr/0000-template.md](adr/0000-template.md) to the next number. Rules are
+in [CONTRIBUTING.md](../CONTRIBUTING.md#architecture-decisions).

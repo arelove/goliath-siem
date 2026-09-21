@@ -1,25 +1,26 @@
-# NNNN. Название решения
+# NNNN. Decision title
 
-- **Статус:** Предложено | Принято | Отменено ADR-NNNN
-- **Дата:** YYYY-MM-DD
+- **Status:** Proposed | Accepted | Superseded by ADR-NNNN
+- **Date:** YYYY-MM-DD
 
-## Контекст
+## Context
 
-Что вынудило принимать решение. Факты и числа, без оценок.
+What forced a decision. Facts and numbers, no opinions.
 
-## Решение
+## Decision
 
-Одно предложение в повелительном наклонении. Что именно делаем.
+One sentence, imperative mood. What we actually do.
 
-## Рассмотренные варианты
+## Options considered
 
-| Вариант | За | Против | Вердикт |
+| Option | For | Against | Verdict |
 | --- | --- | --- | --- |
 
-## Последствия
+## Consequences
 
-Что становится проще, что — сложнее. Цена, которую платим осознанно.
+What gets easier, what gets harder, and which cost we accept deliberately.
 
-## Когда пересмотреть
+## When to revisit
 
-Проверяемое условие, при котором решение перестаёт быть верным.
+A checkable condition under which this decision stops being correct. State a
+threshold, not a feeling.

@@ -1,82 +1,113 @@
-# 0001. Собственную СУБД не пишем
+# 0001. Do not write our own database engine
 
-- **Статус:** Принято
-- **Дата:** 2026-09-21
+- **Status:** Accepted
+- **Date:** 2026-09-21
 
-## Контекст
+## Context
 
-Целевая нагрузка — 1 000 000 событий/с (~500 МБ/с, ~43 ТБ/сут в сыром виде).
-Возник вопрос, не написать ли собственный движок хранения, лучший, чем
-ClickHouse и StarRocks, и «без недостатков».
+The target load is 1,000,000 events/second (~500 MB/s, ~43 TB/day raw). The
+question was raised whether to write a storage engine in Rust that takes the
+best of ClickHouse and StarRocks.
 
-## Решение
+## Decision
 
-Берём готовые движки хранения. Мировой уровень строим слоем выше — в движке
-матчинга правил.
+Use existing storage engines. Build the world-class component one layer up, in
+the rule matching engine.
 
-## Почему «БД без недостатков» недостижима
+## Why "a database with no drawbacks" is not a target
 
-Это не вопрос трудозатрат. Компромиссы в хранении данных — следствие
-теоретических ограничений.
+This is not about effort. Storage trade-offs follow from theory.
 
-**RUM-теорема** (Athanassoulis et al., EDBT 2016): любая структура данных платит
-тремя видами накладных расходов — на чтение (Read), на обновление (Update) и на
-память/место (Memory). Оптимизировать два можно только за счёт третьего.
+The **RUM conjecture** (Athanassoulis et al., EDBT 2016) states it generally:
+any data structure pays three overheads — Read, Update, and Memory. Optimizing
+two comes at the cost of the third.
 
-Три частных следствия, в которые упирается любой автор нового движка:
+Three specific consequences every engine author meets:
 
-| Ограничение | Суть | Что из него следует |
+| Constraint | Mechanism | Consequence |
 | --- | --- | --- |
-| Порядок хранения один | Данные физически лежат в одном порядке | Локальность оптимальна для одного класса запросов. Отсюда важность `ORDER BY` в ClickHouse — это не недоработка, это геометрия |
-| Сжатие против случайного доступа | Блочное сжатие требует распаковки блока ради одной строки | Сжатие 10–30x и быстрый point-lookup одновременно недостижимы |
-| Индексы против записи | Каждый индекс — дополнительная запись на вставку | Инвертированный индекс Elasticsearch и его же цена на ingest — одно явление |
+| Storage order is singular | Data is physically laid out in exactly one order | Locality is optimal for one query class. This is why `ORDER BY` dominates ClickHouse performance — it is geometry, not a defect |
+| Compression versus random access | Block compression requires decompressing a block to read one row | 10–30x compression and fast point lookups are not simultaneously achievable |
+| Indexes versus write throughput | Every index is an additional write per insert | Elasticsearch's inverted index and its ingest cost are the same phenomenon |
 
-Значит, «БД без недостатков» не описывает достижимый объект. Осмысленная
-постановка: *где мы сознательно размещаем цену, чтобы она не мешала нашим
-запросам*.
+So "no drawbacks" does not describe an achievable object. The useful question
+is *where we deliberately place the cost so it does not fall on our queries*.
 
-## Цена входа
+## Prior art: this has been built, twice
 
-ClickHouse разрабатывается с 2009 года. Чтобы выйти на его уровень, нужно
-довести до продакшена:
+The proposal is not hypothetical. Two funded teams executed it.
 
-- векторизованный исполнитель с SIMD и codegen;
-- стоимостной оптимизатор запросов;
-- набор кодеков сжатия (Delta, DoubleDelta, Gorilla, T64, LZ4, ZSTD);
-- репликацию с консенсусом и восстановление после сбоев;
-- фоновое слияние частей без деградации записи;
-- тиринг в объектное хранилище с кэшированием;
-- десятки тысяч тестов, включая fuzzing и проверку корректности под отказами.
+| Project | Language | Repository size | Stars | Started |
+| --- | --- | --- | --- | --- |
+| [ClickHouse](https://github.com/ClickHouse/ClickHouse) | C++ | 12.3 GB | 50,000 | public 2016, development from 2009 |
+| [StarRocks](https://github.com/StarRocks/starrocks) | Java + C++ | 825 MB | 12,100 | 2021 |
+| [Databend](https://github.com/databendlabs/databend) | **Rust** | 385 MB | 9,400 | 2020 |
+| [GreptimeDB](https://github.com/GreptimeTeam/greptimedb) | **Rust** | 117 MB | 6,700 | 2022 |
 
-Оценка до паритета — десятки человеколет. За это время не будет написано ни
-одного детекта, то есть ничего из того, ради чего система существует.
+Repository size includes history and test data, so it is a rough proxy rather
+than a line count. Two details matter more than the sizes:
 
-## Где мировой уровень достижим
+**StarRocks did not start from zero.** It is a fork of Apache Doris by the
+original Doris team from Baidu, where the project was called Palo and dates to
+roughly 2013. The 2021 date is the fork, not the beginning.
 
-Хранение — решённая задача с несколькими зрелыми реализациями. Не решено
-никем в открытом виде:
+**Databend is precisely this proposal, shipped.** A Rust, cloud-native,
+S3-backed ClickHouse alternative, venture funded, six years in. GreptimeDB is
+the same idea for observability data, four years in. Both are competent
+engineering. Neither displaced ClickHouse.
 
-| Слой | Состояние рынка | Наш шанс |
+## Correcting an earlier estimate
+
+An earlier draft of this ADR put the cost at "decades of person-years." That
+overstates it today. A modern Rust engine does not start from scratch:
+[Apache DataFusion](https://github.com/apache/datafusion) supplies query
+planning, optimization, and vectorized execution; Arrow supplies the in-memory
+representation; Parquet supplies the format. GreptimeDB and InfluxDB 3.0 are
+built this way.
+
+The technical barrier is genuinely lower than that phrasing implied. The
+decision does not rest on feasibility.
+
+## What the decision rests on
+
+**In databases the moat is not code, it is trust accumulated through public
+failure.** Nobody commits a petabyte of security logs to an engine that has not
+survived five years of losing data in front of other people. That trust is a
+function of calendar time and installed base; writing better code does not
+compress it. This, not performance, is where Databend and GreptimeDB met their
+ceiling.
+
+The adjacent layer has no incumbent at all:
+
+| Layer | Market state | Our opportunity |
 | --- | --- | --- |
-| Хранение событий | Насыщено | Нет — берём готовое |
-| Матчинг тысяч правил на потоке | Открытого решения нет | Да — главный дифференциатор |
-| Entity resolution на потоке | Фрагментарно | Да |
-| Детекты с воспроизводимым CI | Почти нет | Да |
-| Связный SIEM + SOAR + IRP в OSS | Нет ни у кого | Да |
+| Event storage | Saturated | None — use what exists |
+| Matching thousands of rules on a stream | No open solution exists | Yes — the core differentiator |
+| Streaming entity resolution | Fragmentary | Yes |
+| Detections with reproducible CI | Almost absent | Yes |
+| Coherent SIEM + SOAR + IRP in open source | Nobody | Yes |
 
-При 1M eps и 3000 правил наивная проверка даёт 3·10⁹ предикатов в секунду.
-Здесь нужны индекс предикатов, дискриминационная сеть в духе RETE,
-префильтрация по bloom-фильтрам и SIMD на строковых сравнениях. Это
-исследовательская задача мирового уровня с реалистичным горизонтом.
+A new project in the matching layer earns trust immediately: there is no
+incumbent to displace, and the blast radius of a bug is "an alert did not fire"
+rather than "the audit trail is gone."
 
-## Запасной путь
+At 1M events/s with 3,000 rules, naive evaluation costs 3·10⁹ predicate checks
+per second. Making that tractable needs a predicate index, a RETE-style
+discrimination network, bloom-filter prefiltering, and SIMD string comparison.
+That is a world-class problem with a realistic horizon.
 
-Если упрёмся в ограничение ClickHouse — расширяем его, а не заменяем: свой
-движок таблиц, UDF, кодек сжатия под OCSF-события, патч в upstream. Получаем
-нужное поведение, сохраняя чужие десятки человеколет тестирования на надёжность.
+## Fallback
 
-## Когда пересмотреть
+If we hit a ClickHouse limit, extend it rather than replace it: a custom table
+engine, UDFs, a compression codec tuned for OCSF events, a patch upstream. We
+get the behaviour we need while keeping someone else's decade of reliability
+testing.
 
-Появится конкретный запрос, который не укладывается в бюджет латентности ни в
-ClickHouse, ни в StarRocks после честной оптимизации схемы, ключей сортировки и
-проекций.
+DataFusion also keeps the door open. If security-shaped queries genuinely do
+not fit, a narrow purpose-built engine on top of DataFusion is months of work,
+not years. This is not a one-way door.
+
+## When to revisit
+
+A specific query misses its latency budget in both ClickHouse and StarRocks
+after honest optimization of schema, sort keys, and projections.

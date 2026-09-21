@@ -1,93 +1,97 @@
-# 0002. Связка хранилищ
+# 0002. Storage stack
 
-- **Статус:** Принято
-- **Дата:** 2026-09-21
+- **Status:** Accepted
+- **Date:** 2026-09-21
 
-## Контекст
+## Context
 
-Нужно выбрать хранилища под нагрузку 1M eps при наличии транзакционных
-подсистем (кейсы, RBAC, оркестрация). Выбор делался от карты нагрузок, а не от
-сравнения бенчмарков.
+Storage had to be chosen for 1M events/s alongside transactional subsystems
+(cases, RBAC, orchestration). The choice was driven by a map of workloads, not
+by comparing benchmarks.
 
-## Решение
+## Decision
 
-Два серверных движка (ClickHouse, PostgreSQL) + кэш (Valkey) + открытый формат
-(S3/Iceberg) + два встраиваемых (RocksDB, DuckDB).
+Two server engines (ClickHouse, PostgreSQL), one cache (Valkey), one open
+format (S3/Iceberg), and two embedded engines (RocksDB, DuckDB).
 
-## Карта нагрузок
+## Workload map
 
-| № | Нагрузка | Профиль | Где живёт |
+| # | Workload | Profile | Home |
 | --- | --- | --- | --- |
-| W1 | Хранение событий | append-only, колоночный скан | ClickHouse |
-| W2 | Интерактивный поиск | высокая селективность | ClickHouse |
-| W3 | Исполнение детектов | SQL по окнам + стриминг | ClickHouse + движок |
-| W4 | Окна корреляции | эфемерно, огромный churn | RocksDB (embedded) |
-| W5 | Сущности / онтология | мутабельно, JOIN | PostgreSQL |
-| W6 | Кейсы IRP | транзакции | PostgreSQL |
-| W7 | Состояние плейбуков | бэкенд Temporal | PostgreSQL |
-| W8 | RBAC, тенанты | сильная консистентность | PostgreSQL (RLS) |
-| W9 | Аудит-лог | append-only, tamper-evident | PostgreSQL + hash chain |
-| W10 | Граф (lateral movement) | обход 2–4 уровня | PostgreSQL (рекурсивные CTE) |
-| W11 | Vector search для LLM | HNSW | PostgreSQL (pgvector) |
-| W12 | Дедуп, rate limit, локи | разделяемое состояние | Valkey |
-| W13 | Холодный архив | год+, дёшево | S3 + Parquet/Iceberg |
-| W14 | Проверка IOC на событие | 10⁶–10⁹ индикаторов, 1M/с | RocksDB (embedded) |
+| W1 | Event storage | Append-only, columnar scan | ClickHouse |
+| W2 | Interactive search | High selectivity, low latency | ClickHouse |
+| W3 | Detection execution | Windowed SQL plus streaming | ClickHouse and match engine |
+| W4 | Correlation windows | Ephemeral, very high churn | RocksDB (embedded) |
+| W5 | Entities and ontology | Mutable, joined | PostgreSQL |
+| W6 | IRP cases | Transactional state machine | PostgreSQL |
+| W7 | Playbook execution state | Temporal backing store | PostgreSQL |
+| W8 | RBAC and tenancy | Strong consistency | PostgreSQL (row-level security) |
+| W9 | Audit log | Append-only, tamper-evident | PostgreSQL plus hash chain |
+| W10 | Graph traversal | 2–4 hops | PostgreSQL (recursive CTEs) |
+| W11 | Vector search for LLM retrieval | HNSW | PostgreSQL (pgvector) |
+| W12 | Dedup, rate limits, locks | Shared ephemeral state | Valkey |
+| W13 | Cold archive | 12+ months, cheap | S3 plus Parquet/Iceberg |
+| W14 | Per-event indicator lookup | 10⁶–10⁹ indicators at 1M/s | RocksDB (embedded) |
 
-W1 и W6 — антиподы: иммутабельный петабайтный скан против транзакционных
-апдейтов. Один движок их хорошо не закрывает, поэтому вариант «одна БД»
-отпадает до всякого сравнения.
+W1 and W6 are opposites: immutable petabyte scans against transactional updates
+of small records. No single engine serves both well, which eliminates the
+single-database option before any comparison.
 
-PostgreSQL закрывает шесть нагрузок (W5–W11) одним движком. Объёмы там —
-миллионы строк, не триллионы. Дробить это на шесть специализированных БД —
-операционный налог, который заплатит каждый, кто развернёт систему.
+PostgreSQL covers six workloads (W5–W11) in one engine. Volumes there are
+millions of rows, not trillions. Splitting those across six specialized stores
+is an operational tax paid by everyone who deploys the system.
 
-## Рассмотренные варианты (колоночный слой)
+## Options considered (columnar layer)
 
-| Вариант | За | Против | Вердикт |
+| Option | For | Against | Verdict |
 | --- | --- | --- | --- |
-| ClickHouse | Сжатие 10–30x на логах, скан вне конкуренции, инкрементальные MV, зрелый S3-тиринг, доказан на петабайтах логов | Слабые JOIN, асинхронные мутации, ручной решардинг в OSS, Keeper в эксплуатации | **Принят** |
-| StarRocks | Лучше JOIN (CBO, runtime filters), primary key model с настоящими upsert, нативный Iceberg | Хуже сжатие на логах, не доказан на петабайтном логгинге, меньше сообщество | Единственная серьёзная альтернатива; пересмотреть, если JOIN станут узким местом |
-| Doris | Проще в развёртывании | Слабее оптимизатор | Нет |
-| Druid / Pinot | Sub-second на стриминге, богатые индексы | JVM, много типов нод, заточены под user-facing аналитику | Нет — операционная цена не окупается |
-| Elasticsearch / OpenSearch | Лучший свободный полнотекстовый поиск | JVM, в 3–5 раз хуже по объёму, медленные агрегации, шард-менеджмент на 1M eps | Нет как основное |
-| DuckDB | Отлично читает Parquet/Iceberg из S3 | Однонодовая, не сервер, нет конкурентной записи | Не как ярус хранения — как инструмент |
+| ClickHouse | 10–30x compression on logs, unmatched scan throughput, incremental materialized views, mature S3 tiering, proven on petabyte-scale logging | Weak joins, asynchronous mutations, manual resharding in the open-source build, Keeper to operate | **Accepted** |
+| StarRocks | Better joins (cost-based optimizer, runtime filters), primary key model with real upserts, native Iceberg | Worse compression on logs, unproven at petabyte-scale logging, smaller community | Only serious alternative; revisit if joins become the bottleneck |
+| Doris | Simpler to deploy | Weaker optimizer | No |
+| Druid, Pinot | Sub-second streaming queries, rich indexing | JVM, many node types, tuned for user-facing analytics rather than logs | No — operational cost is not repaid |
+| Elasticsearch, OpenSearch | Best free-text search available | JVM, 3–5x worse storage efficiency, much slower aggregations, shard management at 1M events/s | No as primary store |
+| DuckDB | Excellent reader for Parquet and Iceberg on S3 | Single node, not a server, no concurrent writers | Not a storage tier — a tool |
 
-### Признаём цену отказа от Elasticsearch
+### The cost of dropping Elasticsearch, stated plainly
 
-Теряем часть свободного полнотекстового поиска. Смягчается bloom-filter
-skip-индексами по токенизированным полям и полнотекстовым индексом ClickHouse.
-Приемлемо, потому что подавляющая часть SIEM-поиска — фильтрация по
-структурированным полям. В README пишем прямо, не умалчиваем.
+We lose some free-text search quality. This is mitigated by bloom-filter skip
+indexes on tokenized fields and by the ClickHouse full-text index, which is
+maturing but is not an equal of a dedicated inverted index.
 
-## Роль DuckDB
+Acceptable, because the overwhelming majority of SIEM search is filtering on
+structured fields rather than grepping free text. We state this in the README
+rather than omitting it.
 
-Не ярус хранения, а встраиваемая библиотека в трёх местах:
+## The role of DuckDB
 
-1. Запросы к холодному слою в S3 — без поднятия Trino или Spark.
-2. **CI для детектов** — прогон правил против сэмпла за секунды.
-3. Пре-агрегация на краю, у коллекторов.
+Not a storage tier. An embedded library in three places:
 
-## Чего сознательно не добавляем
+1. Querying the cold tier on S3 without standing up Trino or Spark.
+2. **Detection CI** — running rules against sample data in seconds.
+3. Edge pre-aggregation at collectors.
 
-**Графовая БД.** Запросы ограниченной глубины (2–4 хопа) покрываются
-рекурсивными CTE. Neo4j без кластеризации в Community и Memgraph под BSL
-создают лицензионное препятствие к корпоративному внедрению.
+## What we deliberately exclude
 
-**Отдельная векторная БД.** Корпус (рунбуки, прошлые кейсы) — тысячи чанков.
-pgvector с HNSW закрывает это без отдельного компонента.
+**A graph database.** Bounded-depth traversals (2–4 hops) are served by
+recursive CTEs. Neo4j lacks clustering in its community edition and Memgraph
+ships under BSL; both create a licensing obstacle to enterprise adoption.
 
-**Redis на горячем пути.** При 1M eps это миллион сетевых round-trip в секунду.
-Valkey остаётся только на разделяемом состоянии; выбран вместо Redis из-за
-BSD-лицензии — снятие юридического препятствия для корпоративного внедрения.
+**A dedicated vector database.** The corpus (runbooks, prior cases, rule
+documentation) is thousands of chunks. pgvector with HNSW covers it without an
+additional component.
 
-## Последствия
+**Redis on the hot path.** At 1M events/s this would be a million network round
+trips per second. Valkey serves shared state only, and is chosen over Redis for
+its BSD license, which removes a legal obstacle to corporate deployment.
 
-Каждый лишний движок — компонент, который обязан обслуживать пользователь.
-Для OSS это прямой вычет из установочной базы. Четыре компонента —
-сознательный потолок.
+## Consequences
 
-## Когда пересмотреть
+Every additional engine is a component the user must operate. For an
+open-source project that is a direct deduction from installed base. Four
+components is a deliberate ceiling.
 
-- JOIN сущностей на этапе запроса станут узким местом → оценить StarRocks.
-- Свободный полнотекстовый поиск попадёт в топ-3 запросов пользователей →
-  оценить отдельный инвертированный индекс рядом, не вместо.
+## When to revisit
+
+- Entity joins at query time become the measured bottleneck → evaluate StarRocks.
+- Free-text search enters the top three user query patterns → evaluate a
+  dedicated inverted index alongside, not instead of, ClickHouse.
