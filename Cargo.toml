@@ -5,7 +5,7 @@ members = ["crates/*"]
 [workspace.package]
 # Versions are per crate, not shared. See docs/adr/0010-versioning-and-releases.md.
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.89"
 license = "Apache-2.0"
 repository = "https://github.com/arelove/goliath-siem"
 authors = ["arelove"]
