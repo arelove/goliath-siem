@@ -25,7 +25,7 @@ jobs:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - name: Open or update the release pull request
-        uses: release-plz/action@v0
+        uses: release-plz/action@51e32d708d306b2c2e98540245b276439f3137c3 # v0.5.139
         with:
           command: release-pr
         env:
@@ -43,7 +43,7 @@ jobs:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - name: Tag, create the GitHub release, and publish to crates.io
-        uses: release-plz/action@v0
+        uses: release-plz/action@51e32d708d306b2c2e98540245b276439f3137c3 # v0.5.139
         with:
           command: release
         env:
