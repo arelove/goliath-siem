@@ -56,7 +56,10 @@ jobs:
         with:
           toolchain: ${{ steps.msrv.outputs.version }}
       - uses: Swatinem/rust-cache@v2
-      - run: cargo check --workspace --all-targets
+      # `+toolchain` is required: rust-toolchain.toml would otherwise override
+      # the installed MSRV toolchain with stable, and the check would pass on
+      # code the declared MSRV cannot build.
+      - run: cargo +${{ steps.msrv.outputs.version }} check --workspace --all-targets
 
   docs:
     name: documentation
