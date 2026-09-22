@@ -24,6 +24,8 @@ orchestration, and incident handling in one system.
 | [0007](adr/0007-source-and-parser-model.md) | Source and parser model | Accepted |
 | [0008](adr/0008-threat-intelligence-model.md) | Threat intelligence and indicator model | Accepted |
 | [0009](adr/0009-attack-knowledge-model.md) | MITRE ATT&CK knowledge model | Accepted |
+| [0010](adr/0010-versioning-and-releases.md) | Versioning and releases | Accepted |
+| [0011](adr/0011-untrusted-yaml.md) | Parse rule YAML as untrusted input | Accepted |
 
 ## Writing an ADR
 
