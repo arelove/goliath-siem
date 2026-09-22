@@ -27,7 +27,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::condition::Condition;
+use crate::condition::{Condition, Target};
 use crate::error::RuleError;
 use crate::modifier::{FieldKey, parse_field_key};
 use crate::parser::parse_condition;
@@ -300,11 +300,54 @@ fn build_detection(mut raw: BTreeMap<String, RawValue>) -> Result<Detection, Rul
         })
         .collect::<Result<_, RuleError>>()?;
 
+    check_references(&searches, &conditions)?;
+
     Ok(Detection {
         searches,
         conditions,
         timeframe,
     })
+}
+
+/// Rejects conditions that refer to searches the rule does not define.
+///
+/// A quantifier pattern that covers no search is refused as firmly as an
+/// undefined name, because its meaning is a trap: `1 of filter_*` over nothing
+/// is always false, and `all of filter_*` over nothing is vacuously true, so
+/// `not all of filter_*` silently disables the whole rule.
+fn check_references(
+    searches: &BTreeMap<String, Search>,
+    conditions: &[ConditionSource],
+) -> Result<(), RuleError> {
+    if searches.is_empty() {
+        return Err(RuleError::NoSearches);
+    }
+
+    for condition in conditions {
+        for (name, span) in condition.parsed.named_identifiers() {
+            if !searches.contains_key(name) {
+                return Err(RuleError::UndefinedIdentifier {
+                    identifier: name.to_owned(),
+                    condition: condition.text.clone(),
+                    span,
+                });
+            }
+        }
+
+        for (target, span) in condition.parsed.quantifier_targets() {
+            if let Target::Pattern(pattern) = target
+                && !searches.keys().any(|identifier| target.matches(identifier))
+            {
+                return Err(RuleError::UnmatchedPattern {
+                    pattern: pattern.clone(),
+                    condition: condition.text.clone(),
+                    span,
+                });
+            }
+        }
+    }
+
+    Ok(())
 }
 
 fn build_condition(text: String) -> Result<ConditionSource, RuleError> {
@@ -643,5 +686,87 @@ license: DRL-1.1
         )
         .expect_err("duplicate field");
         assert!(matches!(err, RuleError::Yaml(_)));
+    }
+
+    #[test]
+    fn rejects_a_condition_naming_an_undefined_search() {
+        let source = "title: t
+logsource: {}
+detection:
+  selection: {a: 1}
+  condition: selection and not filter
+";
+        let err = parse_rule(source).expect_err("filter is not defined");
+
+        let RuleError::UndefinedIdentifier {
+            identifier,
+            condition,
+            span,
+        } = err
+        else {
+            panic!("expected an undefined identifier error, got {err:?}");
+        };
+        assert_eq!(identifier, "filter");
+        assert_eq!(
+            span.slice(&condition),
+            Some("filter"),
+            "span must point into the condition"
+        );
+    }
+
+    #[test]
+    fn rejects_a_quantifier_pattern_that_matches_nothing() {
+        let source = "title: t
+logsource: {}
+detection:
+  selection: {a: 1}
+  condition: 1 of sel_*
+";
+        let err = parse_rule(source).expect_err("sel_* covers no search");
+        assert!(
+            matches!(err, RuleError::UnmatchedPattern { ref pattern, .. } if pattern == "sel_*")
+        );
+    }
+
+    #[test]
+    fn rejects_the_vacuous_all_of_that_would_disable_a_rule() {
+        // With no filter_* searches, `all of filter_*` is vacuously true, so
+        // `not all of filter_*` is always false and the rule never fires.
+        let source = "title: t
+logsource: {}
+detection:
+  selection: {a: 1}
+  condition: selection and not all of filter_*
+";
+        let err = parse_rule(source).expect_err("vacuous quantifier");
+        assert!(matches!(err, RuleError::UnmatchedPattern { .. }));
+    }
+
+    #[test]
+    fn rejects_a_detection_with_no_searches() {
+        let err = parse_rule(
+            "title: t
+logsource: {}
+detection:
+  condition: 1 of them
+",
+        )
+        .expect_err("nothing to search");
+        assert_eq!(err, RuleError::NoSearches);
+    }
+
+    #[test]
+    fn accepts_patterns_and_them_that_cover_searches() {
+        let rule = parse(ENCODED_POWERSHELL);
+        assert_eq!(rule.detection.conditions.len(), 1);
+
+        parse(
+            "title: t
+logsource: {}
+detection:
+  a: {x: 1}
+  condition: all of them
+",
+        );
     }
 }

@@ -193,6 +193,32 @@ pub enum RuleError {
         found: &'static str,
     },
 
+    /// The detection block defines no searches at all.
+    #[error("the detection block defines no searches")]
+    NoSearches,
+
+    /// A condition names a search the rule does not define.
+    #[error("condition `{condition}` refers to undefined search `{identifier}`")]
+    UndefinedIdentifier {
+        /// The undefined name.
+        identifier: String,
+        /// The condition as written, which `span` points into.
+        condition: String,
+        /// Where the name appears in the condition.
+        span: Span,
+    },
+
+    /// A quantifier pattern covers no search.
+    #[error("condition `{condition}`: `{pattern}` matches no search")]
+    UnmatchedPattern {
+        /// The pattern as written.
+        pattern: String,
+        /// The condition as written, which `span` points into.
+        condition: String,
+        /// Where the quantifier appears in the condition.
+        span: Span,
+    },
+
     /// A search is empty or null, so it can never match.
     #[error("search `{identifier}` is empty and can never match")]
     EmptySearch {
