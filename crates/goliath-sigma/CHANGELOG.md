@@ -9,6 +9,15 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-22
+
+
+### Added
+
+- Parse Sigma condition expressions into a typed AST
+- Parse field modifiers
+- Parse detection values and wildcard patterns
+
 ### Added
 
 - Sigma condition expression language: tokenizer, recursive descent parser, and
