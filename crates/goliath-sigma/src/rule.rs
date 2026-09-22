@@ -24,14 +24,15 @@
 //! them, and they do not affect what a rule detects.
 
 use std::collections::BTreeMap;
+use std::net::IpAddr;
 
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::condition::{Condition, Target};
 use crate::error::RuleError;
-use crate::modifier::{FieldKey, parse_field_key};
+use crate::modifier::{FieldKey, Modifier, parse_field_key};
 use crate::parser::parse_condition;
-use crate::value::Value;
+use crate::value::{Pattern, Value};
 use crate::yaml::{self, RawValue};
 
 /// The maturity a rule's author claims for it.
@@ -447,9 +448,84 @@ fn build_predicates(
                 }
             };
 
+            check_values(&key, &values).map_err(|reason| RuleError::InvalidModifierValue {
+                identifier: identifier.to_owned(),
+                field: key_text.clone(),
+                reason,
+            })?;
+
             Ok(FieldPredicate { key, values })
         })
         .collect()
+}
+
+/// Checks that every value can mean something under the key's modifiers.
+///
+/// Each refusal here is a rule that would otherwise load and never fire.
+fn check_values(key: &FieldKey, values: &[Value]) -> Result<(), &'static str> {
+    let match_modifier = key.match_modifier();
+
+    if key.modifiers.contains(&Modifier::Base64Offset)
+        && match_modifier != Some(&Modifier::Contains)
+    {
+        return Err("base64offset produces partial strings and must be combined with contains");
+    }
+
+    let requires_string = key.transforms().next().is_some()
+        || matches!(match_modifier, Some(Modifier::Re(_) | Modifier::Cidr))
+        || key
+            .modifiers
+            .iter()
+            .any(|m| matches!(m, Modifier::FieldRef | Modifier::Expand));
+
+    for value in values {
+        match match_modifier {
+            Some(Modifier::Exists) if !matches!(value, Value::Boolean(_)) => {
+                return Err("exists requires true or false");
+            }
+            Some(Modifier::Lt | Modifier::Lte | Modifier::Gt | Modifier::Gte)
+                if !matches!(value, Value::Integer(_) | Value::Float(_)) =>
+            {
+                return Err("a comparison modifier requires a number");
+            }
+            Some(Modifier::Cidr)
+                if !value
+                    .as_pattern()
+                    .and_then(Pattern::as_literal)
+                    .is_some_and(is_network) =>
+            {
+                return Err("cidr requires an address or network, such as 10.0.0.0/8");
+            }
+            Some(Modifier::Contains | Modifier::StartsWith | Modifier::EndsWith)
+                if matches!(value, Value::Null | Value::Boolean(_)) =>
+            {
+                return Err("a string match modifier cannot compare against null or a boolean");
+            }
+            _ => {}
+        }
+
+        if requires_string && value.as_pattern().is_none() {
+            return Err("this modifier requires a string value");
+        }
+    }
+
+    Ok(())
+}
+
+/// Reports whether `text` is an IP address, optionally with a prefix length.
+fn is_network(text: &str) -> bool {
+    let (address, prefix) = match text.split_once('/') {
+        Some((address, prefix)) => (address, Some(prefix)),
+        None => (text, None),
+    };
+
+    let max_prefix = match address.parse::<IpAddr>() {
+        Ok(IpAddr::V4(_)) => 32,
+        Ok(IpAddr::V6(_)) => 128,
+        Err(_) => return false,
+    };
+
+    prefix.is_none_or(|p| p.parse::<u8>().is_ok_and(|p| p <= max_prefix))
 }
 
 /// Converts a scalar YAML value into a detection value, or `None` for a list
@@ -768,5 +844,77 @@ detection:
   condition: all of them
 ",
         );
+    }
+
+    fn value_error(field_and_value: &str) -> Option<&'static str> {
+        let source = format!(
+            "title: t
+logsource: {{}}
+detection:
+  s:
+    {field_and_value}
+  condition: s
+"
+        );
+        match parse_rule(&source) {
+            Ok(_) => None,
+            Err(RuleError::InvalidModifierValue { reason, .. }) => Some(reason),
+            Err(other) => panic!("unexpected error for `{field_and_value}`: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn exists_requires_a_boolean() {
+        assert_eq!(value_error("Field|exists: true"), None);
+        assert!(value_error("Field|exists: 'yes'").is_some());
+    }
+
+    #[test]
+    fn comparisons_require_numbers() {
+        assert_eq!(value_error("Count|gt: 5"), None);
+        assert_eq!(value_error("Ratio|lte: 0.5"), None);
+        assert!(value_error("Count|gt: many").is_some());
+    }
+
+    #[test]
+    fn cidr_requires_a_valid_network() {
+        assert_eq!(value_error("DestinationIp|cidr: 10.0.0.0/8"), None);
+        assert_eq!(value_error("DestinationIp|cidr: '::1/128'"), None);
+        assert_eq!(value_error("DestinationIp|cidr: 192.168.1.10"), None);
+
+        assert!(
+            value_error("DestinationIp|cidr: 10.0.0.0/33").is_some(),
+            "prefix too long"
+        );
+        assert!(
+            value_error("DestinationIp|cidr: 10.0.*.*").is_some(),
+            "wildcards are not networks"
+        );
+        assert!(value_error("DestinationIp|cidr: intranet").is_some());
+    }
+
+    #[test]
+    fn string_modifiers_require_strings() {
+        assert!(value_error("CommandLine|re: 5").is_some());
+        assert!(value_error("CommandLine|base64: 5").is_some());
+        assert!(value_error("Image|contains: null").is_some());
+        assert!(value_error("Image|endswith: true").is_some());
+    }
+
+    #[test]
+    fn base64offset_requires_contains() {
+        // Offset encodings are partial strings: equality with them never holds.
+        assert!(value_error("CommandLine|base64offset: 'IEX'").is_some());
+        assert_eq!(
+            value_error("CommandLine|base64offset|contains: 'IEX'"),
+            None
+        );
+    }
+
+    #[test]
+    fn plain_equality_accepts_any_scalar() {
+        assert_eq!(value_error("Field: null"), None);
+        assert_eq!(value_error("Field: true"), None);
+        assert_eq!(value_error("EventID: 4688"), None);
     }
 }

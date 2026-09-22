@@ -253,6 +253,17 @@ pub enum RuleError {
         found: &'static str,
     },
 
+    /// A value cannot mean anything under the field's modifiers.
+    #[error("in search `{identifier}`, field `{field}`: {reason}")]
+    InvalidModifierValue {
+        /// The search identifier.
+        identifier: String,
+        /// The field key as written.
+        field: String,
+        /// Why the value was refused.
+        reason: &'static str,
+    },
+
     /// A field's value list is empty, so the field can never match.
     #[error("in search `{identifier}`, field `{field}` has an empty value list")]
     EmptyValueList {
