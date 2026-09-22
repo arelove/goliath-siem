@@ -137,3 +137,18 @@ pub enum ModifierError {
         key: String,
     },
 }
+
+/// A rule file that is not acceptable YAML.
+///
+/// Raised both for syntax errors and for input refused on safety grounds:
+/// duplicate keys, unsupported tags, or alias expansion beyond the budget.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[error("{message}")]
+pub struct YamlError {
+    /// The parser's description of the problem.
+    pub message: String,
+    /// One-based line of the problem, when known.
+    pub line: Option<u64>,
+    /// One-based column of the problem, when known.
+    pub column: Option<u64>,
+}
