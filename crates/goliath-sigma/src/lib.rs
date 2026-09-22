@@ -49,13 +49,17 @@ pub mod error;
 pub mod lexer;
 pub mod modifier;
 pub mod parser;
+pub mod rule;
 pub mod span;
 pub mod value;
 mod yaml;
 
 pub use condition::{Condition, Quantifier, Target};
-pub use error::{ConditionError, ModifierError, YamlError};
+pub use error::{ConditionError, ModifierError, RuleError, YamlError};
 pub use modifier::{FieldKey, Modifier, ModifierKind, RegexFlags, parse_field_key};
 pub use parser::parse_condition;
+pub use rule::{
+    ConditionSource, Detection, FieldPredicate, Level, LogSource, Rule, Search, Status, parse_rule,
+};
 pub use span::Span;
 pub use value::{Pattern, PatternPart, Value};
