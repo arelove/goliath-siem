@@ -64,23 +64,29 @@ impl FieldPath {
     /// the caller's business.
     pub fn lookup<'a>(&self, root: &'a Value) -> Vec<&'a Value> {
         let mut found = Vec::new();
-        collect(root, &self.segments, &mut found);
+        self.visit(root, &mut |value| found.push(value));
         found
+    }
+
+    /// Calls `visit` on every value this path reaches in `root`, in the order
+    /// [`lookup`](Self::lookup) returns them, without allocating.
+    pub fn visit<'a>(&self, root: &'a Value, visit: &mut impl FnMut(&'a Value)) {
+        walk(root, &self.segments, visit);
     }
 }
 
-fn collect<'a>(value: &'a Value, segments: &[String], found: &mut Vec<&'a Value>) {
+fn walk<'a>(value: &'a Value, segments: &[String], visit: &mut impl FnMut(&'a Value)) {
     match value {
         Value::Array(items) => {
             for item in items {
-                collect(item, segments, found);
+                walk(item, segments, visit);
             }
         }
         _ => match segments.split_first() {
-            None => found.push(value),
+            None => visit(value),
             Some((head, rest)) => {
                 if let Some(child) = value.get(head.as_str()) {
-                    collect(child, rest, found);
+                    walk(child, rest, visit);
                 }
             }
         },

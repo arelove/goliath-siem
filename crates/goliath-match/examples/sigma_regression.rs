@@ -269,7 +269,12 @@ fn compare_engine(
     }
 
     let reference_rate = rate(events, |event| reference_matches(event).len());
-    let engine_rate = rate(events, |event| engine.matches(event).len());
+    let mut scratch = engine.scratch();
+    let mut found = Vec::new();
+    let engine_rate = rate(events, |event| {
+        engine.matches_into(event, &mut scratch, &mut found);
+        found.len()
+    });
 
     let mut out = String::new();
     let _ = writeln!(

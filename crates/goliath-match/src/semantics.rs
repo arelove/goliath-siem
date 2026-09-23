@@ -53,11 +53,31 @@ pub(crate) fn has_class_value(event: &Value, path: &FieldPath, expected: &ClassV
 
 /// Every non-null value any of `paths` reaches.
 pub(crate) fn pool<'a>(event: &'a Value, paths: &[FieldPath]) -> Vec<&'a Value> {
-    paths
-        .iter()
-        .flat_map(|path| path.lookup(event))
-        .filter(|value| !value.is_null())
-        .collect()
+    let mut values = Vec::new();
+    pool_into(event, paths, &mut values);
+    values
+}
+
+/// Appends every non-null value any of `paths` reaches to `values`, in the
+/// order [`pool`] returns them.
+pub(crate) fn pool_into<'a>(event: &'a Value, paths: &[FieldPath], values: &mut Vec<&'a Value>) {
+    for path in paths {
+        path.visit(event, &mut |value| {
+            if !value.is_null() {
+                values.push(value);
+            }
+        });
+    }
+}
+
+/// Reports whether `regex` matches some value's text, without copying
+/// strings: the same answer as testing [`text`] of each value.
+pub(crate) fn regex_matches_any(regex: &Regex, values: &[&Value]) -> bool {
+    values.iter().any(|value| match value {
+        Value::String(text) => regex.is_match(text),
+        Value::Number(number) => regex.is_match(&number.to_string()),
+        _ => false,
+    })
 }
 
 pub(crate) fn test_values(test: &Test, values: &[&Value], event: &Value) -> bool {
