@@ -19,3 +19,10 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
   names, stray regex flags, and conflicting combinations.
 - Detection values: string patterns with wildcard and escape semantics,
   integers, floats, booleans, and null.
+- Rule parsing: metadata, log source, and detection searches, loaded through
+  hardened YAML settings that refuse duplicate keys, unsupported tags, alias
+  expansion beyond a budget, and YAML 1.1 booleans such as `NO`.
+- Rejection of conditions naming undefined searches, and of quantifier
+  patterns that match no search.
+- Rejection of values their modifiers cannot compare, such as `exists` without
+  a boolean or `base64offset` without `contains`.

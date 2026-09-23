@@ -137,3 +137,139 @@ pub enum ModifierError {
         key: String,
     },
 }
+
+/// A rule file that is not acceptable YAML.
+///
+/// Raised both for syntax errors and for input refused on safety grounds:
+/// duplicate keys, unsupported tags, or alias expansion beyond the budget.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[error("{message}")]
+pub struct YamlError {
+    /// The parser's description of the problem.
+    pub message: String,
+    /// One-based line of the problem, when known.
+    pub line: Option<u64>,
+    /// One-based column of the problem, when known.
+    pub column: Option<u64>,
+}
+
+/// A failure to parse a Sigma rule.
+///
+/// Errors below the YAML layer name the search identifier and field involved.
+/// YAML line numbers are not available there, because interpretation happens
+/// after deserialization; the identifier and field locate the problem within
+/// one rule precisely enough to fix it.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
+pub enum RuleError {
+    /// The file is not acceptable YAML, or does not have the shape of a rule.
+    #[error(transparent)]
+    Yaml(#[from] YamlError),
+
+    /// The detection block has no `condition`.
+    #[error("the detection block has no condition")]
+    MissingCondition,
+
+    /// `condition` is neither a string nor a non-empty list of strings.
+    #[error("condition must be a string or a list of strings, found {found}")]
+    InvalidConditionType {
+        /// The kind of value found instead.
+        found: &'static str,
+    },
+
+    /// A condition failed to parse.
+    #[error("invalid condition `{text}`: {source}")]
+    InvalidCondition {
+        /// The condition as written, which the error's span points into.
+        text: String,
+        /// The parse failure.
+        source: ConditionError,
+    },
+
+    /// `timeframe` is not a string.
+    #[error("timeframe must be a string, found {found}")]
+    InvalidTimeframe {
+        /// The kind of value found instead.
+        found: &'static str,
+    },
+
+    /// The detection block defines no searches at all.
+    #[error("the detection block defines no searches")]
+    NoSearches,
+
+    /// A condition names a search the rule does not define.
+    #[error("condition `{condition}` refers to undefined search `{identifier}`")]
+    UndefinedIdentifier {
+        /// The undefined name.
+        identifier: String,
+        /// The condition as written, which `span` points into.
+        condition: String,
+        /// Where the name appears in the condition.
+        span: Span,
+    },
+
+    /// A quantifier pattern covers no search.
+    #[error("condition `{condition}`: `{pattern}` matches no search")]
+    UnmatchedPattern {
+        /// The pattern as written.
+        pattern: String,
+        /// The condition as written, which `span` points into.
+        condition: String,
+        /// Where the quantifier appears in the condition.
+        span: Span,
+    },
+
+    /// A search is empty or null, so it can never match.
+    #[error("search `{identifier}` is empty and can never match")]
+    EmptySearch {
+        /// The search identifier.
+        identifier: String,
+    },
+
+    /// A search list mixes mappings with plain values.
+    #[error("search `{identifier}` mixes mappings with plain values")]
+    MixedSearchList {
+        /// The search identifier.
+        identifier: String,
+    },
+
+    /// A field key failed to parse.
+    #[error("in search `{identifier}`: {source}")]
+    InvalidFieldKey {
+        /// The search identifier.
+        identifier: String,
+        /// The parse failure.
+        source: ModifierError,
+    },
+
+    /// A field's value is a list or mapping where a scalar was required.
+    #[error("in search `{identifier}`, field `{field}` has {found} as a value")]
+    InvalidFieldValue {
+        /// The search identifier.
+        identifier: String,
+        /// The field key as written.
+        field: String,
+        /// The kind of value found.
+        found: &'static str,
+    },
+
+    /// A value cannot mean anything under the field's modifiers.
+    #[error("in search `{identifier}`, field `{field}`: {reason}")]
+    InvalidModifierValue {
+        /// The search identifier.
+        identifier: String,
+        /// The field key as written.
+        field: String,
+        /// Why the value was refused.
+        reason: &'static str,
+    },
+
+    /// A field's value list is empty, so the field can never match.
+    #[error("in search `{identifier}`, field `{field}` has an empty value list")]
+    EmptyValueList {
+        /// The search identifier.
+        identifier: String,
+        /// The field key as written.
+        field: String,
+    },
+}
