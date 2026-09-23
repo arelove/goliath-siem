@@ -8,15 +8,18 @@
 //! `docs/adr/0012-sigma-field-mapping.md`.
 //!
 //! This crate holds the pieces every execution path shares: paths into an
-//! event and the case folding that defines case insensitive comparison.
+//! event, the case folding that defines case insensitive comparison, and the
+//! field mappings that translate a rule language's field names into paths.
 
 // Tests assert on outcomes; a failed assertion should abort the test.
 #![cfg_attr(test, allow(clippy::expect_used, clippy::panic, clippy::unwrap_used))]
 
 pub mod error;
 pub mod fold;
+pub mod mapping;
 pub mod path;
 
-pub use error::PathError;
+pub use error::{MappingError, PathError};
 pub use fold::fold;
+pub use mapping::{ClassValue, LogSourceSelector, MappingSet, SourceMapping};
 pub use path::FieldPath;
