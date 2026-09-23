@@ -23,6 +23,7 @@
 //! correct exactly when it returns what the reference evaluator returns for
 //! every rule and every event; the tests check that on random rules and events.
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 
 use aho_corasick::{AhoCorasick, MatchKind};
@@ -32,7 +33,7 @@ use regex::Regex;
 use serde_json::Value;
 
 use crate::error::CompileError;
-use crate::semantics::{has_class_value, pool, regex, test_values, text};
+use crate::semantics::{has_class_value, pool_into, regex, regex_matches_any, test_values};
 
 /// A class condition: attribute values an event must have.
 type Class = Vec<(FieldPath, ClassValue)>;
@@ -365,6 +366,7 @@ impl Group {
             hits,
             texts,
             generation,
+            values: RefCell::new(Vec::new()),
         };
         for &position in candidates.iter() {
             let (index, node) = &self.rules[position];
@@ -428,6 +430,9 @@ struct Context<'a> {
     hits: &'a [u8],
     texts: &'a [Texts],
     generation: u32,
+    /// Values for non-string tests, reused across the predicates of one
+    /// event instead of collected afresh for each.
+    values: RefCell<Vec<&'a Value>>,
 }
 
 impl Context<'_> {
@@ -485,12 +490,11 @@ impl Context<'_> {
                         .any(|candidate| pattern.matches(candidate))
             }
             Pred::Other { paths, check } => {
-                let values = pool(self.event, paths);
+                let mut values = self.values.borrow_mut();
+                values.clear();
+                pool_into(self.event, paths, &mut values);
                 match check {
-                    Check::Regex(regex) => values
-                        .iter()
-                        .filter_map(|value| text(value))
-                        .any(|candidate| regex.is_match(&candidate)),
+                    Check::Regex(regex) => regex_matches_any(regex, &values),
                     Check::Plain(test) => test_values(test, &values, self.event),
                 }
             }
