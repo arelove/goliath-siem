@@ -62,7 +62,7 @@ pub fn fold(text: &str) -> Cow<'_, str> {
 /// The same folding as [`fold`], for callers that reuse one buffer across
 /// many values instead of allocating per value.
 pub fn fold_into(text: &str, out: &mut String) {
-    if text.is_ascii() {
+    if text.is_empty() {
         let start = out.len();
         out.push_str(text);
         out[start..].make_ascii_lowercase();
