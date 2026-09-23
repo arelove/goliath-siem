@@ -740,7 +740,8 @@ impl GroupBuilder {
             );
         }
 
-        // The longest literal is the most selective one to wait for.
+        // The longest literal is the most selective one to wait for, as it
+        // occurs least often.
         let required = pattern
             .parts()
             .iter()
