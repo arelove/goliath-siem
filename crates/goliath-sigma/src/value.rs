@@ -111,33 +111,59 @@ impl Pattern {
     ///
     /// Comparison is case sensitive. Case folding is a backend concern driven
     /// by the `cased` modifier, not a property of the pattern.
-    pub fn matches(&self, candidate: &str) -> bool {
-        let candidate: Vec<char> = candidate.chars().collect();
-        Self::match_from(&self.parts, &candidate)
-    }
-
-    /// Matches `parts` against `candidate`, resolving `*` by scanning forward.
     ///
-    /// Recursion depth is bounded by the number of pattern elements rather than
-    /// by input length, so a long candidate cannot drive it deep.
-    fn match_from(parts: &[PatternPart], candidate: &[char]) -> bool {
-        let Some((first, rest)) = parts.split_first() else {
-            return candidate.is_empty();
-        };
+    /// The candidate is event data and therefore attacker controlled, so the
+    /// cost is bounded by the product of pattern and candidate length whatever
+    /// the number of wildcards. Trying every split at every `*` would be
+    /// exponential in the number of wildcards: `*a*a*a*a*a*b` against a hundred
+    /// `a` characters took thirty seconds that way.
+    ///
+    /// Only the most recent `*` ever needs revisiting. Whatever an earlier one
+    /// could absorb, the later one can absorb instead, so a failure after the
+    /// latest `*` is retried by letting that `*` take one more character.
+    pub fn matches(&self, candidate: &str) -> bool {
+        let parts = self.parts.as_slice();
+        // Byte offsets, always on character boundaries.
+        let mut part = 0;
+        let mut pos = 0;
+        // The part after the latest `*`, and where that `*` stopped absorbing.
+        let mut resume: Option<(usize, usize)> = None;
 
-        match first {
-            PatternPart::Literal(text) => {
-                let literal: Vec<char> = text.chars().collect();
-                candidate.starts_with(&literal)
-                    && Self::match_from(rest, &candidate[literal.len()..])
+        loop {
+            if let Some(current) = parts.get(part) {
+                let advanced = match current {
+                    PatternPart::AnySequence => {
+                        resume = Some((part + 1, pos));
+                        Some(pos)
+                    }
+                    PatternPart::AnyChar => candidate[pos..]
+                        .chars()
+                        .next()
+                        .map(|ch| pos + ch.len_utf8()),
+                    PatternPart::Literal(text) => candidate[pos..]
+                        .starts_with(text.as_str())
+                        .then(|| pos + text.len()),
+                };
+                if let Some(next) = advanced {
+                    part += 1;
+                    pos = next;
+                    continue;
+                }
+            } else if pos == candidate.len() {
+                return true;
             }
-            PatternPart::AnyChar => {
-                !candidate.is_empty() && Self::match_from(rest, &candidate[1..])
-            }
-            PatternPart::AnySequence => {
-                // Try every split, shortest first.
-                (0..=candidate.len()).any(|skip| Self::match_from(rest, &candidate[skip..]))
-            }
+
+            // Mismatch: let the latest `*` absorb one more character.
+            let Some((after_star, absorbed)) = resume else {
+                return false;
+            };
+            let Some(ch) = candidate[absorbed..].chars().next() else {
+                return false;
+            };
+            let absorbed = absorbed + ch.len_utf8();
+            resume = Some((after_star, absorbed));
+            part = after_star;
+            pos = absorbed;
         }
     }
 }
@@ -300,6 +326,69 @@ mod tests {
             !Value::Float(1.5).is_indexable(),
             "float equality is not a sound index key"
         );
+    }
+
+    #[test]
+    fn many_wildcards_against_a_long_candidate_stay_fast() {
+        // Exponential with naive backtracking; this would not finish.
+        let pattern = Pattern::parse("*a*a*a*a*a*a*a*a*b");
+        let candidate = "a".repeat(100_000);
+        assert!(!pattern.matches(&candidate));
+        assert!(pattern.matches(&(candidate + "b")));
+    }
+
+    /// Tries every split at every `*`: exponential, but obviously correct.
+    fn reference_matches(parts: &[PatternPart], candidate: &str) -> bool {
+        let Some((first, rest)) = parts.split_first() else {
+            return candidate.is_empty();
+        };
+        match first {
+            PatternPart::Literal(text) => candidate
+                .strip_prefix(text.as_str())
+                .is_some_and(|tail| reference_matches(rest, tail)),
+            PatternPart::AnyChar => {
+                let mut chars = candidate.chars();
+                chars.next().is_some() && reference_matches(rest, chars.as_str())
+            }
+            PatternPart::AnySequence => candidate
+                .char_indices()
+                .map(|(at, _)| at)
+                .chain([candidate.len()])
+                .any(|at| reference_matches(rest, &candidate[at..])),
+        }
+    }
+
+    /// Every string over `alphabet` up to `max_len` characters.
+    fn all_strings(alphabet: &[char], max_len: usize) -> Vec<String> {
+        let mut all = vec![String::new()];
+        let mut previous = vec![String::new()];
+        for _ in 0..max_len {
+            let next: Vec<String> = previous
+                .iter()
+                .flat_map(|prefix| alphabet.iter().map(move |ch| format!("{prefix}{ch}")))
+                .collect();
+            all.extend(next.iter().cloned());
+            previous = next;
+        }
+        all
+    }
+
+    #[test]
+    fn agrees_with_the_reference_on_every_short_input() {
+        // Patterns over `*`, `?`, and literals of one or two characters,
+        // against every candidate over the same letters plus a multibyte one.
+        let patterns = all_strings(&['a', 'b', '*', '?'], 5);
+        let candidates = all_strings(&['a', 'b', '\u{e9}'], 6);
+        for source in &patterns {
+            let pattern = Pattern::parse(source);
+            for candidate in &candidates {
+                assert_eq!(
+                    pattern.matches(candidate),
+                    reference_matches(pattern.parts(), candidate),
+                    "pattern {source:?} against {candidate:?}"
+                );
+            }
+        }
     }
 
     #[test]
