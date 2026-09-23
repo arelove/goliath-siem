@@ -8,3 +8,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-09-23
+
+
+### Added
+
+- Add dotted paths into OCSF events
+- Fold case with Unicode simple case folding
+- Load field mappings and select them by log source
+- Map Sigma Windows process creation fields to OCSF
