@@ -25,3 +25,7 @@ publish = true
 [[package]]
 name = "goliath-sigma"
 publish = true
+
+[[package]]
+name = "goliath-rule"
+publish = true

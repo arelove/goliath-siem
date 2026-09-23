@@ -89,6 +89,7 @@ the dominant barrier to adoption for open-source systems of this class.
 | --- | --- | --- | --- |
 | `goliath-ocsf` | Rust | crates.io | library |
 | `goliath-sigma` | Rust | crates.io | library |
+| `goliath-rule` | Rust | crates.io | library |
 | `goliath-sigma-clickhouse` | Rust | crates.io | library |
 | `goliath-match` | Rust | crates.io | `detector` |
 | `goliath-enrich` | Rust | crates.io | inside `detector` |

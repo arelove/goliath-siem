@@ -1,0 +1,17 @@
+[package]
+name = "goliath-rule"
+description = "Detection rules resolved to OCSF paths, shared by every execution path"
+keywords = ["sigma", "ocsf", "security", "siem", "detection"]
+categories = ["data-structures"]
+readme = "README.md"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true
