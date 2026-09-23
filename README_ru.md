@@ -1,5 +1,10 @@
 # Goliath
 
+[![CI](https://github.com/arelove/goliath-siem/actions/workflows/ci.yml/badge.svg)](https://github.com/arelove/goliath-siem/actions/workflows/ci.yml)
+[![Benchmarks](https://github.com/arelove/goliath-siem/actions/workflows/bench.yml/badge.svg)](https://github.com/arelove/goliath-siem/actions/workflows/bench.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![MSRV](https://img.shields.io/badge/rust-1.89%2B-orange.svg)](Cargo.toml)
+
 Открытая платформа безопасности: приём событий, детект, оркестрация
 реагирования и работа с инцидентами в одной системе.
 
@@ -19,7 +24,7 @@
 | --- | --- |
 | Разбор правил Sigma, YAML считается недоверенным вводом | `goliath-sigma` |
 | Перевод полей Sigma в пути OCSF через версионированные сопоставления | `goliath-rule` |
-| Проверка переведённого правила на событии | `goliath-match` |
+| Проверка тысяч правил на каждом событии с общей работой между ними | `goliath-match` |
 
 Замеры на всём репозитории [SigmaHQ](https://github.com/SigmaHQ/sigma),
 подробности и команды для повторения в
@@ -30,11 +35,46 @@
   2046: запуск процессов, создание файлов, загрузка модулей, сетевые
   соединения и запись значений реестра;
 - все 357 регрессионных случаев SigmaHQ для загружаемых правил срабатывают
-  ровно так, как ожидает SigmaHQ, на настоящих записанных событиях атак.
+  ровно так, как ожидает SigmaHQ, на настоящих записанных событиях атак;
+- движок проверяет эти 2046 правил со скоростью около 129 000 событий в
+  секунду на одном ядре и на каждом событии возвращает ровно то же, что
+  нарочно простой эталонный вычислитель.
 
-Ещё не построены: быстрый движок, разделяющий работу между тысячами правил,
-приём событий, хранение и интерфейс. Порядок описан в
-[docs/roadmap.md](docs/roadmap.md).
+Скорость движка охраняется в CI: pull request не проходит, если проверка
+события начинает выделять память или если движок тратит на фиксированной
+нагрузке больше чем на 2% инструкций больше. Подробности в
+[docs/benchmarks.md](docs/benchmarks.md).
+
+Ещё не построены: приём событий, хранение, детект по расписанию, реагирование
+и интерфейс. Порядок описан в [docs/roadmap.md](docs/roadmap.md).
+
+## Попробовать
+
+```text
+git clone https://github.com/arelove/goliath-siem.git
+cd goliath-siem
+cargo test --workspace
+
+# Все регрессионные случаи SigmaHQ целиком, с замером скорости движка:
+git clone --depth 1 https://github.com/SigmaHQ/sigma.git
+cargo run --release -p goliath-match --example sigma_regression -- \
+    sigma crates/goliath-rule/mappings/sigma-windows.yaml
+```
+
+Как библиотека: правило проходит путь от YAML Sigma до срабатываний за четыре
+вызова:
+
+```rust
+let rule = goliath_sigma::parse_rule(&yaml)?;
+let mappings = goliath_rule::MappingSet::from_yaml(&mapping_yaml)?;
+let resolved = goliath_rule::sigma::resolve(&rule, &mappings)?;
+let engine = goliath_match::Engine::new(vec![resolved])?;
+
+let matched: Vec<usize> = engine.matches(&ocsf_event);
+```
+
+Для потока событий держите один `Scratch` из `engine.scratch()` и вызывайте
+`engine.matches_into`: после прогрева он не выделяет память.
 
 ## Зачем ещё один SIEM
 
@@ -77,9 +117,11 @@
 | --- | --- |
 | [docs/architecture.md](docs/architecture.md) | Цели, поток данных, карта компонентов, методика бенчмарка |
 | [docs/roadmap.md](docs/roadmap.md) | План поставки и текущая веха |
-| [docs/sigma-coverage.md](docs/sigma-coverage.md) | Сколько правил SigmaHQ загружается и срабатывает на настоящих атаках |
+| [docs/sigma-coverage.md](docs/sigma-coverage.md) | Сколько правил SigmaHQ загружается и срабатывает на настоящих атаках, и как быстро |
+| [docs/benchmarks.md](docs/benchmarks.md) | Как меряется скорость и как CI не пропускает её регрессии |
 | [docs/adr/](docs/adr/) | Архитектурные решения |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Инварианты, правила ревью, как добавить решение |
+| [SECURITY.md](SECURITY.md) | Как сообщить об уязвимости |
 
 ## Лицензия
 
