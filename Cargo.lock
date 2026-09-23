@@ -79,6 +79,7 @@ dependencies = [
 name = "goliath-match"
 version = "0.1.0"
 dependencies = [
+ "aho-corasick",
  "goliath-rule",
  "goliath-sigma",
  "regex",

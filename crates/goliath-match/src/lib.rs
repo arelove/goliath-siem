@@ -11,9 +11,11 @@
 // Tests assert on outcomes; a failed assertion should abort the test.
 #![cfg_attr(test, allow(clippy::expect_used, clippy::panic, clippy::unwrap_used))]
 
+pub mod engine;
 pub mod error;
 pub mod reference;
 mod semantics;
 
+pub use engine::Engine;
 pub use error::CompileError;
 pub use reference::ReferenceRule;

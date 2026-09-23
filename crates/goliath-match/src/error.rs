@@ -14,4 +14,12 @@ pub enum CompileError {
         /// Why it was refused.
         reason: String,
     },
+
+    /// The literal automaton could not be built, for instance because the
+    /// rules hold more literal text than it can index.
+    #[error("literal index cannot be built: {reason}")]
+    Automaton {
+        /// Why it was refused.
+        reason: String,
+    },
 }
