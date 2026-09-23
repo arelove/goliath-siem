@@ -20,11 +20,28 @@ jobs:
     name: propose release
     runs-on: ubuntu-latest
     steps:
+      # Without a registry token a merged release pull request cannot publish,
+      # yet its changelog would still record a release that never happened.
+      # So no release is proposed until publishing is possible.
+      - name: Check that publishing is configured
+        id: token
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          if [ -n "$CARGO_REGISTRY_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::CARGO_REGISTRY_TOKEN is not set, so no release is proposed. See RELEASING.md."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v7
+        if: steps.token.outputs.configured == 'true'
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.token.outputs.configured == 'true'
       - name: Open or update the release pull request
+        if: steps.token.outputs.configured == 'true'
         uses: release-plz/action@51e32d708d306b2c2e98540245b276439f3137c3 # v0.5.139
         with:
           command: release-pr
@@ -38,11 +55,25 @@ jobs:
     # Runs on every push, but only acts when the pushed commit is a merged
     # release pull request (release_always = false in release-plz.toml).
     steps:
+      - name: Check that publishing is configured
+        id: token
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          if [ -n "$CARGO_REGISTRY_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::CARGO_REGISTRY_TOKEN is not set, so nothing is published. See RELEASING.md."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v7
+        if: steps.token.outputs.configured == 'true'
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.token.outputs.configured == 'true'
       - name: Tag, create the GitHub release, and publish to crates.io
+        if: steps.token.outputs.configured == 'true'
         uses: release-plz/action@51e32d708d306b2c2e98540245b276439f3137c3 # v0.5.139
         with:
           command: release
