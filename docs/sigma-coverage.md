@@ -46,6 +46,44 @@ Within Windows process creation, the one rule that does not load uses
 `Provider_Name`, a field of the event log record rather than of the process,
 which has no place in a process launch.
 
+## Firing on real attacks
+
+Loading a rule proves little: a loaded rule that never fires is worse than a
+rule that refuses to load. SigmaHQ's `regression_data` holds, for many rules,
+real Windows events recorded while the attack was performed, and the number of
+times the rule must fire on them. Each case is run end to end: the events are
+converted from Sysmon to OCSF, and the resolved rule is evaluated by the
+reference evaluator.
+
+| Outcome | Cases |
+| --- | ---: |
+| Regression cases in SigmaHQ | 460 |
+| Run | 276 |
+| Fired exactly as SigmaHQ expects | 276 |
+| Failed | 0 |
+| Skipped: no mapping for the rule's log source | 182 |
+| Skipped: events refused by antivirus software | 1 |
+| Skipped: malformed case description | 1 |
+
+Every case whose rule loads passes. To confirm the check can fail at all, the
+run was repeated with case folding switched off in the evaluator: 129 of the
+276 cases failed.
+
+What this does and does not show:
+
+- It shows that parsing, modifier handling, resolution, and evaluation agree
+  with SigmaHQ on real attack telemetry.
+- It does not show on its own that the mapping chose the right OCSF
+  attributes. The Sysmon to OCSF conversion used here is a stand-in for the
+  Sysmon source definition of milestone M2, written by the same project as the
+  mapping, so an attribute chosen wrongly in both would go unnoticed. The M2
+  source definition, tested against its own fixtures, closes that gap.
+
+Each event is also evaluated against every other loaded rule. 127 rules fire on
+at least one other rule's attack. That is expected, since attacks share steps,
+but the most frequent are the first candidates for review as overly broad:
+"Non Interactive PowerShell Process Spawned" fires on 47 other rules' events.
+
 ## Reproducing
 
 ```text
@@ -54,8 +92,17 @@ cargo run --release -p goliath-match --example sigma_coverage -- \
     sigma/rules crates/goliath-rule/mappings/sigma-windows.yaml
 ```
 
+The regression run takes the checkout root instead of the rules directory:
+
+```text
+cargo run --release -p goliath-match --example sigma_regression -- \
+    sigma crates/goliath-rule/mappings/sigma-windows.yaml
+```
+
 On Windows, the SigmaHQ checkout needs `git config core.longpaths true` first:
-its regression data has paths longer than the default limit.
+its regression data has paths longer than the default limit. Antivirus
+software may also quarantine some recorded attack events; the run reports them
+as skipped rather than failing.
 
 ## Findings that changed the code
 
