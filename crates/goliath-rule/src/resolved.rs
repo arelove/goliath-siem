@@ -57,21 +57,37 @@ pub enum Expr {
 }
 
 impl Expr {
-    /// Builds a conjunction, without wrapping a single operand.
-    pub fn all(mut operands: Vec<Expr>) -> Self {
-        if operands.len() == 1 {
-            operands.remove(0)
+    /// Builds a conjunction, splicing in nested conjunctions and not wrapping
+    /// a single operand.
+    pub fn all(operands: Vec<Expr>) -> Self {
+        let mut flat = Vec::with_capacity(operands.len());
+        for operand in operands {
+            match operand {
+                Self::And(nested) => flat.extend(nested),
+                other => flat.push(other),
+            }
+        }
+        if flat.len() == 1 {
+            flat.remove(0)
         } else {
-            Self::And(operands)
+            Self::And(flat)
         }
     }
 
-    /// Builds a disjunction, without wrapping a single operand.
-    pub fn any(mut operands: Vec<Expr>) -> Self {
-        if operands.len() == 1 {
-            operands.remove(0)
+    /// Builds a disjunction, splicing in nested disjunctions and not wrapping
+    /// a single operand.
+    pub fn any(operands: Vec<Expr>) -> Self {
+        let mut flat = Vec::with_capacity(operands.len());
+        for operand in operands {
+            match operand {
+                Self::Or(nested) => flat.extend(nested),
+                other => flat.push(other),
+            }
+        }
+        if flat.len() == 1 {
+            flat.remove(0)
         } else {
-            Self::Or(operands)
+            Self::Or(flat)
         }
     }
 }
@@ -132,7 +148,7 @@ pub enum Test {
 /// A wildcard pattern and whether case matters.
 ///
 /// When `cased` is false the pattern's literals are already folded with
-/// [`fold`](crate::fold), so an execution path folds the event value and
+/// [`fold`](fn@crate::fold), so an execution path folds the event value and
 /// compares; it never folds the pattern again.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StringTest {
@@ -306,5 +322,29 @@ mod tests {
         assert_eq!(Expr::all(vec![leaf.clone()]), leaf);
         assert_eq!(Expr::any(vec![leaf.clone()]), leaf);
         assert_eq!(Expr::all(vec![]), Expr::And(vec![]));
+    }
+
+    #[test]
+    fn nested_operators_of_the_same_kind_are_spliced() {
+        let leaf = |text: &str| {
+            Expr::Keyword(StringTest {
+                pattern: Pattern::parse(text),
+                cased: false,
+            })
+        };
+        let nested = Expr::all(vec![
+            Expr::And(vec![leaf("a"), leaf("b")]),
+            Expr::Or(vec![leaf("c"), leaf("d")]),
+        ]);
+        assert_eq!(
+            nested,
+            Expr::And(vec![
+                leaf("a"),
+                leaf("b"),
+                Expr::Or(vec![leaf("c"), leaf("d")])
+            ])
+        );
+        // An empty nested conjunction holds, so splicing it away is exact.
+        assert_eq!(Expr::all(vec![Expr::And(vec![]), leaf("a")]), leaf("a"));
     }
 }
