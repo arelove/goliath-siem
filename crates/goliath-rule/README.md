@@ -14,6 +14,9 @@ what a rule means. The reasoning is in
 - Dotted paths into an OCSF event, traversing arrays.
 - Case folding that defines case insensitive comparison: Unicode simple case
   folding, independent of locale.
+- Field mappings from a rule language's field names to OCSF paths, selected
+  by log source. The shipped set for Sigma on Windows is in
+  [mappings/](mappings/).
 
 ## License
 

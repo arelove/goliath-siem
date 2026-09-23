@@ -1,0 +1,49 @@
+# Sigma field names for Windows log sources, resolved to OCSF 1.5.0 paths.
+#
+# Where OCSF has no attribute with the same meaning, the field maps to
+# `unmapped.<name>` explicitly, and the normalizer keeps the original there.
+# Never approximate one attribute with another that merely looks similar: a
+# rule matched against the wrong attribute is worse than a rule that refuses
+# to load. See docs/adr/0012-sigma-field-mapping.md.
+#
+# Parent process attributes are listed under both `process.parent_process` and
+# `actor.process`, and the image path under both `file.path` and `path`,
+# because OCSF allows either and producers differ.
+
+name: sigma-windows
+version: 1
+
+mappings:
+  - logsource: { category: process_creation, product: windows }
+    # Process Activity, Launch, on Windows.
+    class: { class_uid: 1007, activity_id: 1, device.os.type_id: 100 }
+    fields:
+      Image: [process.file.path, process.path]
+      # The PE OriginalFilename resource. `file.internal_name` is the
+      # InternalName resource, a different field.
+      OriginalFileName: unmapped.OriginalFileName
+      CommandLine: process.cmd_line
+      CurrentDirectory: process.working_directory
+      IntegrityLevel: process.integrity
+      User: process.user.name
+      LogonId: process.session.uid
+      LogonGuid: unmapped.LogonGuid
+      TerminalSessionId: unmapped.TerminalSessionId
+      ProcessId: process.pid
+      ProcessGuid: process.uid
+      # Sysmon writes one string, such as `SHA256=...,IMPHASH=...`, and rules
+      # match its text. OCSF splits it into `file.hashes` objects.
+      Hashes: unmapped.Hashes
+      Product: process.file.product.name
+      Company: process.file.company_name
+      Description: process.file.desc
+      FileVersion: process.file.version
+      ParentImage:
+        - process.parent_process.file.path
+        - process.parent_process.path
+        - actor.process.file.path
+        - actor.process.path
+      ParentCommandLine: [process.parent_process.cmd_line, actor.process.cmd_line]
+      ParentProcessId: [process.parent_process.pid, actor.process.pid]
+      ParentProcessGuid: [process.parent_process.uid, actor.process.uid]
+      ParentUser: [process.parent_process.user.name, actor.process.user.name]

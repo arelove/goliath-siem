@@ -79,6 +79,7 @@ dependencies = [
 name = "goliath-rule"
 version = "0.1.0"
 dependencies = [
+ "goliath-sigma",
  "icu_casemap",
  "serde",
  "serde_json",
