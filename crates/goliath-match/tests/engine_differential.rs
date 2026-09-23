@@ -205,6 +205,10 @@ fn compare(seed: u64, rules: usize, events: usize) {
         .map(|rule| ReferenceRule::new(rule).expect("rule compiles"))
         .collect();
 
+    // One scratch across every event, as a long-running detector keeps it:
+    // marks from one event must never leak into the next.
+    let mut scratch = engine.scratch();
+    let mut actual = Vec::new();
     for _ in 0..events {
         let event = event(&mut random);
         let expected: Vec<usize> = references
@@ -213,7 +217,12 @@ fn compare(seed: u64, rules: usize, events: usize) {
             .filter(|(_, rule)| rule.matches(&event))
             .map(|(index, _)| index)
             .collect();
-        let actual = engine.matches(&event);
+        engine.matches_into(&event, &mut scratch, &mut actual);
+        assert_eq!(
+            engine.matches(&event),
+            actual,
+            "seed {seed}: scratch reuse changed the result"
+        );
         if actual != expected {
             let differing: Vec<_> = (0..references.len())
                 .filter(|index| expected.contains(index) != actual.contains(index))
