@@ -75,11 +75,16 @@ pub(crate) fn pool_into<'a>(event: &'a Value, paths: &[FieldPath], values: &mut 
 }
 
 /// Reports whether `regex` matches some value's text, without copying
-/// strings: the same answer as testing [`text`] of each value.
-pub(crate) fn regex_matches_any(regex: &Regex, values: &[&Value]) -> bool {
+/// strings: the same answer as testing [`text`] of each value. A number's
+/// text is written to `number`, which is reused rather than allocated.
+pub(crate) fn regex_matches_any(regex: &Regex, values: &[&Value], number: &mut String) -> bool {
     values.iter().any(|value| match value {
         Value::String(text) => regex.is_match(text),
-        Value::Number(number) => regex.is_match(&number.to_string()),
+        Value::Number(value) => {
+            number.clear();
+            write_number(value, number);
+            regex.is_match(number)
+        }
         _ => false,
     })
 }

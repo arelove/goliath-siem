@@ -198,6 +198,7 @@ impl Engine {
                     memo_value: vec![false; group.predicates.len()],
                     generation: 0,
                     values: Vec::new(),
+                    number: String::new(),
                 })
                 .collect(),
         }
@@ -267,6 +268,8 @@ struct GroupScratch {
     generation: u32,
     /// The buffer for non-string tests' values, kept empty between events.
     values: Vec<&'static Value>,
+    /// The buffer a number is written to for a regular expression.
+    number: String,
 }
 
 impl GroupScratch {
@@ -374,6 +377,7 @@ impl Group {
             memo,
             memo_value,
             values,
+            number,
             ..
         } = work;
         let context = Context {
@@ -383,6 +387,7 @@ impl Group {
             texts,
             generation,
             values: RefCell::new(recycle(std::mem::take(values))),
+            number: RefCell::new(std::mem::take(number)),
         };
         for &position in candidates.iter() {
             let (index, node) = &self.rules[position];
@@ -391,6 +396,7 @@ impl Group {
             }
         }
         *values = recycle(context.values.into_inner());
+        *number = context.number.into_inner();
 
         for &literal in found.iter() {
             hits[literal] = 0;
@@ -457,6 +463,7 @@ struct Context<'a> {
     /// Values for non-string tests, reused across the predicates of one
     /// event instead of collected afresh for each.
     values: RefCell<Vec<&'a Value>>,
+    number: RefCell<String>,
 }
 
 impl Context<'_> {
@@ -518,7 +525,9 @@ impl Context<'_> {
                 values.clear();
                 pool_into(self.event, paths, &mut values);
                 match check {
-                    Check::Regex(regex) => regex_matches_any(regex, &values),
+                    Check::Regex(regex) => {
+                        regex_matches_any(regex, &values, &mut self.number.borrow_mut())
+                    }
                     Check::Plain(test) => test_values(test, &values, self.event),
                 }
             }
