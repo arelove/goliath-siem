@@ -33,7 +33,9 @@ use regex::Regex;
 use serde_json::Value;
 
 use crate::error::CompileError;
-use crate::semantics::{has_class_value, pool_into, regex, regex_matches_any, test_values};
+use crate::semantics::{
+    has_class_value, pool_into, regex, regex_matches_any, test_values, write_number,
+};
 
 /// A class condition: attribute values an event must have.
 type Class = Vec<(FieldPath, ClassValue)>;
@@ -300,6 +302,16 @@ impl Texts {
         buffer
     }
 
+    /// Adds `text`, folded unless `cased`.
+    fn push(&mut self, text: &str, cased: bool) {
+        let buffer = self.next();
+        if cased {
+            buffer.push_str(text);
+        } else {
+            fold_into(text, buffer);
+        }
+    }
+
     fn current(&self) -> &[String] {
         &self.buffers[..self.len]
     }
@@ -390,25 +402,19 @@ impl Source {
     fn gather(&self, event: &Value, texts: &mut Texts) {
         texts.clear();
         let cased = self.cased;
-        let mut push = |text: &str| {
-            let buffer = texts.next();
-            if cased {
-                buffer.push_str(text);
-            } else {
-                fold_into(text, buffer);
-            }
-        };
         match &self.origin {
             Origin::Paths(paths) => {
                 for path in paths {
                     path.visit(event, &mut |value| match value {
-                        Value::String(text) => push(text),
-                        Value::Number(number) => push(&number.to_string()),
+                        Value::String(text) => texts.push(text, cased),
+                        // Written in place: a number's decimal text has
+                        // nothing for folding to change.
+                        Value::Number(number) => write_number(number, texts.next()),
                         _ => {}
                     });
                 }
             }
-            Origin::AnyString => strings(event, &mut push),
+            Origin::AnyString => strings(event, &mut |text| texts.push(text, cased)),
         }
     }
 }

@@ -146,6 +146,14 @@ pub(crate) fn text(value: &Value) -> Option<String> {
     }
 }
 
+/// Appends `number` in decimal to `out`: the text [`text`] gives, without
+/// allocating a string of its own.
+pub(crate) fn write_number(number: &serde_json::Number, out: &mut String) {
+    use std::fmt::Write as _;
+    // Writing to a `String` cannot fail.
+    let _ = write!(out, "{number}");
+}
+
 /// A value as a number: numbers as they are, strings that parse as numbers.
 pub(crate) fn number(value: &Value) -> Option<Number> {
     match value {
