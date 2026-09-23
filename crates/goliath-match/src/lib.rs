@@ -13,6 +13,7 @@
 
 pub mod error;
 pub mod reference;
+mod semantics;
 
 pub use error::CompileError;
 pub use reference::ReferenceRule;
