@@ -24,6 +24,7 @@ host any subset of roles. Where roles run is configuration, not code.**
 | --- | --- | --- |
 | `collector` | Acquire raw records from sources, frame, compress, ship | Near the source |
 | `normalizer` | Parse, map to OCSF, validate | Edge or central |
+| `writer` | Batch normalized events into the warehouse | Near ClickHouse |
 | `enricher` | Attach entity, asset, geo, and indicator context | With the detector |
 | `detector` | Evaluate rules, emit alerts | Central |
 | `scheduler` | Run windowed detections against the warehouse | Central |
@@ -53,6 +54,10 @@ The rule that makes this real: **no role may assume co-location, even when
 co-located.** Sharing a struct pointer between two roles because they happen to
 run in the same process is rejected at review. Without this, the distributed
 path rots while nobody is looking and only breaks in production.
+
+The `writer` and the `detector` consume the same normalized stream
+independently. Neither sits in front of the other, so a detector failure never
+blocks storage.
 
 ## Testing requirement
 

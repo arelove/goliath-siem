@@ -8,7 +8,7 @@ ownership and on openness of the storage format, not on feature count.
 
 | Metric | Target | Note |
 | --- | --- | --- |
-| Throughput | 1,000,000 events/s | ~500 MB/s, ~43 TB/day raw |
+| Throughput | 1,000,000 events/s | per cluster, ~500 MB/s, ~43 TB/day raw |
 | On-disk volume | ~2.9 TB/day | at ~15x compression |
 | Hot retention | 7-30 days | interactive search |
 | Cold retention | 12+ months | open format in the customer's bucket |
@@ -16,6 +16,11 @@ ownership and on openness of the storage format, not on feature count.
 | Scheduled detection latency | p99 < 5 min | the long tail of rules |
 | Cold start | < 1 minute | single binary, no Kubernetes |
 | Cost of ownership | an order of magnitude below ingest licensing | the primary adoption argument |
+
+A cluster-wide rate says nothing without the hardware behind it. The measured
+quantity is events/s per core at a stated rule count; the cluster target
+follows from it and the node count. Every published figure names the CPU, core
+count, memory, and rule set it was measured with.
 
 How we take a market that already has Splunk, Elastic Security, and Wazuh:
 
@@ -37,15 +42,25 @@ later.
 ```mermaid
 flowchart LR
   S["Sources<br/>Sysmon · Falco · Cloud"] --> V["Collector<br/>Vector + zstd"]
-  V --> B["Buffer<br/>Redpanda or S3"]
+  V --> B["Raw buffer<br/>Redpanda or S3"]
   B --> N["Normalizer<br/>to OCSF"]
-  N --> D["Match engine<br/>Rust"]
-  D --> CH["ClickHouse<br/>7-30 days"]
-  D --> AL["Alerts"]
+  N --> E["Event buffer<br/>OCSF"]
+  E --> W["Writer"]
+  E --> D["Match engine<br/>Rust"]
+  W --> CH["ClickHouse<br/>7-30 days"]
   CH --> S3["S3 + Iceberg<br/>12+ months"]
+  CH --> SC["Scheduler<br/>windowed rules"]
+  D --> AL["Alerts"]
+  SC --> AL
   AL --> PG["PostgreSQL<br/>cases · entities"]
   PG --> T["Temporal<br/>playbooks"]
 ```
+
+Storage and detection read the event buffer independently. The detector is
+never in the write path: a slow rule, a bad hot reload, or a crashed detector
+delays alerts but never stops events from being stored. Once the detector
+recovers, it resumes from its own offset in the buffer, so no event goes
+unevaluated.
 
 Storage decisions are in [ADR-0002](adr/0002-storage-stack.md); the boundary
 between layers is [ADR-0003](adr/0003-data-boundary.md).
