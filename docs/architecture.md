@@ -37,15 +37,25 @@ later.
 ```mermaid
 flowchart LR
   S["Sources<br/>Sysmon · Falco · Cloud"] --> V["Collector<br/>Vector + zstd"]
-  V --> B["Buffer<br/>Redpanda or S3"]
+  V --> B["Raw buffer<br/>Redpanda or S3"]
   B --> N["Normalizer<br/>to OCSF"]
-  N --> D["Match engine<br/>Rust"]
-  D --> CH["ClickHouse<br/>7-30 days"]
-  D --> AL["Alerts"]
+  N --> E["Event buffer<br/>OCSF"]
+  E --> W["Writer"]
+  E --> D["Match engine<br/>Rust"]
+  W --> CH["ClickHouse<br/>7-30 days"]
   CH --> S3["S3 + Iceberg<br/>12+ months"]
+  CH --> SC["Scheduler<br/>windowed rules"]
+  D --> AL["Alerts"]
+  SC --> AL
   AL --> PG["PostgreSQL<br/>cases · entities"]
   PG --> T["Temporal<br/>playbooks"]
 ```
+
+Storage and detection read the event buffer independently. The detector is
+never in the write path: a slow rule, a bad hot reload, or a crashed detector
+delays alerts but never stops events from being stored. Once the detector
+recovers, it resumes from its own offset in the buffer, so no event goes
+unevaluated.
 
 Storage decisions are in [ADR-0002](adr/0002-storage-stack.md); the boundary
 between layers is [ADR-0003](adr/0003-data-boundary.md).
