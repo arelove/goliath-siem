@@ -26,9 +26,10 @@ repository, with details and reproduction steps in
 [docs/sigma-coverage.md](docs/sigma-coverage.md):
 
 - all 3,757 rules parse;
-- 1,184 of 1,185 Windows process creation rules load, the one log source
-  mapped so far;
-- all 276 SigmaHQ regression cases for loaded rules fire exactly as SigmaHQ
+- 2,046 of 2,047 rules for the five Windows log sources mapped so far load:
+  process creation, file creation, image loads, network connections, and
+  registry value sets;
+- all 357 SigmaHQ regression cases for loaded rules fire exactly as SigmaHQ
   expects on real recorded attack events.
 
 Not built yet: the fast engine that shares work across thousands of rules,
