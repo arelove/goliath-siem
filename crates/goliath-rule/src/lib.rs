@@ -19,6 +19,7 @@ pub mod fold;
 pub mod mapping;
 pub mod path;
 pub mod resolved;
+pub mod sigma;
 
 pub use error::{MappingError, NetworkError, PathError};
 pub use fold::fold;
