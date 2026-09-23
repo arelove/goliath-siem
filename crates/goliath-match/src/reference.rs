@@ -36,7 +36,16 @@ use crate::error::CompileError;
 /// The `regex` crate runs in time linear in the input whatever the pattern,
 /// so a rule cannot make matching slow; this bounds the memory a pattern can
 /// make compilation take instead.
-const REGEX_SIZE_LIMIT: usize = 1 << 20;
+///
+/// Classes such as `\w` are Unicode aware, which makes them large: `SigmaHQ`'s
+/// `-k\s\w{1,64}` compiles to more than a megabyte. Ten megabytes, the `regex`
+/// crate's own default, loads every rule in the repository.
+///
+/// Unicode classes are also a deliberate difference from PCRE, where `\w`,
+/// `\d`, and `\s` are ASCII only. Positive classes match more here, so a
+/// value spelled with non-ASCII letters or digits cannot slip past a rule by
+/// that alone; negated classes such as `\W` match correspondingly less.
+const REGEX_SIZE_LIMIT: usize = 10 << 20;
 
 /// A resolved rule prepared for reference evaluation.
 ///

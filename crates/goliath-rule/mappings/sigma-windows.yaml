@@ -11,7 +11,7 @@
 # because OCSF allows either and producers differ.
 
 name: sigma-windows
-version: 1
+version: 2
 
 mappings:
   - logsource: { category: process_creation, product: windows }
@@ -47,3 +47,9 @@ mappings:
       ParentProcessId: [process.parent_process.pid, actor.process.pid]
       ParentProcessGuid: [process.parent_process.uid, actor.process.uid]
       ParentUser: [process.parent_process.user.name, actor.process.user.name]
+      # Not in the Sigma taxonomy, but used by SigmaHQ rules.
+      GrandParentImage:
+        - process.parent_process.parent_process.file.path
+        - process.parent_process.parent_process.path
+        - actor.process.parent_process.file.path
+        - actor.process.parent_process.path

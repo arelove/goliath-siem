@@ -183,6 +183,14 @@ fn regular_expressions_run_with_their_flags() {
 }
 
 #[test]
+fn large_unicode_classes_compile() {
+    // From SigmaHQ; refused under a one megabyte limit.
+    let detect =
+        rule("  sel:\n    CommandLine|re: '-k\\s\\w{1,64}(?:\\s?(?:-p|-s))?'\n  condition: sel\n");
+    assert!(detect.matches(&launch(&json!({ "cmd_line": "svchost.exe -k netsvcs -p" }))));
+}
+
+#[test]
 fn regular_expressions_the_engine_cannot_bound_are_refused() {
     let lookahead = try_rule("  sel:\n    CommandLine|re: 'a(?=b)'\n  condition: sel\n");
     assert!(matches!(lookahead, Err(CompileError::Regex { .. })));
