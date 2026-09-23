@@ -10,8 +10,12 @@ crate decides whether an event matches.
 
 - A reference evaluator that checks one rule against one event, written for
   obvious correctness. It defines what a match means.
-- Later, the fast engine: a predicate index shared across thousands of rules,
-  required to agree with the reference evaluator on every rule and event.
+- An engine that evaluates many rules against one event while sharing the
+  work: rules grouped by class, identical tests computed once, every literal
+  of a field found in one Aho-Corasick pass, and rules skipped until a literal
+  they need is found. It must agree with the reference evaluator on every rule
+  and event, which random differential tests and the SigmaHQ regression events
+  check.
 
 ## Regular expressions run in linear time
 

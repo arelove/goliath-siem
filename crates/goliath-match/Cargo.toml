@@ -14,6 +14,7 @@ authors.workspace = true
 [dependencies]
 goliath-rule = { path = "../goliath-rule", version = "0.1.0" }
 goliath-sigma = { path = "../goliath-sigma", version = "0.1.0" }
+aho-corasick = "1"
 regex = "1"
 serde_json.workspace = true
 thiserror.workspace = true

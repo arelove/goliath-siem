@@ -27,9 +27,10 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 use std::{env, fs};
 
-use goliath_match::ReferenceRule;
+use goliath_match::{Engine, ReferenceRule};
 use goliath_rule::{MappingSet, sigma};
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
@@ -70,6 +71,8 @@ struct Report {
     /// Rule title to the titles of other rules whose events it fired on.
     cross_fires: BTreeMap<String, Vec<String>>,
     events: usize,
+    /// Every converted event, for comparing the engine with the reference.
+    converted: Vec<Value>,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -91,7 +94,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         run_case(&root, info, &rules, &mut report);
     }
 
+    let comparison = compare_engine(&rules, &report.converted)?;
     print!("{}", render(&report, infos.len(), rules.len()));
+    print!("{comparison}");
     Ok(())
 }
 
@@ -194,6 +199,7 @@ fn run_case(root: &Path, info_path: &Path, rules: &BTreeMap<String, Loaded>, rep
         return skip(report, "no Sysmon events of a converted type");
     }
     report.events += converted.len();
+    report.converted.extend(converted.iter().cloned());
 
     let matches = converted
         .iter()
@@ -222,6 +228,93 @@ fn run_case(root: &Path, info_path: &Path, rules: &BTreeMap<String, Loaded>, rep
                 .push(loaded.title.clone());
         }
     }
+}
+
+/// Minimum time spent timing each evaluator, so short runs are not noise.
+const TIMING: Duration = Duration::from_secs(3);
+
+/// Checks that the engine returns exactly what the reference evaluator
+/// returns on every converted event, then times both.
+fn compare_engine(
+    rules: &BTreeMap<String, Loaded>,
+    events: &[Value],
+) -> Result<String, Box<dyn Error>> {
+    let references: Vec<&ReferenceRule> = rules.values().map(|loaded| &loaded.rule).collect();
+    let started = Instant::now();
+    let engine = Engine::new(
+        references
+            .iter()
+            .map(|reference| reference.rule().clone())
+            .collect(),
+    )?;
+    let compile = started.elapsed();
+
+    let reference_matches = |event: &Value| -> Vec<usize> {
+        references
+            .iter()
+            .enumerate()
+            .filter(|(_, rule)| rule.matches(event))
+            .map(|(index, _)| index)
+            .collect()
+    };
+
+    let mut disagreements = 0;
+    let mut matches = 0;
+    for event in events {
+        let expected = reference_matches(event);
+        matches += expected.len();
+        if engine.matches(event) != expected {
+            disagreements += 1;
+        }
+    }
+
+    let reference_rate = rate(events, |event| reference_matches(event).len());
+    let engine_rate = rate(events, |event| engine.matches(event).len());
+
+    let mut out = String::new();
+    let _ = writeln!(
+        out,
+        "
+## Engine against the reference evaluator
+"
+    );
+    let _ = writeln!(
+        out,
+        "| Measure | Value |
+| --- | ---: |"
+    );
+    let _ = writeln!(out, "| Rules | {} |", references.len());
+    let _ = writeln!(out, "| Events | {} |", events.len());
+    let _ = writeln!(out, "| Rule matches | {matches} |");
+    let _ = writeln!(out, "| Events where the two disagree | {disagreements} |");
+    let _ = writeln!(
+        out,
+        "| Engine compile time | {:.0} ms |",
+        compile.as_secs_f64() * 1e3
+    );
+    let _ = writeln!(
+        out,
+        "| Reference, events/s on one core | {reference_rate:.0} |"
+    );
+    let _ = writeln!(out, "| Engine, events/s on one core | {engine_rate:.0} |");
+    let _ = writeln!(out, "| Speedup | {:.1}x |", engine_rate / reference_rate);
+    Ok(out)
+}
+
+/// Events per second for `evaluate`, over repeated passes of `events`.
+#[allow(clippy::cast_precision_loss)] // Event counts are far below 2^52.
+fn rate(events: &[Value], mut evaluate: impl FnMut(&Value) -> usize) -> f64 {
+    let started = Instant::now();
+    let mut evaluated = 0_usize;
+    let mut sink = 0_usize;
+    while started.elapsed() < TIMING {
+        for event in events {
+            sink = sink.wrapping_add(evaluate(event));
+        }
+        evaluated += events.len();
+    }
+    std::hint::black_box(sink);
+    evaluated as f64 / started.elapsed().as_secs_f64()
 }
 
 /// How one Sysmon event becomes an OCSF event.
