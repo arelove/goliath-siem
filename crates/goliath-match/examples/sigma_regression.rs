@@ -13,7 +13,8 @@
 //!
 //! The conversion from Sysmon to OCSF lives in this file for now. It stands in
 //! for the Sysmon source definition that milestone M2 delivers, and covers
-//! process creation only. Because the same project wrote both it and the
+//! the Sysmon events the mapping set has entries for: process creation,
+//! network connections, image loads, file creation, and registry value sets. Because the same project wrote both it and the
 //! mapping set, a case passing shows that parsing, resolution, and evaluation
 //! agree with `SigmaHQ`; it cannot show on its own that the mapping chose the
 //! right OCSF attributes.
@@ -188,9 +189,9 @@ fn run_case(root: &Path, info_path: &Path, rules: &BTreeMap<String, Loaded>, rep
         .into_iter::<Value>()
         .filter_map(Result::ok)
         .collect();
-    let converted: Vec<Value> = events.iter().filter_map(sysmon_process_creation).collect();
+    let converted: Vec<Value> = events.iter().filter_map(sysmon).collect();
     if converted.is_empty() {
-        return skip(report, "not Sysmon process creation events");
+        return skip(report, "no Sysmon events of a converted type");
     }
     report.events += converted.len();
 
@@ -223,66 +224,165 @@ fn run_case(root: &Path, info_path: &Path, rules: &BTreeMap<String, Loaded>, rep
     }
 }
 
-/// Converts a Sysmon process creation event, as `SigmaHQ`'s EVTX to JSON export
-/// writes it, into an OCSF Process Activity event.
+/// How one Sysmon event becomes an OCSF event.
+struct SysmonEvent {
+    event_id: i64,
+    class_uid: u32,
+    activity_id: u32,
+    /// Sysmon field and the OCSF path it is written to. A name listed with
+    /// no path is kept under `unmapped`.
+    fields: &'static [(&'static str, Option<&'static str>)],
+}
+
+/// The Sysmon events converted, mirroring the `sigma-windows` mapping set.
+const SYSMON: [SysmonEvent; 5] = [
+    SysmonEvent {
+        event_id: 1,
+        class_uid: 1007,
+        activity_id: 1,
+        fields: &[
+            ("Image", Some("process.file.path")),
+            ("CommandLine", Some("process.cmd_line")),
+            ("ProcessId", Some("process.pid")),
+            ("ProcessGuid", Some("process.uid")),
+            ("CurrentDirectory", Some("process.working_directory")),
+            ("IntegrityLevel", Some("process.integrity")),
+            ("User", Some("process.user.name")),
+            ("LogonId", Some("process.session.uid")),
+            ("Product", Some("process.file.product.name")),
+            ("Company", Some("process.file.company_name")),
+            ("Description", Some("process.file.desc")),
+            ("FileVersion", Some("process.file.version")),
+            ("ParentImage", Some("process.parent_process.file.path")),
+            ("ParentCommandLine", Some("process.parent_process.cmd_line")),
+            ("ParentProcessId", Some("process.parent_process.pid")),
+            ("ParentProcessGuid", Some("process.parent_process.uid")),
+            ("ParentUser", Some("process.parent_process.user.name")),
+            ("OriginalFileName", None),
+            ("Hashes", None),
+            ("LogonGuid", None),
+            ("TerminalSessionId", None),
+        ],
+    },
+    SysmonEvent {
+        event_id: 3,
+        class_uid: 4001,
+        activity_id: 1,
+        fields: &[
+            ("Image", Some("actor.process.file.path")),
+            ("ProcessId", Some("actor.process.pid")),
+            ("ProcessGuid", Some("actor.process.uid")),
+            ("User", Some("actor.user.name")),
+            ("Protocol", Some("connection_info.protocol_name")),
+            ("SourceIp", Some("src_endpoint.ip")),
+            ("SourceHostname", Some("src_endpoint.hostname")),
+            ("SourcePort", Some("src_endpoint.port")),
+            ("DestinationIp", Some("dst_endpoint.ip")),
+            ("DestinationHostname", Some("dst_endpoint.hostname")),
+            ("DestinationPort", Some("dst_endpoint.port")),
+            ("Initiated", None),
+            ("SourceIsIpv6", None),
+            ("DestinationIsIpv6", None),
+        ],
+    },
+    SysmonEvent {
+        event_id: 7,
+        class_uid: 1005,
+        activity_id: 1,
+        fields: &[
+            ("Image", Some("actor.process.file.path")),
+            ("ProcessId", Some("actor.process.pid")),
+            ("ProcessGuid", Some("actor.process.uid")),
+            ("User", Some("actor.user.name")),
+            ("ImageLoaded", Some("module.file.path")),
+            ("Product", Some("module.file.product.name")),
+            ("Company", Some("module.file.company_name")),
+            ("Description", Some("module.file.desc")),
+            ("FileVersion", Some("module.file.version")),
+            ("OriginalFileName", None),
+            ("Hashes", None),
+            ("Signed", None),
+            ("Signature", None),
+            ("SignatureStatus", None),
+        ],
+    },
+    SysmonEvent {
+        event_id: 11,
+        class_uid: 1001,
+        activity_id: 1,
+        fields: &[
+            ("Image", Some("actor.process.file.path")),
+            ("ProcessId", Some("actor.process.pid")),
+            ("ProcessGuid", Some("actor.process.uid")),
+            ("User", Some("actor.user.name")),
+            ("TargetFilename", Some("file.path")),
+            ("CreationUtcTime", None),
+        ],
+    },
+    SysmonEvent {
+        event_id: 13,
+        class_uid: 201_002,
+        activity_id: 2,
+        fields: &[
+            ("Image", Some("actor.process.file.path")),
+            ("ProcessId", Some("actor.process.pid")),
+            ("ProcessGuid", Some("actor.process.uid")),
+            ("User", Some("actor.user.name")),
+            ("TargetObject", Some("reg_value.path")),
+            ("Details", None),
+            ("EventType", None),
+        ],
+    },
+];
+
+/// Converts a Sysmon event, as `SigmaHQ`'s EVTX to JSON export writes it,
+/// into an OCSF event.
 ///
-/// Returns `None` for any other event. The attribute choices mirror the
-/// `sigma-windows` mapping set.
-fn sysmon_process_creation(record: &Value) -> Option<Value> {
+/// Returns `None` for events of other providers and for Sysmon events not in
+/// [`SYSMON`].
+fn sysmon(record: &Value) -> Option<Value> {
     let event = record.get("Event")?;
     let system = event.get("System")?;
     let provider = system.pointer("/Provider/#attributes/Name")?.as_str()?;
-    if provider != "Microsoft-Windows-Sysmon" || system.get("EventID")?.as_i64()? != 1 {
+    if provider != "Microsoft-Windows-Sysmon" {
         return None;
     }
+    let event_id = system.get("EventID")?.as_i64()?;
+    let spec = SYSMON.iter().find(|spec| spec.event_id == event_id)?;
     let data = event.get("EventData")?;
-    let field = |name: &str| data.get(name).filter(|value| !value.is_null()).cloned();
 
-    let mut process = Map::new();
-    let mut parent = Map::new();
+    let mut ocsf = Map::new();
     let mut unmapped = Map::new();
-
-    set(&mut process, "file.path", field("Image"));
-    set(&mut process, "cmd_line", field("CommandLine"));
-    set(&mut process, "pid", field("ProcessId"));
-    set(&mut process, "uid", field("ProcessGuid"));
-    set(&mut process, "working_directory", field("CurrentDirectory"));
-    set(&mut process, "integrity", field("IntegrityLevel"));
-    set(&mut process, "user.name", field("User"));
-    set(&mut process, "session.uid", field("LogonId"));
-    set(&mut process, "file.product.name", field("Product"));
-    set(&mut process, "file.company_name", field("Company"));
-    set(&mut process, "file.desc", field("Description"));
-    set(&mut process, "file.version", field("FileVersion"));
-
-    set(&mut parent, "file.path", field("ParentImage"));
-    set(&mut parent, "cmd_line", field("ParentCommandLine"));
-    set(&mut parent, "pid", field("ParentProcessId"));
-    set(&mut parent, "uid", field("ParentProcessGuid"));
-    set(&mut parent, "user.name", field("ParentUser"));
-    process.insert("parent_process".to_owned(), Value::Object(parent));
-
-    for name in [
-        "OriginalFileName",
-        "Hashes",
-        "LogonGuid",
-        "TerminalSessionId",
-    ] {
-        if let Some(value) = field(name) {
-            unmapped.insert(name.to_owned(), value);
+    for (name, path) in spec.fields {
+        let Some(value) = data.get(*name).filter(|value| !value.is_null()).cloned() else {
+            continue;
+        };
+        match path {
+            Some(path) => set(&mut ocsf, path, Some(value)),
+            None => {
+                unmapped.insert((*name).to_owned(), value);
+            }
         }
     }
 
-    Some(json!({
-        "class_uid": 1007,
-        "category_uid": 1,
-        "activity_id": 1,
-        "type_uid": 100_701,
-        "metadata": { "version": "1.5.0", "product": { "name": "Sysmon", "vendor_name": "Microsoft" } },
-        "device": { "hostname": system.get("Computer"), "os": { "type_id": 100, "name": "Windows" } },
-        "process": process,
-        "unmapped": unmapped,
-    }))
+    let category_uid = spec.class_uid % 100_000 / 1000;
+    ocsf.insert("class_uid".to_owned(), json!(spec.class_uid));
+    ocsf.insert("category_uid".to_owned(), json!(category_uid));
+    ocsf.insert("activity_id".to_owned(), json!(spec.activity_id));
+    ocsf.insert(
+        "type_uid".to_owned(),
+        json!(u64::from(spec.class_uid) * 100 + u64::from(spec.activity_id)),
+    );
+    ocsf.insert(
+        "metadata".to_owned(),
+        json!({ "version": "1.5.0", "product": { "name": "Sysmon", "vendor_name": "Microsoft" } }),
+    );
+    ocsf.insert(
+        "device".to_owned(),
+        json!({ "hostname": system.get("Computer"), "os": { "type_id": 100, "name": "Windows" } }),
+    );
+    ocsf.insert("unmapped".to_owned(), Value::Object(unmapped));
+    Some(Value::Object(ocsf))
 }
 
 /// Sets a dotted path in an object, creating intermediate objects.
