@@ -40,9 +40,11 @@ jobs:
       - name: Measure the base
         if: github.event_name == 'pull_request'
         env:
-          # Built in the same target directory, so unchanged dependencies are
-          # compiled once for both.
-          CARGO_TARGET_DIR: ${{ github.workspace }}/target
+          # A target directory of its own. Cargo names the artifacts of
+          # workspace crates by their path relative to the workspace root, so
+          # in a shared directory the base's newer artifacts would look fresh
+          # to the next build, and this change would be measured as the base.
+          CARGO_TARGET_DIR: ${{ runner.temp }}/base-target
         run: |
           git fetch --depth 1 origin "${{ github.event.pull_request.base.sha }}"
           git worktree add "$RUNNER_TEMP/base" FETCH_HEAD
