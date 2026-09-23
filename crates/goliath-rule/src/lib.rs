@@ -9,3 +9,9 @@
 
 // Tests assert on outcomes; a failed assertion should abort the test.
 #![cfg_attr(test, allow(clippy::expect_used, clippy::panic, clippy::unwrap_used))]
+
+pub mod error;
+pub mod path;
+
+pub use error::PathError;
+pub use path::FieldPath;
