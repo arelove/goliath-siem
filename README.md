@@ -1,5 +1,10 @@
 # Goliath
 
+[![CI](https://github.com/arelove/goliath-siem/actions/workflows/ci.yml/badge.svg)](https://github.com/arelove/goliath-siem/actions/workflows/ci.yml)
+[![Benchmarks](https://github.com/arelove/goliath-siem/actions/workflows/bench.yml/badge.svg)](https://github.com/arelove/goliath-siem/actions/workflows/bench.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![MSRV](https://img.shields.io/badge/rust-1.89%2B-orange.svg)](Cargo.toml)
+
 An open security data platform: event ingestion, detection, response
 orchestration, and incident handling in one system.
 
@@ -19,7 +24,7 @@ A Sigma rule already goes from YAML to a match on an OCSF event:
 | --- | --- |
 | Parse Sigma rules, treating the YAML as untrusted input | `goliath-sigma` |
 | Resolve Sigma fields to OCSF paths through versioned mappings | `goliath-rule` |
-| Evaluate a resolved rule against an event | `goliath-match` |
+| Evaluate thousands of rules against each event, sharing the work between them | `goliath-match` |
 
 Measured against the whole [SigmaHQ](https://github.com/SigmaHQ/sigma)
 repository, with details and reproduction steps in
@@ -30,11 +35,44 @@ repository, with details and reproduction steps in
   process creation, file creation, image loads, network connections, and
   registry value sets;
 - all 357 SigmaHQ regression cases for loaded rules fire exactly as SigmaHQ
-  expects on real recorded attack events.
+  expects on real recorded attack events;
+- the engine evaluates those 2,046 rules at about 129,000 events/s on one
+  core, and returns exactly what a deliberately naive reference evaluator
+  returns on every event.
 
-Not built yet: the fast engine that shares work across thousands of rules,
-ingestion, storage, and the interface. The order is in
-[docs/roadmap.md](docs/roadmap.md).
+The engine's speed is guarded in CI: a pull request fails if evaluating an
+event allocates, or if the engine spends more than 2% more instructions on a
+fixed workload. See [docs/benchmarks.md](docs/benchmarks.md).
+
+Not built yet: ingestion, storage, scheduled detection, response, and the
+interface. The order is in [docs/roadmap.md](docs/roadmap.md).
+
+## Try it
+
+```text
+git clone https://github.com/arelove/goliath-siem.git
+cd goliath-siem
+cargo test --workspace
+
+# Every SigmaHQ regression case, end to end, with the engine timed:
+git clone --depth 1 https://github.com/SigmaHQ/sigma.git
+cargo run --release -p goliath-match --example sigma_regression -- \
+    sigma crates/goliath-rule/mappings/sigma-windows.yaml
+```
+
+As a library, a rule goes from Sigma YAML to matches in four calls:
+
+```rust
+let rule = goliath_sigma::parse_rule(&yaml)?;
+let mappings = goliath_rule::MappingSet::from_yaml(&mapping_yaml)?;
+let resolved = goliath_rule::sigma::resolve(&rule, &mappings)?;
+let engine = goliath_match::Engine::new(vec![resolved])?;
+
+let matched: Vec<usize> = engine.matches(&ocsf_event);
+```
+
+For a stream, keep one `Scratch` from `engine.scratch()` and call
+`engine.matches_into`, which does not allocate once warmed up.
 
 ## Why another SIEM
 
@@ -96,9 +134,11 @@ significant decision has an ADR in [docs/adr/](docs/adr/).
 | --- | --- |
 | [docs/architecture.md](docs/architecture.md) | Targets, data flow, component map, benchmark method |
 | [docs/roadmap.md](docs/roadmap.md) | Delivery plan and current milestone |
-| [docs/sigma-coverage.md](docs/sigma-coverage.md) | How much of SigmaHQ loads and fires on real attacks |
+| [docs/sigma-coverage.md](docs/sigma-coverage.md) | How much of SigmaHQ loads and fires on real attacks, and how fast |
+| [docs/benchmarks.md](docs/benchmarks.md) | How speed is measured, and how CI stops regressions |
 | [docs/adr/](docs/adr/) | Architecture decision records |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Invariants, review rules, how to add a decision |
+| [SECURITY.md](SECURITY.md) | How to report a vulnerability |
 
 ## License
 

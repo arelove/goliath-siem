@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a vulnerability
+    url: https://github.com/arelove/goliath-siem/security/advisories/new
+    about: Privately, never as a public issue. A rule that misses what it should match counts. See SECURITY.md.

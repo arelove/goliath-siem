@@ -1,0 +1,43 @@
+name: Detection problem
+description: A Sigma rule does not load, does not fire when it should, or fires when it should not.
+labels: [detection]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If an attacker could use this to get past a rule on purpose, report it privately instead: see SECURITY.md.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What goes wrong
+      options:
+        - The rule does not load
+        - The rule does not fire on an event it should match
+        - The rule fires on an event it should not match
+    validations:
+      required: true
+  - type: textarea
+    id: rule
+    attributes:
+      label: Rule
+      description: The Sigma rule, or a link to it in SigmaHQ.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: event
+    attributes:
+      label: Event
+      description: The event, as the source wrote it or as OCSF, with anything sensitive removed.
+      render: json
+  - type: textarea
+    id: output
+    attributes:
+      label: What Goliath says
+      description: The load error, or the matches it returned.
+      render: text
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      placeholder: git rev-parse HEAD

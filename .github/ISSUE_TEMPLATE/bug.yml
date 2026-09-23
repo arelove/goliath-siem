@@ -1,0 +1,27 @@
+name: Bug
+description: Something else does not work as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: Steps to reproduce, and what you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      placeholder: git rev-parse HEAD
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: OS, and rustc --version
