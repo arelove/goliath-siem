@@ -45,7 +45,7 @@ platform existing.
 | Reference evaluator | One rule against one event, written for obvious correctness rather than speed |
 | `goliath-match` | Predicate index, rule grouping, bloom prefiltering, bitmap evaluation |
 | `goliath-sigma-clickhouse` | Sigma to ClickHouse SQL compilation for the scheduled path |
-| Benchmark harness | Criterion benchmarks with committed baselines, regression-gated in CI |
+| Benchmark harness | Instruction counts under Callgrind, compared with the base of each pull request and gated in CI ([benchmarks.md](benchmarks.md)) |
 | M1 corpus | Labelled OTRF Security-Datasets recordings converted to OCSF, replicated to 10 million events |
 
 **Exit criterion:** 1,000 Sigma rules evaluated over a 10-million-event corpus

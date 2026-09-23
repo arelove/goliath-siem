@@ -1,0 +1,33 @@
+[package]
+name = "goliath-bench"
+description = "Workloads and benchmarks for Goliath; not published"
+version = "0.0.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[features]
+# Builds the Callgrind benchmarks. They run the benchmark binary under
+# Valgrind, which only exists on Linux, so they stay out of `cargo test
+# --all-targets` everywhere unless asked for.
+callgrind = []
+
+[dependencies]
+goliath-match = { path = "../goliath-match" }
+goliath-rule = { path = "../goliath-rule" }
+goliath-sigma = { path = "../goliath-sigma" }
+serde_json.workspace = true
+
+[dev-dependencies]
+gungraun = "0.19.4"
+
+[[bench]]
+name = "engine"
+harness = false
+required-features = ["callgrind"]
+
+[lints]
+workspace = true
