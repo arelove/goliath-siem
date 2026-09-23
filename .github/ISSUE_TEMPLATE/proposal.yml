@@ -1,0 +1,20 @@
+name: Proposal
+description: A new capability, log source, or change of design.
+labels: [proposal]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What you cannot do today, and why it matters. Start from the problem, not the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: If it changes a decision in docs/adr, say which one.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
