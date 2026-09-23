@@ -33,6 +33,14 @@ use icu_casemap::CaseMapper;
 /// assert_eq!(fold("ΣΊΣΥΦΟΣ"), fold("σίσυφος"));
 /// ```
 pub fn fold(text: &str) -> Cow<'_, str> {
+    if text.is_ascii() {
+        return if text.bytes().any(|byte| byte.is_ascii_uppercase()) {
+            Cow::Owned(text.to_ascii_lowercase())
+        } else {
+            Cow::Borrowed(text)
+        };
+    }
+
     let mapper = CaseMapper::new();
     let first_change = text
         .char_indices()
@@ -49,9 +57,48 @@ pub fn fold(text: &str) -> Cow<'_, str> {
     }
 }
 
+/// Appends the folded form of `text` to `out`.
+///
+/// The same folding as [`fold`], for callers that reuse one buffer across
+/// many values instead of allocating per value.
+pub fn fold_into(text: &str, out: &mut String) {
+    if text.is_ascii() {
+        let start = out.len();
+        out.push_str(text);
+        out[start..].make_ascii_lowercase();
+    } else {
+        let mapper = CaseMapper::new();
+        out.extend(text.chars().map(|ch| mapper.simple_fold(ch)));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ascii_shortcut_agrees_with_unicode_simple_folding() {
+        // The shortcut is only correct because simple folding maps no ASCII
+        // character other than A to Z, and maps those to a to z.
+        let mapper = CaseMapper::new();
+        for byte in 0_u8..=127 {
+            let ch = char::from(byte);
+            assert_eq!(
+                mapper.simple_fold(ch),
+                ch.to_ascii_lowercase(),
+                "character {byte}"
+            );
+        }
+    }
+
+    #[test]
+    fn fold_into_appends_the_same_folding() {
+        for text in ["PowerShell.EXE", "\u{3a3}\u{3c2}", "\u{212a}elvin", ""] {
+            let mut out = String::from("prefix:");
+            fold_into(text, &mut out);
+            assert_eq!(out, format!("prefix:{}", fold(text)));
+        }
+    }
 
     #[test]
     fn ascii_folds_to_lower_case() {
