@@ -148,6 +148,7 @@ dependencies = [
  "goliath-rule",
  "goliath-sigma",
  "regex",
+ "regex-syntax",
  "serde",
  "serde_json",
  "thiserror",
