@@ -894,6 +894,29 @@ detection:
     }
 
     #[test]
+    fn keywords_can_carry_modifiers() {
+        // From SigmaHQ: every keyword must appear somewhere in the event.
+        let rule = parse(
+            r"
+title: t
+logsource: { product: jvm, category: application }
+detection:
+  keywords:
+    '|all':
+      - 'FileNotFoundException'
+      - '/../../..'
+  condition: keywords
+",
+        );
+        let Search::AllOf(predicates) = &rule.detection.searches["keywords"] else {
+            panic!("expected a mapping");
+        };
+        assert!(predicates[0].key.is_keyword());
+        assert!(predicates[0].key.requires_all());
+        assert_eq!(predicates[0].values.len(), 2);
+    }
+
+    #[test]
     fn string_modifiers_require_strings() {
         assert!(value_error("CommandLine|re: 5").is_some());
         assert!(value_error("CommandLine|base64: 5").is_some());

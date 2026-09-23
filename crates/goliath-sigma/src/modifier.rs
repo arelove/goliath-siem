@@ -187,15 +187,26 @@ impl FieldKey {
     pub fn requires_all(&self) -> bool {
         self.modifiers.contains(&Modifier::All)
     }
+
+    /// Reports whether the key names no field, as in `'|all'`.
+    ///
+    /// Its values are then keywords searched in any field, and the modifiers
+    /// apply to them.
+    pub fn is_keyword(&self) -> bool {
+        self.field.is_empty()
+    }
 }
 
 /// Parses a detection map key into a field name and its modifiers.
 ///
+/// An empty field name followed by modifiers, as in `'|all'`, is accepted and
+/// means the values are keywords; see [`FieldKey::is_keyword`].
+///
 /// # Errors
 ///
-/// Returns [`ModifierError`] if the field name is empty, a modifier is not
-/// recognized, a regex flag appears without a preceding `re`, or two modifiers
-/// of the same exclusive role are combined.
+/// Returns [`ModifierError`] if the key has neither a field nor a modifier, a
+/// modifier is not recognized, a regex flag appears without a preceding `re`,
+/// or two modifiers of the same exclusive role are combined.
 ///
 /// # Examples
 ///
@@ -211,7 +222,9 @@ pub fn parse_field_key(key: &str) -> Result<FieldKey, ModifierError> {
     let mut segments = key.split('|');
 
     let field = segments.next().unwrap_or_default().trim();
-    if field.is_empty() {
+    // `'|all'` has no field: its values are keywords, and the modifiers apply
+    // to them. A key with neither a field nor a modifier means nothing.
+    if field.is_empty() && !key.contains('|') {
         return Err(ModifierError::EmptyFieldName {
             key: key.to_owned(),
         });
@@ -422,15 +435,28 @@ mod tests {
     }
 
     #[test]
-    fn rejects_an_empty_field_name() {
-        assert!(matches!(
-            parse_field_key("|contains"),
-            Err(ModifierError::EmptyFieldName { .. })
-        ));
+    fn rejects_a_key_with_neither_field_nor_modifier() {
         assert!(matches!(
             parse_field_key(""),
             Err(ModifierError::EmptyFieldName { .. })
         ));
+        assert!(matches!(
+            parse_field_key("  "),
+            Err(ModifierError::EmptyFieldName { .. })
+        ));
+    }
+
+    #[test]
+    fn a_key_without_a_field_applies_its_modifiers_to_keywords() {
+        // As in SigmaHQ's `'|all': [...]`: every keyword must appear.
+        let key = parse_field_key("|all").expect("parse");
+        assert!(key.is_keyword());
+        assert_eq!(key.modifiers, [Modifier::All]);
+        assert!(
+            !parse_field_key("CommandLine|all")
+                .expect("parse")
+                .is_keyword()
+        );
     }
 
     #[test]
