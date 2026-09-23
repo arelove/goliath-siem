@@ -82,6 +82,7 @@ dependencies = [
  "goliath-rule",
  "goliath-sigma",
  "regex",
+ "serde",
  "serde_json",
  "thiserror",
 ]

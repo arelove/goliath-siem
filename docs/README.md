@@ -9,7 +9,7 @@ orchestration, and incident handling in one system.
 | --- | --- |
 | [architecture.md](architecture.md) | Targets, data flow, component map, benchmark method, go-to-market |
 | [roadmap.md](roadmap.md) | Delivery plan, milestones, current focus |
-| [sigma-coverage.md](sigma-coverage.md) | How much of the SigmaHQ repository loads, and what stops the rest |
+| [sigma-coverage.md](sigma-coverage.md) | How much of the SigmaHQ repository loads and fires on real attack events |
 | [adr/](adr/) | Architecture decision records, one file per decision |
 
 ## Decisions
