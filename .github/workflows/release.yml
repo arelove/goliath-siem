@@ -20,12 +20,12 @@ jobs:
     name: propose release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - name: Open or update the release pull request
-        uses: release-plz/action@v0
+        uses: release-plz/action@51e32d708d306b2c2e98540245b276439f3137c3 # v0.5.139
         with:
           command: release-pr
         env:
@@ -35,15 +35,15 @@ jobs:
   publish:
     name: publish released crates
     runs-on: ubuntu-latest
-    # Only runs once a release pull request has been merged: release-plz
-    # detects that a version in the manifest is not yet on crates.io.
+    # Runs on every push, but only acts when the pushed commit is a merged
+    # release pull request (release_always = false in release-plz.toml).
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - name: Tag, create the GitHub release, and publish to crates.io
-        uses: release-plz/action@v0
+        uses: release-plz/action@51e32d708d306b2c2e98540245b276439f3137c3 # v0.5.139
         with:
           command: release
         env:
