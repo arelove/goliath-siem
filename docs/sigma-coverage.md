@@ -119,9 +119,9 @@ for at least three seconds on one core.
 | Events | 393 |
 | Rule matches | 738 |
 | Events where engine and reference disagree | 0 |
-| Engine compile time | 86 ms |
+| Engine compile time | 87 ms |
 | Reference evaluator | 305 events/s |
-| Engine | 113,857 events/s |
+| Engine | 129,437 events/s |
 
 Measured on an AMD Ryzen 9 9955HX, one core, Rust 1.96, release build; the
 median of three runs.
@@ -136,6 +136,7 @@ way:
 | Non-string tests read values without allocating per test | about 102,000 |
 | Triggers chosen by literal length: 30 rules evaluated per event instead of 41 | about 110,000 |
 | No allocation at all per event once warmed up | about 114,000 |
+| Regular expressions wait for the literals they require, found for 55 of the 82 distinct expressions | about 129,000 |
 
 A switch of the literal automaton from its default to a full DFA was measured
 too and rejected: no gain beyond noise, at twice the compile time.
@@ -153,10 +154,13 @@ How to read these numbers:
 - The events are recorded attacks, which wake far more rules than ordinary
   activity does. Benign traffic should evaluate faster; that is for the
   benchmark rig of milestone M3 to measure, not to assume.
-- Events are still `serde_json` trees, walked by path for every field. At this
-  rate the 1,000,000 events/s target takes about 9 cores; a flat event
-  representation, with paths resolved once when the engine is built, is the
-  next step to close that.
+- At this rate the 1,000,000 events/s target takes about 8 cores. A profile
+  of this run puts about half of an event's time in the literal automata,
+  whose cost per byte grows with their size (10,835 literals on the command
+  line alone), and under a sixth in walking `serde_json` trees by path. So
+  the next steps are to take suffix, prefix, and exact literals out of full
+  scans, and to stop reporting one-character literals that occur in nearly
+  every text, before changing how events are represented.
 
 ## Reproducing
 

@@ -19,6 +19,7 @@
 pub mod engine;
 pub mod error;
 pub mod reference;
+mod required;
 mod semantics;
 
 pub use engine::{Engine, Scratch};

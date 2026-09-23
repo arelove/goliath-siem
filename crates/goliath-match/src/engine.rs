@@ -33,6 +33,7 @@ use regex::Regex;
 use serde_json::Value;
 
 use crate::error::CompileError;
+use crate::required::required_literals;
 use crate::semantics::{
     has_class_value, pool_into, regex, regex_matches_any, test_values, write_number,
 };
@@ -98,7 +99,14 @@ enum Pred {
         pattern: Pattern,
     },
     /// A non-string test, asked through the shared semantics.
-    Other { paths: Vec<FieldPath>, check: Check },
+    Other {
+        paths: Vec<FieldPath>,
+        check: Check,
+        /// Literals, as a source and indices into it, one of which must be
+        /// found for the test to hold: for a regular expression, the text
+        /// every match contains.
+        required: Option<(usize, Vec<usize>)>,
+    },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -520,7 +528,18 @@ impl Context<'_> {
                         .iter()
                         .any(|candidate| pattern.matches(candidate))
             }
-            Pred::Other { paths, check } => {
+            Pred::Other {
+                paths,
+                check,
+                required,
+            } => {
+                if let Some((source, literals)) = required
+                    && !literals
+                        .iter()
+                        .any(|&literal| self.hits[self.global(*source, literal)] & hit::ANY != 0)
+                {
+                    return false;
+                }
                 let mut values = self.values.borrow_mut();
                 values.clear();
                 pool_into(self.event, paths, &mut values);
@@ -546,8 +565,9 @@ struct GroupBuilder {
     predicates: Vec<Pred>,
     /// Predicate by the serialized form of the expression it came from.
     predicate_ids: HashMap<String, usize>,
-    /// The literal each predicate cannot hold without, as `(source, index)`.
-    atoms: Vec<Option<(usize, usize)>>,
+    /// Literals, as `(source, index)`, one of which each predicate cannot
+    /// hold without.
+    atoms: Vec<Option<Vec<(usize, usize)>>>,
 }
 
 impl GroupBuilder {
@@ -653,33 +673,58 @@ impl GroupBuilder {
         let (predicate, atom) = match leaf {
             Expr::Keyword(test) => {
                 let source = self.source(Origin::AnyString, test.cased);
-                self.string(source, &test.pattern)
+                let (predicate, atom) = self.string(source, &test.pattern);
+                (predicate, atom.map(|atom| vec![atom]))
             }
             Expr::Field(Predicate {
                 paths,
                 test: Test::String(test),
             }) => {
                 let source = self.source(Origin::Paths(paths.clone()), test.cased);
-                self.string(source, &test.pattern)
+                let (predicate, atom) = self.string(source, &test.pattern);
+                (predicate, atom.map(|atom| vec![atom]))
             }
-            Expr::Field(Predicate { paths, test }) => {
-                let check = match test {
-                    Test::Regex { pattern, flags } => Check::Regex(regex(pattern, *flags)?),
-                    other => Check::Plain(other.clone()),
-                };
+            Expr::Field(Predicate {
+                paths,
+                test: Test::Regex { pattern, flags },
+            }) => {
+                // The literals are looked for among the folded texts of the
+                // same paths, which hold the same values the expression is
+                // run on: strings, and numbers as decimal text.
+                let required = required_literals(pattern, *flags).map(|literals| {
+                    let source = self.source(Origin::Paths(paths.clone()), false);
+                    let indices: Vec<usize> = literals
+                        .iter()
+                        .map(|literal| self.literal(source, literal))
+                        .collect();
+                    (source, indices)
+                });
+                let atom = required.as_ref().map(|(source, indices)| {
+                    indices.iter().map(|&index| (*source, index)).collect()
+                });
                 (
                     Pred::Other {
                         paths: paths.clone(),
-                        check,
+                        check: Check::Regex(regex(pattern, *flags)?),
+                        required,
                     },
-                    None,
+                    atom,
                 )
             }
+            Expr::Field(Predicate { paths, test }) => (
+                Pred::Other {
+                    paths: paths.clone(),
+                    check: Check::Plain(test.clone()),
+                    required: None,
+                },
+                None,
+            ),
             // Operators never reach here; `node` handles them.
             Expr::And(_) | Expr::Or(_) | Expr::Not(_) => (
                 Pred::Other {
                     paths: Vec::new(),
                     check: Check::Plain(Test::Exists(false)),
+                    required: None,
                 },
                 None,
             ),
@@ -784,7 +829,7 @@ impl GroupBuilder {
     /// `None` if no such set is known.
     fn trigger(&self, node: &Node) -> Option<Vec<(usize, usize)>> {
         match node {
-            Node::Pred(index) => self.atoms[*index].map(|atom| vec![atom]),
+            Node::Pred(index) => self.atoms[*index].clone(),
             // Any one operand's trigger will do; the least likely to be found
             // wakes the rule least often.
             Node::And(operands) => operands
