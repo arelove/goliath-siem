@@ -33,7 +33,9 @@ use regex::Regex;
 use serde_json::Value;
 
 use crate::error::CompileError;
-use crate::semantics::{has_class_value, pool_into, regex, regex_matches_any, test_values};
+use crate::semantics::{
+    has_class_value, pool_into, regex, regex_matches_any, test_values, write_number,
+};
 
 /// A class condition: attribute values an event must have.
 type Class = Vec<(FieldPath, ClassValue)>;
@@ -195,6 +197,8 @@ impl Engine {
                     memo: vec![0; group.predicates.len()],
                     memo_value: vec![false; group.predicates.len()],
                     generation: 0,
+                    values: Vec::new(),
+                    number: String::new(),
                 })
                 .collect(),
         }
@@ -262,6 +266,10 @@ struct GroupScratch {
     memo_value: Vec<bool>,
     /// Increments per evaluation, so stale marks need no clearing.
     generation: u32,
+    /// The buffer for non-string tests' values, kept empty between events.
+    values: Vec<&'static Value>,
+    /// The buffer a number is written to for a regular expression.
+    number: String,
 }
 
 impl GroupScratch {
@@ -298,6 +306,16 @@ impl Texts {
         buffer.clear();
         self.len += 1;
         buffer
+    }
+
+    /// Adds `text`, folded unless `cased`.
+    fn push(&mut self, text: &str, cased: bool) {
+        let buffer = self.next();
+        if cased {
+            buffer.push_str(text);
+        } else {
+            fold_into(text, buffer);
+        }
     }
 
     fn current(&self) -> &[String] {
@@ -358,6 +376,8 @@ impl Group {
             candidates,
             memo,
             memo_value,
+            values,
+            number,
             ..
         } = work;
         let context = Context {
@@ -366,7 +386,8 @@ impl Group {
             hits,
             texts,
             generation,
-            values: RefCell::new(Vec::new()),
+            values: RefCell::new(recycle(std::mem::take(values))),
+            number: RefCell::new(std::mem::take(number)),
         };
         for &position in candidates.iter() {
             let (index, node) = &self.rules[position];
@@ -374,6 +395,8 @@ impl Group {
                 matched.push(*index);
             }
         }
+        *values = recycle(context.values.into_inner());
+        *number = context.number.into_inner();
 
         for &literal in found.iter() {
             hits[literal] = 0;
@@ -390,25 +413,19 @@ impl Source {
     fn gather(&self, event: &Value, texts: &mut Texts) {
         texts.clear();
         let cased = self.cased;
-        let mut push = |text: &str| {
-            let buffer = texts.next();
-            if cased {
-                buffer.push_str(text);
-            } else {
-                fold_into(text, buffer);
-            }
-        };
         match &self.origin {
             Origin::Paths(paths) => {
                 for path in paths {
                     path.visit(event, &mut |value| match value {
-                        Value::String(text) => push(text),
-                        Value::Number(number) => push(&number.to_string()),
+                        Value::String(text) => texts.push(text, cased),
+                        // Written in place: a number's decimal text has
+                        // nothing for folding to change.
+                        Value::Number(number) => write_number(number, texts.next()),
                         _ => {}
                     });
                 }
             }
-            Origin::AnyString => strings(event, &mut push),
+            Origin::AnyString => strings(event, &mut |text| texts.push(text, cased)),
         }
     }
 }
@@ -423,6 +440,19 @@ fn strings(value: &Value, visit: &mut impl FnMut(&str)) {
     }
 }
 
+/// Empties `values` and returns its allocation typed for another lifetime.
+///
+/// The collect reuses the allocation, because the element type keeps its
+/// size and alignment, so a buffer of references into one event can be kept
+/// for the next without allocating.
+fn recycle<'b>(mut values: Vec<&Value>) -> Vec<&'b Value> {
+    values.clear();
+    values
+        .into_iter()
+        .map(|_| unreachable!("emptied"))
+        .collect()
+}
+
 /// What one event's evaluation of a group can read.
 struct Context<'a> {
     group: &'a Group,
@@ -433,6 +463,7 @@ struct Context<'a> {
     /// Values for non-string tests, reused across the predicates of one
     /// event instead of collected afresh for each.
     values: RefCell<Vec<&'a Value>>,
+    number: RefCell<String>,
 }
 
 impl Context<'_> {
@@ -494,7 +525,9 @@ impl Context<'_> {
                 values.clear();
                 pool_into(self.event, paths, &mut values);
                 match check {
-                    Check::Regex(regex) => regex_matches_any(regex, &values),
+                    Check::Regex(regex) => {
+                        regex_matches_any(regex, &values, &mut self.number.borrow_mut())
+                    }
                     Check::Plain(test) => test_values(test, &values, self.event),
                 }
             }

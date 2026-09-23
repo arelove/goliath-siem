@@ -45,10 +45,14 @@ pub(crate) fn regex(pattern: &str, flags: RegexFlags) -> Result<Regex, CompileEr
 }
 
 pub(crate) fn has_class_value(event: &Value, path: &FieldPath, expected: &ClassValue) -> bool {
-    path.lookup(event).into_iter().any(|value| match expected {
-        ClassValue::Integer(expected) => value.as_i64() == Some(*expected),
-        ClassValue::String(expected) => value.as_str() == Some(expected.as_str()),
-    })
+    let mut found = false;
+    path.visit(event, &mut |value| {
+        found |= match expected {
+            ClassValue::Integer(expected) => value.as_i64() == Some(*expected),
+            ClassValue::String(expected) => value.as_str() == Some(expected.as_str()),
+        };
+    });
+    found
 }
 
 /// Every non-null value any of `paths` reaches.
@@ -71,11 +75,16 @@ pub(crate) fn pool_into<'a>(event: &'a Value, paths: &[FieldPath], values: &mut 
 }
 
 /// Reports whether `regex` matches some value's text, without copying
-/// strings: the same answer as testing [`text`] of each value.
-pub(crate) fn regex_matches_any(regex: &Regex, values: &[&Value]) -> bool {
+/// strings: the same answer as testing [`text`] of each value. A number's
+/// text is written to `number`, which is reused rather than allocated.
+pub(crate) fn regex_matches_any(regex: &Regex, values: &[&Value], number: &mut String) -> bool {
     values.iter().any(|value| match value {
         Value::String(text) => regex.is_match(text),
-        Value::Number(number) => regex.is_match(&number.to_string()),
+        Value::Number(value) => {
+            number.clear();
+            write_number(value, number);
+            regex.is_match(number)
+        }
         _ => false,
     })
 }
@@ -140,6 +149,14 @@ pub(crate) fn text(value: &Value) -> Option<String> {
         Value::Number(number) => Some(number.to_string()),
         _ => None,
     }
+}
+
+/// Appends `number` in decimal to `out`: the text [`text`] gives, without
+/// allocating a string of its own.
+pub(crate) fn write_number(number: &serde_json::Number, out: &mut String) {
+    use std::fmt::Write as _;
+    // Writing to a `String` cannot fail.
+    let _ = write!(out, "{number}");
 }
 
 /// A value as a number: numbers as they are, strings that parse as numbers.
