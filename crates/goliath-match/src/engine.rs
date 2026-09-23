@@ -42,6 +42,10 @@ use crate::semantics::{
 type Class = Vec<(FieldPath, ClassValue)>;
 
 /// Rules compiled to be evaluated together.
+///
+/// An engine is immutable once built and can be shared by any number of
+/// threads, each keeping its own [`Scratch`]. Throughput then grows with the
+/// cores given to it; `docs/sigma-coverage.md` has the measurements.
 #[derive(Debug, Clone)]
 pub struct Engine {
     rules: Vec<ResolvedRule>,
@@ -850,3 +854,12 @@ impl GroupBuilder {
         }
     }
 }
+
+// One engine serves every thread of a detector, each with its own scratch;
+// a change that made either impossible fails to compile here.
+const _: () = {
+    const fn shared<T: Send + Sync>() {}
+    const fn movable<T: Send>() {}
+    shared::<Engine>();
+    movable::<Scratch>();
+};

@@ -126,6 +126,26 @@ for at least three seconds on one core.
 Measured on an AMD Ryzen 9 9955HX, one core, Rust 1.96, release build; the
 median of three runs.
 
+### On every core
+
+One engine is shared by every thread of a detector, each thread keeping its
+own scratch, so nothing is locked or copied per event. The run measures that
+too, for three seconds at each thread count:
+
+| Threads | Events/s |
+| ---: | ---: |
+| 1 | about 125,000 |
+| 16 | about 1,250,000 to 1,310,000 |
+| 32 | about 2,050,000 to 2,230,000 |
+
+The 9955HX has 16 cores and 32 hardware threads, so the machine the numbers
+come from, a laptop, clears the 1,000,000 events/s target for detection with
+all 2,046 rules. Two cautions go with that. The threads were not pinned to
+cores, so counts between 2 and 8 moved by up to half between runs, depending
+on where Windows placed them; the full machine was stable within 10%. And
+this is detection alone, on events already parsed: ingestion, parsing, and
+storage have their own cost, which milestone M3 measures end to end.
+
 How the engine got there from its first version, each step measured the same
 way:
 
@@ -138,8 +158,13 @@ way:
 | No allocation at all per event once warmed up | about 114,000 |
 | Regular expressions wait for the literals they require, found for 55 of the 82 distinct expressions | about 129,000 |
 
-A switch of the literal automaton from its default to a full DFA was measured
-too and rejected: no gain beyond noise, at twice the compile time.
+Measured and rejected, because a profile's promise is not a result:
+
+| Change | Result |
+| --- | --- |
+| A full DFA instead of the default automaton | No gain beyond noise, twice the compile time, 77 MB for the command line alone |
+| Suffix, prefix, and exact literals found by walking a trie from one end of the text, instead of the full scan | About 7% slower: nearly every field also has a few substring literals, so the scan stays and the walks come on top |
+| One-byte substring literals, such as a space, tested directly instead of scanned for | Within noise: fewer reports from the automaton, but the rules they triggered are then evaluated on every event |
 
 Allocation was most of the first version's cost, and a change that brings it
 back would slow the engine without failing a test that checks answers.
@@ -154,13 +179,12 @@ How to read these numbers:
 - The events are recorded attacks, which wake far more rules than ordinary
   activity does. Benign traffic should evaluate faster; that is for the
   benchmark rig of milestone M3 to measure, not to assume.
-- At this rate the 1,000,000 events/s target takes about 8 cores. A profile
-  of this run puts about half of an event's time in the literal automata,
-  whose cost per byte grows with their size (10,835 literals on the command
-  line alone), and under a sixth in walking `serde_json` trees by path. So
-  the next steps are to take suffix, prefix, and exact literals out of full
-  scans, and to stop reporting one-character literals that occur in nearly
-  every text, before changing how events are represented.
+- A profile of this run puts about half of an event's time in the literal
+  automata, at about 4 ns per byte of text whatever their size, and under a
+  sixth in walking `serde_json` trees by path. The two changes above that
+  aimed at the automata did not pay, so what remains is scanning fewer
+  bytes: the command line is scanned twice, folded and as written, for the
+  103 literals of case sensitive rules.
 
 ## Reproducing
 

@@ -275,6 +275,16 @@ fn compare_engine(
         engine.matches_into(event, &mut scratch, &mut found);
         found.len()
     });
+    // Powers of two up to every hardware thread, and every hardware thread.
+    let available = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
+    let mut counts: Vec<usize> = std::iter::successors(Some(2_usize), |count| Some(count * 2))
+        .take_while(|&count| count < available)
+        .collect();
+    counts.push(available);
+    let scaling: Vec<(usize, f64)> = counts
+        .into_iter()
+        .map(|threads| (threads, parallel_rate(&engine, events, threads)))
+        .collect();
 
     let mut out = String::new();
     let _ = writeln!(
@@ -303,7 +313,47 @@ fn compare_engine(
     );
     let _ = writeln!(out, "| Engine, events/s on one core | {engine_rate:.0} |");
     let _ = writeln!(out, "| Speedup | {:.1}x |", engine_rate / reference_rate);
+    for (threads, rate) in &scaling {
+        let _ = writeln!(
+            out,
+            "| Engine, events/s on {threads} threads sharing it | {rate:.0} |"
+        );
+    }
     Ok(out)
+}
+
+/// Events per second for one engine shared by `threads` threads, each with
+/// its own scratch, as a detector evaluates a stream on every core.
+#[allow(clippy::cast_precision_loss)] // Event counts are far below 2^52.
+fn parallel_rate(engine: &Engine, events: &[Value], threads: usize) -> f64 {
+    let started = Instant::now();
+    let evaluated: usize = std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..threads)
+            .map(|offset| {
+                scope.spawn(move || {
+                    let mut scratch = engine.scratch();
+                    let mut found = Vec::new();
+                    let mut evaluated = 0_usize;
+                    // Each thread starts at a different event, so the threads
+                    // are not all reading the same event at the same time.
+                    let start = offset * events.len() / threads;
+                    while started.elapsed() < TIMING {
+                        for event in events[start..].iter().chain(&events[..start]) {
+                            engine.matches_into(event, &mut scratch, &mut found);
+                            std::hint::black_box(&found);
+                        }
+                        evaluated += events.len();
+                    }
+                    evaluated
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .map(|worker| worker.join().unwrap_or(0))
+            .sum()
+    });
+    evaluated as f64 / started.elapsed().as_secs_f64()
 }
 
 /// Events per second for `evaluate`, over repeated passes of `events`.
