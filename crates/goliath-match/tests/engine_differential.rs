@@ -16,7 +16,7 @@ use goliath_rule::{
     ClassValue, Comparison, Expr, FieldPath, MappingVersion, Number, Predicate, ResolvedRule,
     StringTest, Test, fold,
 };
-use goliath_sigma::{Pattern, PatternPart};
+use goliath_sigma::{Pattern, PatternPart, RegexFlags};
 use serde_json::{Map, Value, json};
 
 /// A small deterministic generator, so a failure reproduces from its seed.
@@ -104,7 +104,7 @@ fn leaf(random: &mut Random) -> Expr {
         vec![path(random.pick::<&str>(&FIELDS))]
     };
     let cased = random.chance(30);
-    let test = match random.below(10) {
+    let test = match random.below(12) {
         0 => Test::Exists(random.chance(50)),
         1 => Test::Null,
         2 => Test::Equals(Number::Integer(
@@ -125,12 +125,49 @@ fn leaf(random: &mut Random) -> Expr {
                 cased: false,
             });
         }
+        10 | 11 => Test::Regex {
+            pattern: regex_text(random, 2),
+            flags: RegexFlags {
+                case_insensitive: random.chance(50),
+                ..RegexFlags::default()
+            },
+        },
         _ => Test::String(StringTest {
             pattern: pattern(random, cased),
             cased,
         }),
     };
     Expr::Field(Predicate { paths, test })
+}
+
+/// A regular expression over the same letters, built from the constructs
+/// the engine derives required literals from: runs of literals, alternations,
+/// repetitions that may or may not be optional, classes of case variants and
+/// of different letters, and anchors.
+fn regex_text(random: &mut Random, depth: usize) -> String {
+    (0..=random.below(3))
+        .map(|_| regex_atom(random, depth))
+        .collect()
+}
+
+fn regex_atom(random: &mut Random, depth: usize) -> String {
+    let inner = |random: &mut Random| regex_text(random, depth.saturating_sub(1));
+    match random.below(if depth == 0 { 4 } else { 9 }) {
+        0 | 1 => (0..=random.below(3))
+            .map(|_| regex::escape(&random.pick(&LETTERS).to_string()))
+            .collect(),
+        2 => (*random.pick::<&str>(&[".", "[aA]", "[ab]", r"\d", "[\u{df}\u{1e9e}]"])).to_owned(),
+        3 => (*random.pick::<&str>(&["^", "$", r"\b"])).to_owned(),
+        4 => format!("({}|{})", inner(random), inner(random)),
+        5 => format!("({})+", inner(random)),
+        6 => format!("({})?", inner(random)),
+        7 => format!("({})*", inner(random)),
+        _ => {
+            let least = random.below(3);
+            let most = least + random.below(3);
+            format!("({}){{{least},{most}}}", inner(random))
+        }
+    }
 }
 
 fn expr(random: &mut Random, depth: usize) -> Expr {
