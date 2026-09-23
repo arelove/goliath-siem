@@ -55,6 +55,19 @@ baseline goes stale as soon as the compiler, a dependency, or the runner
 changes, and then every pull request is compared against numbers no current
 build can produce.
 
+The gate was checked with two throwaway pull requests before it was trusted:
+
+| Change | `compile` | `evaluate` | Result |
+| --- | ---: | ---: | --- |
+| A comment only | -0.18% | -0.04% | Passed |
+| ASCII folded through the Unicode table instead of the fast path | -0.18% | +14.5% | Failed |
+
+Separate builds of the same code differ by up to 0.2%, a tenth of the limit.
+A first attempt at the first check showed 0.00% for both changes: the base
+and the change shared a target directory, and the change was never rebuilt.
+The workflow now builds the base in a directory of its own, and a gate is
+only trusted once it has been seen to fail.
+
 When a slowdown is the right trade, say so in the pull request and raise the
 limit for that one merge; the next pull request is then measured against the
 new base.
