@@ -120,8 +120,8 @@ for at least three seconds on one core.
 | Rule matches | 738 |
 | Events where engine and reference disagree | 0 |
 | Engine compile time | 86 ms |
-| Reference evaluator | 296 events/s |
-| Engine | 109,954 events/s |
+| Reference evaluator | 305 events/s |
+| Engine | 113,857 events/s |
 
 Measured on an AMD Ryzen 9 9955HX, one core, Rust 1.96, release build; the
 median of three runs.
@@ -135,9 +135,16 @@ way:
 | Working memory reused across events, ASCII folded without table lookups, paths read without collecting | about 88,000 |
 | Non-string tests read values without allocating per test | about 102,000 |
 | Triggers chosen by literal length: 30 rules evaluated per event instead of 41 | about 110,000 |
+| No allocation at all per event once warmed up | about 114,000 |
 
 A switch of the literal automaton from its default to a full DFA was measured
 too and rejected: no gain beyond noise, at twice the compile time.
+
+Allocation was most of the first version's cost, and a change that brings it
+back would slow the engine without failing a test that checks answers.
+`crates/goliath-match/tests/allocations.rs` therefore counts allocations
+while a warmed up engine evaluates events of every kind of test, and fails on
+any. Unlike a timing, the count is exact, so CI can hold it.
 
 How to read these numbers:
 
