@@ -1,0 +1,19 @@
+[package]
+name = "goliath-bench"
+description = "Workloads and benchmarks for Goliath; not published"
+version = "0.0.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+goliath-match = { path = "../goliath-match" }
+goliath-rule = { path = "../goliath-rule" }
+goliath-sigma = { path = "../goliath-sigma" }
+serde_json.workspace = true
+
+[lints]
+workspace = true
