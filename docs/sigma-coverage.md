@@ -106,6 +106,37 @@ at least one other rule's attack. That is expected, since attacks share steps,
 but the most frequent are the first candidates for review as overly broad:
 "Non Interactive PowerShell Process Spawned" fires on 47 other rules' events.
 
+## The engine on the same events
+
+The regression run also compiles every loaded rule into the engine, which
+shares work across rules, and checks that it returns exactly the rules the
+reference evaluator returns for every converted event. Then it times both, each
+for at least three seconds on one core.
+
+| Measure | Value |
+| --- | ---: |
+| Rules | 2,046 |
+| Events | 393 |
+| Rule matches | 738 |
+| Events where engine and reference disagree | 0 |
+| Engine compile time | 87 ms |
+| Reference evaluator | 127 events/s |
+| Engine | 41,382 events/s |
+
+Measured on an AMD Ryzen 9 9955HX, one core, Rust 1.96, release build.
+
+How to read these numbers:
+
+- The engine's rate is the figure that matters. The reference evaluator is
+  deliberately naive, so the ratio between them says little.
+- The events are recorded attacks, which wake far more rules than ordinary
+  activity does. Benign traffic should evaluate faster; that is for the
+  benchmark rig of milestone M3 to measure, not to assume.
+- This is the first version. Events are `serde_json` trees, and each event
+  allocates its texts, folded copies, and bookkeeping. At this rate the
+  1,000,000 events/s target would take about 25 cores, which is the gap the
+  next optimizations have to close.
+
 ## Reproducing
 
 ```text
