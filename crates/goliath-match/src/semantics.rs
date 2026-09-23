@@ -45,10 +45,14 @@ pub(crate) fn regex(pattern: &str, flags: RegexFlags) -> Result<Regex, CompileEr
 }
 
 pub(crate) fn has_class_value(event: &Value, path: &FieldPath, expected: &ClassValue) -> bool {
-    path.lookup(event).into_iter().any(|value| match expected {
-        ClassValue::Integer(expected) => value.as_i64() == Some(*expected),
-        ClassValue::String(expected) => value.as_str() == Some(expected.as_str()),
-    })
+    let mut found = false;
+    path.visit(event, &mut |value| {
+        found |= match expected {
+            ClassValue::Integer(expected) => value.as_i64() == Some(*expected),
+            ClassValue::String(expected) => value.as_str() == Some(expected.as_str()),
+        };
+    });
+    found
 }
 
 /// Every non-null value any of `paths` reaches.
