@@ -189,6 +189,31 @@ fn keywords_search_every_string_for_folded_text() {
 }
 
 #[test]
+fn keywords_under_all_must_every_one_appear() {
+    let condition =
+        resolved("  keywords:\n    '|all':\n      - 'a'\n      - 'b'\n  condition: keywords\n");
+    let Expr::And(keywords) = condition else {
+        panic!("expected a conjunction: {condition:?}");
+    };
+    assert_eq!(keywords.len(), 2);
+    assert!(
+        keywords
+            .iter()
+            .all(|keyword| matches!(keyword, Expr::Keyword(_)))
+    );
+
+    let error = resolve("  keywords:\n    '|startswith': 'a'\n  condition: keywords\n")
+        .expect_err("startswith has no meaning without a field");
+    assert!(matches!(
+        error,
+        ResolveError::UnsupportedModifier {
+            modifier: "startswith",
+            ..
+        }
+    ));
+}
+
+#[test]
 fn them_leaves_out_underscore_searches() {
     let condition =
         resolved("  sel:\n    Image: a\n  _helper:\n    Image: b\n  condition: 1 of them\n");

@@ -182,6 +182,9 @@ impl Resolver<'_> {
 
     fn predicate(&self, predicate: &FieldPredicate) -> Result<Expr, ResolveError> {
         let key = &predicate.key;
+        if key.is_keyword() {
+            return keyword_predicate(predicate);
+        }
         let paths = self.paths(&key.field)?;
 
         let values = predicate
@@ -331,6 +334,36 @@ fn string_test(parts: Vec<PatternPart>, modifier: Option<&Modifier>, cased: bool
     );
 
     StringTest { pattern, cased }
+}
+
+/// Keywords written under a key with no field, as in `'|all'`.
+///
+/// Keywords already search for their text anywhere, so `contains` changes
+/// nothing and `all` changes how the list combines. Any other modifier would
+/// need a meaning for "any field" that Sigma does not define, so it is refused.
+fn keyword_predicate(predicate: &FieldPredicate) -> Result<Expr, ResolveError> {
+    let key = &predicate.key;
+    if let Some(modifier) = key
+        .modifiers
+        .iter()
+        .find(|modifier| !matches!(modifier, Modifier::All | Modifier::Contains))
+    {
+        return Err(ResolveError::UnsupportedModifier {
+            // There is no field; name what the modifier was applied to.
+            field: "keywords".to_owned(),
+            modifier: modifier.name(),
+        });
+    }
+    let keywords = predicate
+        .values
+        .iter()
+        .map(keyword)
+        .collect::<Result<_, _>>()?;
+    Ok(if key.requires_all() {
+        Expr::all(keywords)
+    } else {
+        Expr::any(keywords)
+    })
 }
 
 /// A keyword searches every string in the event for its text.
