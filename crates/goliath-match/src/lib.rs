@@ -16,6 +16,6 @@ pub mod error;
 pub mod reference;
 mod semantics;
 
-pub use engine::Engine;
+pub use engine::{Engine, Scratch};
 pub use error::CompileError;
 pub use reference::ReferenceRule;

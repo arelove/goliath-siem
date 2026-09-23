@@ -26,7 +26,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use aho_corasick::{AhoCorasick, MatchKind};
-use goliath_rule::{ClassValue, Expr, FieldPath, Predicate, ResolvedRule, Test, fold};
+use goliath_rule::{ClassValue, Expr, FieldPath, Predicate, ResolvedRule, Test, fold_into};
 use goliath_sigma::{Pattern, PatternPart};
 use regex::Regex;
 use serde_json::Value;
@@ -169,107 +169,254 @@ impl Engine {
     }
 
     /// Returns the indices of every rule `event` matches, in ascending order.
+    ///
+    /// Allocates working memory for this one call. To evaluate many events,
+    /// use [`Engine::matches_into`] with one [`Scratch`] kept across them.
     pub fn matches(&self, event: &Value) -> Vec<usize> {
+        let mut scratch = self.scratch();
         let mut matched = Vec::new();
-        for group in &self.groups {
+        self.matches_into(event, &mut scratch, &mut matched);
+        matched
+    }
+
+    /// Creates working memory sized for this engine.
+    pub fn scratch(&self) -> Scratch {
+        Scratch {
+            groups: self
+                .groups
+                .iter()
+                .map(|group| GroupScratch {
+                    hits: vec![0; group.literals],
+                    found: Vec::new(),
+                    texts: (0..group.sources.len()).map(|_| Texts::default()).collect(),
+                    candidate: vec![0; group.rules.len()],
+                    candidates: Vec::new(),
+                    memo: vec![0; group.predicates.len()],
+                    memo_value: vec![false; group.predicates.len()],
+                    generation: 0,
+                })
+                .collect(),
+        }
+    }
+
+    /// Writes the indices of every rule `event` matches into `matched`, in
+    /// ascending order, replacing its contents.
+    ///
+    /// Once `scratch` has seen a few events it has grown to fit them, and
+    /// evaluation stops allocating. A scratch made by another engine is
+    /// replaced by one that fits this engine.
+    pub fn matches_into(&self, event: &Value, scratch: &mut Scratch, matched: &mut Vec<usize>) {
+        if !scratch.fits(self) {
+            *scratch = self.scratch();
+        }
+        matched.clear();
+        for (group, work) in self.groups.iter().zip(&mut scratch.groups) {
             if group
                 .class
                 .iter()
                 .all(|(path, expected)| has_class_value(event, path, expected))
             {
-                group.evaluate(event, &mut matched);
+                group.evaluate(event, work, matched);
             }
         }
         matched.sort_unstable();
-        matched
+    }
+}
+
+/// Working memory for [`Engine::matches_into`], kept across events so that
+/// evaluation does not allocate once warmed up.
+#[derive(Debug, Default)]
+pub struct Scratch {
+    groups: Vec<GroupScratch>,
+}
+
+impl Scratch {
+    /// Reports whether this scratch was sized for `engine`.
+    fn fits(&self, engine: &Engine) -> bool {
+        self.groups.len() == engine.groups.len()
+            && self.groups.iter().zip(&engine.groups).all(|(work, group)| {
+                work.hits.len() == group.literals
+                    && work.texts.len() == group.sources.len()
+                    && work.candidate.len() == group.rules.len()
+                    && work.memo.len() == group.predicates.len()
+            })
+    }
+}
+
+#[derive(Debug)]
+struct GroupScratch {
+    /// Where each literal was found, for this event.
+    hits: Vec<u8>,
+    /// The literals with any hit, so resetting touches only them.
+    found: Vec<usize>,
+    /// Each source's texts, for this event.
+    texts: Vec<Texts>,
+    /// The generation in which each rule last became a candidate.
+    candidate: Vec<u32>,
+    /// This event's candidate rules, as positions.
+    candidates: Vec<usize>,
+    /// The generation in which each predicate was last computed, and its
+    /// value then.
+    memo: Vec<u32>,
+    memo_value: Vec<bool>,
+    /// Increments per evaluation, so stale marks need no clearing.
+    generation: u32,
+}
+
+impl GroupScratch {
+    /// Starts a new evaluation, invalidating every mark from the last one.
+    fn next_generation(&mut self) {
+        self.generation = self.generation.wrapping_add(1);
+        if self.generation == 0 {
+            // Wrapped: old marks could now look current, so clear them.
+            self.candidate.fill(0);
+            self.memo.fill(0);
+            self.generation = 1;
+        }
+    }
+}
+
+/// Text buffers reused across events; only the first `len` are current.
+#[derive(Debug, Default)]
+struct Texts {
+    buffers: Vec<String>,
+    len: usize,
+}
+
+impl Texts {
+    fn clear(&mut self) {
+        self.len = 0;
+    }
+
+    /// An empty buffer for the next text.
+    fn next(&mut self) -> &mut String {
+        if self.len == self.buffers.len() {
+            self.buffers.push(String::new());
+        }
+        let buffer = &mut self.buffers[self.len];
+        buffer.clear();
+        self.len += 1;
+        buffer
+    }
+
+    fn current(&self) -> &[String] {
+        &self.buffers[..self.len]
     }
 }
 
 impl Group {
-    fn evaluate(&self, event: &Value, matched: &mut Vec<usize>) {
+    fn evaluate(&self, event: &Value, work: &mut GroupScratch, matched: &mut Vec<usize>) {
+        work.next_generation();
+
         // Gather each source's texts and find every literal in one pass each.
-        let mut hits = vec![0_u8; self.literals];
-        let texts: Vec<Vec<String>> = self
-            .sources
-            .iter()
-            .map(|source| {
-                let texts = source.texts(event);
-                if let Some(automaton) = &source.automaton {
-                    for candidate in &texts {
-                        for found in automaton.find_overlapping_iter(candidate.as_str()) {
-                            let mut flags = hit::ANY;
-                            if found.start() == 0 {
-                                flags |= hit::START;
-                            }
-                            if found.end() == candidate.len() {
-                                flags |= hit::END;
-                            }
-                            if found.start() == 0 && found.end() == candidate.len() {
-                                flags |= hit::WHOLE;
-                            }
-                            hits[source.first_literal + found.pattern().as_usize()] |= flags;
-                        }
+        for (source, texts) in self.sources.iter().zip(&mut work.texts) {
+            source.gather(event, texts);
+            let Some(automaton) = &source.automaton else {
+                continue;
+            };
+            for candidate in texts.current() {
+                for found in automaton.find_overlapping_iter(candidate.as_str()) {
+                    let mut flags = hit::ANY;
+                    if found.start() == 0 {
+                        flags |= hit::START;
                     }
+                    if found.end() == candidate.len() {
+                        flags |= hit::END;
+                    }
+                    if found.start() == 0 && found.end() == candidate.len() {
+                        flags |= hit::WHOLE;
+                    }
+                    let literal = source.first_literal + found.pattern().as_usize();
+                    if work.hits[literal] == 0 {
+                        work.found.push(literal);
+                    }
+                    work.hits[literal] |= flags;
                 }
-                texts
-            })
-            .collect();
+            }
+        }
 
         // Only rules triggered by a literal found, and those without a
         // trigger, can hold.
-        let mut candidate = vec![false; self.rules.len()];
-        for &position in &self.untriggered {
-            candidate[position] = true;
-        }
-        for (literal, flags) in hits.iter().enumerate() {
-            if flags & hit::ANY != 0 {
-                for &position in &self.triggers[literal] {
-                    candidate[position] = true;
-                }
+        work.candidates.clear();
+        let generation = work.generation;
+        let triggered = work
+            .found
+            .iter()
+            .flat_map(|&literal| &self.triggers[literal]);
+        for &position in self.untriggered.iter().chain(triggered) {
+            if work.candidate[position] != generation {
+                work.candidate[position] = generation;
+                work.candidates.push(position);
             }
         }
 
-        let mut memo = vec![None; self.predicates.len()];
+        let GroupScratch {
+            hits,
+            found,
+            texts,
+            candidates,
+            memo,
+            memo_value,
+            ..
+        } = work;
         let context = Context {
             group: self,
             event,
-            hits: &hits,
-            texts: &texts,
+            hits,
+            texts,
+            generation,
         };
-        for (position, (index, node)) in self.rules.iter().enumerate() {
-            if candidate[position] && context.node(node, &mut memo) {
+        for &position in candidates.iter() {
+            let (index, node) = &self.rules[position];
+            if context.node(node, memo, memo_value) {
                 matched.push(*index);
             }
         }
+
+        for &literal in found.iter() {
+            hits[literal] = 0;
+        }
+        found.clear();
     }
 }
 
 impl Source {
-    fn texts(&self, event: &Value) -> Vec<String> {
-        let mut texts = Vec::new();
+    /// Collects this source's texts from `event`, folded unless cased.
+    ///
+    /// Reads the same values, in the same order, as the reference evaluator:
+    /// strings and numbers for paths, strings only for keywords.
+    fn gather(&self, event: &Value, texts: &mut Texts) {
+        texts.clear();
+        let cased = self.cased;
+        let mut push = |text: &str| {
+            let buffer = texts.next();
+            if cased {
+                buffer.push_str(text);
+            } else {
+                fold_into(text, buffer);
+            }
+        };
         match &self.origin {
             Origin::Paths(paths) => {
-                texts.extend(pool(event, paths).into_iter().filter_map(text));
-            }
-            Origin::AnyString => strings(event, &mut texts),
-        }
-        if !self.cased {
-            for candidate in &mut texts {
-                if let std::borrow::Cow::Owned(folded) = fold(candidate) {
-                    *candidate = folded;
+                for path in paths {
+                    path.visit(event, &mut |value| match value {
+                        Value::String(text) => push(text),
+                        Value::Number(number) => push(&number.to_string()),
+                        _ => {}
+                    });
                 }
             }
+            Origin::AnyString => strings(event, &mut push),
         }
-        texts
     }
 }
 
-/// Every string anywhere in `value`, as keywords search them.
-fn strings(value: &Value, out: &mut Vec<String>) {
+/// Calls `visit` on every string anywhere in `value`, as keywords search them.
+fn strings(value: &Value, visit: &mut impl FnMut(&str)) {
     match value {
-        Value::String(text) => out.push(text.clone()),
-        Value::Array(items) => items.iter().for_each(|item| strings(item, out)),
-        Value::Object(map) => map.values().for_each(|item| strings(item, out)),
+        Value::String(text) => visit(text),
+        Value::Array(items) => items.iter().for_each(|item| strings(item, visit)),
+        Value::Object(map) => map.values().for_each(|item| strings(item, visit)),
         _ => {}
     }
 }
@@ -279,7 +426,8 @@ struct Context<'a> {
     group: &'a Group,
     event: &'a Value,
     hits: &'a [u8],
-    texts: &'a [Vec<String>],
+    texts: &'a [Texts],
+    generation: u32,
 }
 
 impl Context<'_> {
@@ -288,17 +436,22 @@ impl Context<'_> {
         self.group.sources[source].first_literal + literal
     }
 
-    fn node(&self, node: &Node, memo: &mut [Option<bool>]) -> bool {
+    fn node(&self, node: &Node, memo: &mut [u32], values: &mut [bool]) -> bool {
         match node {
-            Node::And(operands) => operands.iter().all(|operand| self.node(operand, memo)),
-            Node::Or(operands) => operands.iter().any(|operand| self.node(operand, memo)),
-            Node::Not(operand) => !self.node(operand, memo),
+            Node::And(operands) => operands
+                .iter()
+                .all(|operand| self.node(operand, memo, values)),
+            Node::Or(operands) => operands
+                .iter()
+                .any(|operand| self.node(operand, memo, values)),
+            Node::Not(operand) => !self.node(operand, memo, values),
             Node::Pred(index) => {
-                if let Some(known) = memo[*index] {
-                    return known;
+                if memo[*index] == self.generation {
+                    return values[*index];
                 }
                 let value = self.predicate(&self.group.predicates[*index]);
-                memo[*index] = Some(value);
+                memo[*index] = self.generation;
+                values[*index] = value;
                 value
             }
         }
@@ -327,6 +480,7 @@ impl Context<'_> {
                 required
                     .is_none_or(|literal| self.hits[self.global(*source, literal)] & hit::ANY != 0)
                     && self.texts[*source]
+                        .current()
                         .iter()
                         .any(|candidate| pattern.matches(candidate))
             }
