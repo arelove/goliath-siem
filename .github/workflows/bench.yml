@@ -1,0 +1,58 @@
+name: Benchmarks
+
+# Counts the instructions the engine spends under Callgrind, and fails a pull
+# request that makes a count grow past the limit. Instruction counts barely
+# move between runs of the same code, unlike timings on shared runners, so a
+# small limit holds. See docs/benchmarks.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  # A pull request may grow an instruction count by at most this much.
+  LIMIT: ir=2%
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  callgrind:
+    name: instruction counts
+    runs-on: ubuntu-latest
+    env:
+      GUNGRAUN_HOME: ${{ github.workspace }}/target/gungraun
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Valgrind
+        run: sudo apt-get update && sudo apt-get install -y valgrind
+      - name: Install gungraun-runner
+        run: |
+          # The runner must be the version of the gungraun library in the
+          # lockfile, or the two cannot talk to each other.
+          version=$(grep -A1 '^name = "gungraun"$' Cargo.lock | sed -n 's/^version = "\(.*\)"$/\1/p')
+          cargo install gungraun-runner --version "$version" --locked
+      - name: Measure the base
+        if: github.event_name == 'pull_request'
+        env:
+          # Built in the same target directory, so unchanged dependencies are
+          # compiled once for both.
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target
+        run: |
+          git fetch --depth 1 origin "${{ github.event.pull_request.base.sha }}"
+          git worktree add "$RUNNER_TEMP/base" FETCH_HEAD
+          cd "$RUNNER_TEMP/base"
+          if [ -f crates/goliath-bench/benches/engine.rs ]; then
+            cargo bench -p goliath-bench --features callgrind --bench engine -- --save-baseline=base
+          else
+            echo "The base has no benchmark yet; this run records one and compares nothing."
+          fi
+      - name: Measure this change
+        run: |
+          cargo bench -p goliath-bench --features callgrind --bench engine -- \
+            --baseline=base --callgrind-limits="$LIMIT"

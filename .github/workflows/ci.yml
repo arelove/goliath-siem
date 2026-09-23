@@ -40,7 +40,8 @@ jobs:
       - name: rustfmt
         run: cargo fmt --all --check
       - name: clippy
-        run: cargo clippy --workspace --all-targets
+        # `--all-features` includes the benchmarks, which need a feature.
+        run: cargo clippy --workspace --all-targets --all-features
 
   msrv:
     name: minimum supported rust version
@@ -59,7 +60,7 @@ jobs:
       # `+toolchain` is required: rust-toolchain.toml would otherwise override
       # the installed MSRV toolchain with stable, and the check would pass on
       # code the declared MSRV cannot build.
-      - run: cargo +${{ steps.msrv.outputs.version }} check --workspace --all-targets
+      - run: cargo +${{ steps.msrv.outputs.version }} check --workspace --all-targets --all-features
 
   docs:
     name: documentation
