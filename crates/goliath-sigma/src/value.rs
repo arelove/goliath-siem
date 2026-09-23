@@ -38,8 +38,14 @@ pub enum PatternPart {
 ///
 /// Parsing happens once, when a rule loads, so that matching never reinterprets
 /// escapes on the per-event path.
+///
+/// The text as written is kept beside the parts. Modifiers that give the value
+/// a meaning other than a wildcard pattern, such as `re`, need it: parsing is
+/// lossy for them, since the `*` in `a.*b` would become a wildcard, and `\\d`
+/// and `\d` would both become the same literal.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Pattern {
+    source: String,
     parts: Vec<PatternPart>,
 }
 
@@ -80,7 +86,55 @@ impl Pattern {
             parts.push(PatternPart::Literal(literal));
         }
 
-        Self { parts }
+        Self {
+            source: source.to_owned(),
+            parts,
+        }
+    }
+
+    /// Builds a pattern from parts.
+    ///
+    /// Adjacent literals are merged, empty literals dropped, and runs of `*`
+    /// collapsed, none of which changes what the pattern matches. The source
+    /// text is written with escapes such that parsing it gives the same parts.
+    pub fn from_parts(parts: impl IntoIterator<Item = PatternPart>) -> Self {
+        let mut normalized: Vec<PatternPart> = Vec::new();
+        for part in parts {
+            match (normalized.last_mut(), part) {
+                (_, PatternPart::Literal(text)) if text.is_empty() => {}
+                (Some(PatternPart::Literal(previous)), PatternPart::Literal(text)) => {
+                    previous.push_str(&text);
+                }
+                (Some(PatternPart::AnySequence), PatternPart::AnySequence) => {}
+                (_, part) => normalized.push(part),
+            }
+        }
+
+        let mut source = String::new();
+        for part in &normalized {
+            match part {
+                PatternPart::Literal(text) => {
+                    for ch in text.chars() {
+                        if matches!(ch, '*' | '?' | '\\') {
+                            source.push('\\');
+                        }
+                        source.push(ch);
+                    }
+                }
+                PatternPart::AnySequence => source.push('*'),
+                PatternPart::AnyChar => source.push('?'),
+            }
+        }
+
+        Self {
+            source,
+            parts: normalized,
+        }
+    }
+
+    /// Returns the value as written in the rule, before escapes were resolved.
+    pub fn source(&self) -> &str {
+        &self.source
     }
 
     /// Returns the pattern's elements in order.
@@ -326,6 +380,49 @@ mod tests {
             !Value::Float(1.5).is_indexable(),
             "float equality is not a sound index key"
         );
+    }
+
+    #[test]
+    fn keeps_the_text_as_written() {
+        // What a `re` value needs: parsing alone loses the distinction.
+        let pattern = Pattern::parse(r"\\d+ a.*b");
+        assert_eq!(pattern.source(), r"\\d+ a.*b");
+        assert_eq!(
+            Pattern::parse(r"\\d").parts(),
+            Pattern::parse(r"\d").parts(),
+            "the parts alone cannot tell these apart"
+        );
+    }
+
+    #[test]
+    fn from_parts_normalizes_without_changing_meaning() {
+        let pattern = Pattern::from_parts([
+            PatternPart::AnySequence,
+            PatternPart::AnySequence,
+            PatternPart::Literal("a".to_owned()),
+            PatternPart::Literal(String::new()),
+            PatternPart::Literal("b".to_owned()),
+            PatternPart::AnyChar,
+        ]);
+        assert_eq!(
+            pattern.parts(),
+            [
+                PatternPart::AnySequence,
+                PatternPart::Literal("ab".to_owned()),
+                PatternPart::AnyChar,
+            ]
+        );
+    }
+
+    #[test]
+    fn from_parts_writes_a_source_that_parses_back() {
+        let built = Pattern::from_parts([
+            PatternPart::Literal(r"C:\Users\".to_owned()),
+            PatternPart::AnySequence,
+            PatternPart::Literal(r"*?\".to_owned()),
+            PatternPart::AnyChar,
+        ]);
+        assert_eq!(Pattern::parse(built.source()).parts(), built.parts());
     }
 
     #[test]

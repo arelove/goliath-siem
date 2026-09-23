@@ -28,12 +28,20 @@ pub enum Target {
 impl Target {
     /// Reports whether `identifier` is covered by this target.
     ///
-    /// [`Them`](Target::Them) covers everything. A pattern matches with `*`
-    /// standing for any run of characters, including none.
+    /// A pattern matches with `*` standing for any run of characters,
+    /// including none.
+    ///
+    /// An identifier starting with `_` is covered only by a pattern that
+    /// itself starts with `_`, and never by [`Them`](Target::Them). Authors
+    /// use the prefix for helper searches meant to be referenced by name, and
+    /// pySigma, the reference implementation, excludes them the same way.
     pub fn matches(&self, identifier: &str) -> bool {
+        let hidden = identifier.starts_with('_');
         match self {
-            Self::Them => true,
-            Self::Pattern(pattern) => wildcard_matches(pattern, identifier),
+            Self::Them => !hidden,
+            Self::Pattern(pattern) => {
+                (pattern.starts_with('_') || !hidden) && wildcard_matches(pattern, identifier)
+            }
         }
     }
 }
@@ -213,9 +221,21 @@ mod tests {
     }
 
     #[test]
-    fn them_covers_every_identifier() {
+    fn them_covers_every_identifier_not_starting_with_an_underscore() {
         assert!(Target::Them.matches("selection"));
         assert!(Target::Them.matches("filter_admin"));
+        assert!(!Target::Them.matches("_helper"));
+    }
+
+    #[test]
+    fn underscore_identifiers_need_an_underscore_pattern() {
+        let any = Target::Pattern("*".to_owned());
+        assert!(!any.matches("_helper"));
+        assert!(any.matches("selection"));
+
+        let helpers = Target::Pattern("_*".to_owned());
+        assert!(helpers.matches("_helper"));
+        assert!(!helpers.matches("selection"));
     }
 
     #[test]
