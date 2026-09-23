@@ -18,8 +18,12 @@ pub mod error;
 pub mod fold;
 pub mod mapping;
 pub mod path;
+pub mod resolved;
 
-pub use error::{MappingError, PathError};
+pub use error::{MappingError, NetworkError, PathError};
 pub use fold::fold;
 pub use mapping::{ClassValue, LogSourceSelector, MappingSet, SourceMapping};
 pub use path::FieldPath;
+pub use resolved::{
+    Comparison, Expr, MappingVersion, Network, Number, Predicate, ResolvedRule, StringTest, Test,
+};

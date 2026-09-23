@@ -22,6 +22,11 @@ pub enum PathError {
     },
 }
 
+/// Text that is not an IP address or network.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[error("`{0}` is not an IP address or network")]
+pub struct NetworkError(pub String);
+
 /// A mapping set that cannot be loaded, or cannot resolve a rule's log source.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
