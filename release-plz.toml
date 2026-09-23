@@ -29,3 +29,7 @@ publish = true
 [[package]]
 name = "goliath-rule"
 publish = true
+
+[[package]]
+name = "goliath-match"
+publish = true

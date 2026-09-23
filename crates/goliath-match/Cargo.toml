@@ -1,0 +1,22 @@
+[package]
+name = "goliath-match"
+description = "Evaluation of resolved detection rules against OCSF events"
+keywords = ["sigma", "ocsf", "security", "siem", "detection"]
+categories = ["algorithms"]
+readme = "README.md"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+goliath-rule = { path = "../goliath-rule", version = "0.1.0" }
+goliath-sigma = { path = "../goliath-sigma", version = "0.1.0" }
+regex = "1"
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
