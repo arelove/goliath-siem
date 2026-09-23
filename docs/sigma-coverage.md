@@ -7,19 +7,36 @@ it parses, resolves to OCSF paths through a shipped mapping set
 evaluator.
 
 Measured against SigmaHQ commit `16eb587` (2026-09-22) with the
-`sigma-windows` mapping set, version 2.
+`sigma-windows` mapping set, version 3.
 
 ## Summary
 
 | Rule set | Rules | Parse failures | Loaded | Loaded where a mapping exists |
 | --- | ---: | ---: | ---: | ---: |
-| `rules` | 3,144 | 0 | 1,184 | 1,184 of 1,185 (99.9%) |
-| `rules-emerging-threats` | 473 | 0 | 174 | 174 of 174 (100%) |
-| `rules-threat-hunting` | 140 | 0 | 58 | 58 of 58 (100%) |
+| `rules` | 3,144 | 0 | 1,705 | 1,705 of 1,706 (99.9%) |
+| `rules-emerging-threats` | 473 | 0 | 251 | 251 of 251 (100%) |
+| `rules-threat-hunting` | 140 | 0 | 90 | 90 of 90 (100%) |
 
 Every rule in all three sets parses. The rules that do not load are almost
-entirely rules for log sources that have no mapping yet, which is expected: one
-mapping entry exists so far, Windows process creation.
+entirely rules for log sources that have no mapping yet. Mapped so far are the
+five Windows log sources Sysmon produces most rules for: process creation, file
+creation, image loads, network connections, and registry value sets.
+
+### Fields kept as Sysmon wrote them
+
+Some Sysmon fields map to `unmapped.<name>` rather than to an OCSF attribute
+of similar meaning, because their values are Sysmon's text and rules compare
+that text:
+
+| Field | Sysmon writes | OCSF has | Rules using it |
+| --- | --- | --- | ---: |
+| `Details` (registry) | `DWORD (0x00000001)` | the value itself in `reg_value.data` | 312 |
+| `Initiated` (network) | `true` | an enumeration, `connection_info.direction_id` | 49 |
+| `Signed`, `SignatureStatus` (image load) | `true`, `Valid` | a structured `signature` object | 28 |
+
+Mapping these properly needs value translation in the mapping format, not only
+paths. Until then, the rules work on Sysmon data whose normalizer keeps the
+original fields, and would not fire on another producer's OCSF events.
 
 ## What stops the rest
 
@@ -27,17 +44,17 @@ Log sources without a mapping, by number of rules in `rules`:
 
 | Log source | Rules |
 | --- | ---: |
-| `registry_set`, Windows | 204 |
-| `file_event`, Windows | 166 |
 | `ps_script`, Windows | 163 |
 | `security` service, Windows | 145 |
 | `process_creation`, Linux | 122 |
-| `image_load`, Windows | 100 |
 | `process_creation`, macOS | 67 |
 | `system` service, Windows | 63 |
 | `cloudtrail`, AWS | 57 |
 | `auditd`, Linux | 53 |
-| `network_connection`, Windows | 51 |
+| `auditlogs`, Azure | 44 |
+| `activitylogs`, Azure | 35 |
+| `ps_module`, Windows | 33 |
+| `registry_event`, Windows | 32 |
 
 This is the order in which mappings are worth writing: each row is the number
 of rules one new mapping entry would make loadable.
@@ -58,16 +75,21 @@ reference evaluator.
 | Outcome | Cases |
 | --- | ---: |
 | Regression cases in SigmaHQ | 460 |
-| Run | 276 |
-| Fired exactly as SigmaHQ expects | 276 |
+| Run | 357 |
+| Fired exactly as SigmaHQ expects | 357 |
 | Failed | 0 |
-| Skipped: no mapping for the rule's log source | 182 |
+| Skipped: no mapping for the rule's log source | 101 |
 | Skipped: events refused by antivirus software | 1 |
 | Skipped: malformed case description | 1 |
 
-Every case whose rule loads passes. To confirm the check can fail at all, the
-run was repeated with case folding switched off in the evaluator: 129 of the
-276 cases failed.
+Every case whose rule loads passes. To confirm the check can fail at all, it
+was run twice with a deliberate fault:
+
+- case folding switched off in the evaluator: 129 of the 276 process creation
+  cases failed;
+- four fields of the newer mappings pointed at the wrong attribute
+  (`TargetObject`, `ImageLoaded`, `TargetFilename`, `DestinationHostname`): 76
+  of 357 cases failed.
 
 What this does and does not show:
 
@@ -79,7 +101,7 @@ What this does and does not show:
   mapping, so an attribute chosen wrongly in both would go unnoticed. The M2
   source definition, tested against its own fixtures, closes that gap.
 
-Each event is also evaluated against every other loaded rule. 127 rules fire on
+Each event is also evaluated against every other loaded rule. 152 rules fire on
 at least one other rule's attack. That is expected, since attacks share steps,
 but the most frequent are the first candidates for review as overly broad:
 "Non Interactive PowerShell Process Spawned" fires on 47 other rules' events.
