@@ -22,6 +22,11 @@ pub enum PathError {
     },
 }
 
+/// Text that is not an IP address or network.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[error("`{0}` is not an IP address or network")]
+pub struct NetworkError(pub String);
+
 /// A mapping set that cannot be loaded, or cannot resolve a rule's log source.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
@@ -68,5 +73,61 @@ pub enum MappingError {
     Ambiguous {
         /// The log source the rule declared.
         logsource: LogSourceSelector,
+    },
+}
+
+/// A rule that cannot be resolved exactly.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
+pub enum ResolveError {
+    /// No mapping applies to the rule's log source.
+    #[error(transparent)]
+    Mapping(#[from] MappingError),
+
+    /// The mapping for the rule's log source does not map a field it uses.
+    ///
+    /// Refused rather than treated as absent: the rule would load and never
+    /// fire, and the gap would be invisible.
+    #[error("field `{field}` has no mapping for log source ({logsource})")]
+    UnmappedField {
+        /// The field name as the rule wrote it.
+        field: String,
+        /// The rule's log source.
+        logsource: LogSourceSelector,
+    },
+
+    /// A modifier whose meaning depends on configuration this resolution
+    /// does not have.
+    #[error("field `{field}` uses `{modifier}`, which is not supported")]
+    UnsupportedModifier {
+        /// The field name.
+        field: String,
+        /// The modifier.
+        modifier: &'static str,
+    },
+
+    /// A value that cannot mean anything under its modifiers.
+    #[error("field `{field}`: {reason}")]
+    InvalidValue {
+        /// The field name.
+        field: String,
+        /// Why.
+        reason: &'static str,
+    },
+
+    /// A value expands into more variants than a rule may carry.
+    #[error("field `{field}` expands into {count} variants")]
+    TooManyVariants {
+        /// The field name.
+        field: String,
+        /// How many variants it would produce.
+        count: usize,
+    },
+
+    /// A keyword that is not text.
+    #[error("a keyword must be text, found {found}")]
+    UnsupportedKeyword {
+        /// What was found.
+        found: &'static str,
     },
 }

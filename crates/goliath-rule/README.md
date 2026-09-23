@@ -17,6 +17,10 @@ what a rule means. The reasoning is in
 - Field mappings from a rule language's field names to OCSF paths, selected
   by log source. The shipped set for Sigma on Windows is in
   [mappings/](mappings/).
+- Resolution of parsed Sigma rules into that form: modifiers become wildcard
+  patterns, transformations such as `base64offset` and `windash` become the
+  variants pySigma produces, and anything that cannot be resolved exactly is
+  refused.
 
 ## License
 
