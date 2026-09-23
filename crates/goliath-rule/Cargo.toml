@@ -12,6 +12,7 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+icu_casemap = "2"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
