@@ -52,7 +52,7 @@ pub mod parser;
 pub mod rule;
 pub mod span;
 pub mod value;
-mod yaml;
+pub mod yaml;
 
 pub use condition::{Condition, Quantifier, Target};
 pub use error::{ConditionError, ModifierError, RuleError, YamlError};

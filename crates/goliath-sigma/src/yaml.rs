@@ -3,6 +3,9 @@
 //! Every rule passes through [`from_str`], and nothing else in the crate calls
 //! the YAML library directly, so the settings below apply to all of them. The
 //! reasoning behind each setting is in `docs/adr/0011-untrusted-yaml.md`.
+//!
+//! [`from_str`] is public so that other rule content, such as field mappings,
+//! is loaded with exactly the same settings rather than a copy of them.
 
 use std::collections::BTreeMap;
 
@@ -26,7 +29,12 @@ fn options() -> serde_saphyr::Options {
 }
 
 /// Deserializes untrusted YAML with the hardened settings.
-pub(crate) fn from_str<T: DeserializeOwned>(source: &str) -> Result<T, YamlError> {
+///
+/// # Errors
+///
+/// Returns [`YamlError`] with the location of the first problem if the YAML is
+/// malformed, unsafe, or does not fit `T`.
+pub fn from_str<T: DeserializeOwned>(source: &str) -> Result<T, YamlError> {
     serde_saphyr::from_str_with_options(source, options()).map_err(|error| {
         let location = error.location();
         YamlError {
