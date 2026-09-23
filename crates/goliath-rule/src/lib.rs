@@ -21,7 +21,7 @@ pub mod path;
 pub mod resolved;
 pub mod sigma;
 
-pub use error::{MappingError, NetworkError, PathError};
+pub use error::{MappingError, NetworkError, PathError, ResolveError};
 pub use fold::fold;
 pub use mapping::{ClassValue, LogSourceSelector, MappingSet, SourceMapping};
 pub use path::FieldPath;
