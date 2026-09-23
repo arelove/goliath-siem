@@ -53,6 +53,11 @@ on it only for Sigma parsing. Each crate carries its own version and its own
 
 `GITHUB_TOKEN` is provided by Actions and needs no configuration.
 
+Until `CARGO_REGISTRY_TOKEN` is set, the release workflow does nothing: no
+release pull request is proposed and nothing is published. A release pull
+request merged without the token would record a release in the changelogs that
+never reached crates.io.
+
 Rotate `CARGO_REGISTRY_TOKEN` on the same schedule as any other deployment
 credential.
 
