@@ -34,8 +34,9 @@ pub struct Workload {
 /// Windows process launches against process creation rules.
 ///
 /// About one event in ten is suspicious, built from the same binaries and
-/// command line fragments the rules look for; the rest is ordinary activity
-/// that shares only common substrings, such as `.exe`, with the rules.
+/// command line fragments the rules look for. The rest is ordinary activity,
+/// much of it by the same binaries, which rules must wake up for and then
+/// reject.
 ///
 /// # Panics
 ///
@@ -221,13 +222,43 @@ const FRAGMENTS: &[&str] = &[
     "-decode",
     "-decodehex",
     r"\appdata\",
-    "copy ",
     "wevtutil cl",
     "clear-eventlog",
-    ".ps1",
     ".hta",
-    "http://",
-    "https://",
+];
+
+/// Short command line fragments that ordinary activity is full of. `SigmaHQ`
+/// rules use them only together with a specific image, as rules here do.
+const COMMON: &[&str] = &[
+    " /c ", ".dll", "http", "http://", "https://", " -e ", "/i ", ".bat", ".ps1", "copy ",
+];
+
+/// Ordinary uses of the same binaries attackers use. Real telemetry is full
+/// of them, and they are what makes a rule's choice of trigger matter: a
+/// rule waiting on `\cmd.exe` or `.dll` wakes on every one.
+const ADMINISTRATION: &[(&str, &str)] = &[
+    ("cmd.exe", "/c echo ok"),
+    ("cmd.exe", r#"/c "C:\Program Files\Vendor\run.bat""#),
+    ("cmd.exe", r"/c copy C:\logs\app.log \\backup\logs\"),
+    ("powershell.exe", "-NoProfile -Command Get-Process"),
+    ("powershell.exe", r"-File C:\scripts\inventory.ps1"),
+    (
+        "powershell.exe",
+        "-ExecutionPolicy RemoteSigned -File update.ps1",
+    ),
+    ("rundll32.exe", "shell32.dll,Control_RunDLL"),
+    (
+        "rundll32.exe",
+        r"C:\Windows\System32\printui.dll,PrintUIEntryDPIAware",
+    ),
+    ("rundll32.exe", "advapi32.dll,ProcessIdleTasks"),
+    ("msiexec.exe", r"/i C:\Windows\Temp\agent.msi /qn"),
+    ("schtasks.exe", "/query /fo csv"),
+    ("reg.exe", r"query HKLM\Software\Vendor"),
+    ("net.exe", r"use Z: \\fileserver\share"),
+    ("curl.exe", "-s https://api.example.com/health"),
+    ("regsvr32.exe", r"/s C:\Program Files\Vendor\plugin.dll"),
+    ("wmic.exe", "os get caption"),
 ];
 
 /// Command line arguments of ordinary activity.
@@ -276,10 +307,26 @@ fn rule(random: &mut Random, index: usize) -> String {
             };
             let _ = write!(
                 detection,
-                "  selection_img:\n    Image|endswith:{}\n  selection_cli:\n    CommandLine|contains{all}:{}\n",
+                "  selection_img:
+    Image|endswith:{}
+  selection_cli:
+    CommandLine|contains{all}:{}
+",
                 list(&images, "\\"),
                 list(&fragments, ""),
             );
+            // Some rules also require a common fragment, such as `.dll` for
+            // `rundll32.exe`: ordinary activity then has two literals to wake
+            // the rule and only the specific one to reject it with.
+            if random.chance(30) {
+                let _ = write!(
+                    detection,
+                    "  selection_common:
+    CommandLine|contains:{}
+",
+                    list(&random.some(COMMON, 2), ""),
+                );
+            }
             "all of selection_*"
         }
         // The same with a filter on the parent.
@@ -360,11 +407,13 @@ fn rule(random: &mut Random, index: usize) -> String {
 
 /// A Windows process launch in OCSF.
 fn launch(random: &mut Random) -> Value {
-    let suspicious = random.chance(10);
-    let (image, cmd_line) = if suspicious {
+    let (image, cmd_line) = if random.chance(10) {
         let image = random.pick(SUSPICIOUS);
         let fragments = random.some(FRAGMENTS, 3).concat();
         (image, format!("{image} {fragments}"))
+    } else if random.chance(40) {
+        let (image, arguments) = ADMINISTRATION[random.below(ADMINISTRATION.len())];
+        (image, format!("{image} {arguments}"))
     } else {
         let image = random.pick(ORDINARY);
         let arguments = random.some(ARGUMENTS, 2).join(" ");

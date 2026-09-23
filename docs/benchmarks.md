@@ -27,7 +27,9 @@ against regressions between one commit and the next.
 
 `crates/goliath-bench` generates a workload from a fixed seed: 2,000 Sigma
 rules in the shapes of `SigmaHQ`'s Windows process creation rules, and 1,000
-process launches, about one in ten suspicious. The rules are resolved through
+process launches. About one launch in ten is suspicious; four in ten of the rest
+are ordinary uses of the binaries attackers also use, such as `rundll32.exe
+shell32.dll,Control_RunDLL`, which wake rules that must then reject them. The rules are resolved through
 the shipped mapping, like real ones. The workload is synthetic on purpose:
 `SigmaHQ` is not vendored into this repository, and a guard needs the same
 input on every run more than it needs realism.
