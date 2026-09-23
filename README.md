@@ -4,9 +4,36 @@ An open security data platform: event ingestion, detection, response
 orchestration, and incident handling in one system.
 
 > **Status: pre-alpha.** Nothing here is production-ready. The architecture is
-> settled and documented; implementation has just started.
+> settled and documented, and the Sigma detection path works end to end on
+> OCSF events. Ingestion, storage, and the platform around them are not built
+> yet.
 
 Other languages: [Русский](README_ru.md)
+
+## What works today
+
+The first milestone is the detection engine, built to be useful on its own.
+A Sigma rule already goes from YAML to a match on an OCSF event:
+
+| Step | Crate |
+| --- | --- |
+| Parse Sigma rules, treating the YAML as untrusted input | `goliath-sigma` |
+| Resolve Sigma fields to OCSF paths through versioned mappings | `goliath-rule` |
+| Evaluate a resolved rule against an event | `goliath-match` |
+
+Measured against the whole [SigmaHQ](https://github.com/SigmaHQ/sigma)
+repository, with details and reproduction steps in
+[docs/sigma-coverage.md](docs/sigma-coverage.md):
+
+- all 3,757 rules parse;
+- 1,184 of 1,185 Windows process creation rules load, the one log source
+  mapped so far;
+- all 276 SigmaHQ regression cases for loaded rules fire exactly as SigmaHQ
+  expects on real recorded attack events.
+
+Not built yet: the fast engine that shares work across thousands of rules,
+ingestion, storage, and the interface. The order is in
+[docs/roadmap.md](docs/roadmap.md).
 
 ## Why another SIEM
 
@@ -45,12 +72,16 @@ across regions - same code, different composition.
 ```mermaid
 flowchart LR
   S["Sources<br/>Sysmon · Falco · Cloud"] --> V["Collector<br/>Vector + zstd"]
-  V --> B["Buffer<br/>Redpanda or S3"]
+  V --> B["Raw buffer<br/>Redpanda or S3"]
   B --> N["Normalizer<br/>to OCSF"]
-  N --> D["Match engine<br/>Rust"]
-  D --> CH["ClickHouse<br/>7-30 days"]
-  D --> AL["Alerts"]
+  N --> E["Event buffer<br/>OCSF"]
+  E --> W["Writer"]
+  E --> D["Match engine<br/>Rust"]
+  W --> CH["ClickHouse<br/>7-30 days"]
   CH --> S3["S3 + Iceberg<br/>12+ months"]
+  CH --> SC["Scheduler<br/>windowed rules"]
+  D --> AL["Alerts"]
+  SC --> AL
   AL --> PG["PostgreSQL<br/>cases · entities"]
   PG --> T["Temporal<br/>playbooks"]
 ```
@@ -64,6 +95,7 @@ significant decision has an ADR in [docs/adr/](docs/adr/).
 | --- | --- |
 | [docs/architecture.md](docs/architecture.md) | Targets, data flow, component map, benchmark method |
 | [docs/roadmap.md](docs/roadmap.md) | Delivery plan and current milestone |
+| [docs/sigma-coverage.md](docs/sigma-coverage.md) | How much of SigmaHQ loads and fires on real attacks |
 | [docs/adr/](docs/adr/) | Architecture decision records |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Invariants, review rules, how to add a decision |
 
