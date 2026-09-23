@@ -10,7 +10,8 @@ criterion that is measurable, so "done" is not a judgement call.
 
 ## Current milestone
 
-**M0 - Foundations.** In progress.
+**M1 - Matching engine.** In progress. Rule parsing in `goliath-sigma` is
+done; field mapping and the match engine are next.
 
 ## M0 - Foundations
 
@@ -19,12 +20,18 @@ Make the repository able to hold work.
 | Deliverable | Detail |
 | --- | --- |
 | Cargo workspace | Crate layout, shared lints, MSRV policy |
-| CI | Build, test, clippy, rustfmt, license header check, link check on docs |
-| `goliath-ocsf` | OCSF event types, validation, serialization, observable extraction map generated from the schema |
-| Test corpus | A small committed sample set per source type for fast unit tests |
+| CI | Build, test, clippy, rustfmt, MSRV, link check on docs, prose policy |
+| `goliath-ocsf` | OCSF event envelope, validation, serialization, observable types |
+| Releases | Changelog and versioned releases through release pull requests |
 
 **Exit criterion:** `cargo test` passes on Linux, macOS, and Windows in CI, and
 an OCSF event round-trips through serialization with schema validation.
+
+**Status:** done. Two planned items were dropped or moved:
+
+- A license header check: Apache 2.0 does not require a header in every file,
+  and the root `LICENSE` covers the repository.
+- The test corpus: it moved to M1, where the exit criterion first needs one.
 
 ## M1 - Matching engine
 
@@ -34,13 +41,21 @@ platform existing.
 | Deliverable | Detail |
 | --- | --- |
 | `goliath-sigma` | Sigma rule parsing into a typed AST, full modifier support |
+| Field mapping | Sigma fields and log sources resolved to OCSF paths at load time, with case folding ([ADR-0012](adr/0012-sigma-field-mapping.md)) |
+| Reference evaluator | One rule against one event, written for obvious correctness rather than speed |
 | `goliath-match` | Predicate index, rule grouping, bloom prefiltering, bitmap evaluation |
 | `goliath-sigma-clickhouse` | Sigma to ClickHouse SQL compilation for the scheduled path |
 | Benchmark harness | Criterion benchmarks with committed baselines, regression-gated in CI |
+| M1 corpus | Labelled OTRF Security-Datasets recordings converted to OCSF, replicated to 10 million events |
 
 **Exit criterion:** 1,000 Sigma rules evaluated over a 10-million-event corpus
 at a measured and published events/s per core, with results identical to
 one-rule-at-a-time evaluation on the same corpus.
+
+The M1 corpus is deliberately not the M3 generator. It is real telemetry,
+replicated for volume, so it is good enough to check equivalence and measure
+the engine against itself; it cannot stand in for the entity-model stream when
+measuring the platform.
 
 ## M2 - Ingestion path
 
