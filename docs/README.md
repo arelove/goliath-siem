@@ -26,6 +26,7 @@ orchestration, and incident handling in one system.
 | [0009](adr/0009-attack-knowledge-model.md) | MITRE ATT&CK knowledge model | Accepted |
 | [0010](adr/0010-versioning-and-releases.md) | Versioning and releases | Accepted |
 | [0011](adr/0011-untrusted-yaml.md) | Parse rule YAML as untrusted input | Accepted |
+| [0012](adr/0012-sigma-field-mapping.md) | Sigma fields resolve to OCSF paths at load time | Accepted |
 
 ## Writing an ADR
 
