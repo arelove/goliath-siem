@@ -65,3 +65,28 @@ fn process_creation_maps_the_whole_sigma_taxonomy() {
         assert!(entry.fields.contains_key(field), "{field} is not mapped");
     }
 }
+
+#[test]
+fn every_sysmon_category_has_its_ocsf_class() {
+    let set = MappingSet::from_yaml(SIGMA_WINDOWS).expect("loads");
+    let class_uid = FieldPath::parse("class_uid").expect("valid path");
+    for (category, expected) in [
+        ("process_creation", 1007),
+        ("file_event", 1001),
+        ("image_load", 1005),
+        ("network_connection", 4001),
+        ("registry_set", 201_002),
+    ] {
+        let logsource = LogSourceSelector {
+            category: Some(category.to_owned()),
+            product: Some("windows".to_owned()),
+            service: None,
+        };
+        let entry = set.select(&logsource).expect("selected");
+        assert_eq!(
+            entry.class[&class_uid],
+            ClassValue::Integer(expected),
+            "{category}"
+        );
+    }
+}

@@ -11,7 +11,7 @@
 # because OCSF allows either and producers differ.
 
 name: sigma-windows
-version: 2
+version: 3
 
 mappings:
   - logsource: { category: process_creation, product: windows }
@@ -53,3 +53,88 @@ mappings:
         - process.parent_process.parent_process.path
         - actor.process.parent_process.file.path
         - actor.process.parent_process.path
+
+  # In the entries below, `actor.process` is the process that performed the
+  # activity, as OCSF defines it for system events.
+
+  - logsource: { category: file_event, product: windows }
+    # File System Activity, Create, on Windows.
+    class: { class_uid: 1001, activity_id: 1, device.os.type_id: 100 }
+    fields:
+      TargetFilename: file.path
+      Image: [actor.process.file.path, actor.process.path]
+      CommandLine: actor.process.cmd_line
+      ParentImage:
+        - actor.process.parent_process.file.path
+        - actor.process.parent_process.path
+      ParentCommandLine: actor.process.parent_process.cmd_line
+      ProcessId: actor.process.pid
+      ProcessGuid: actor.process.uid
+      User: [actor.user.name, actor.process.user.name]
+      IntegrityLevel: actor.process.integrity
+      # Sysmon writes a formatted date; OCSF times are epoch milliseconds.
+      CreationUtcTime: unmapped.CreationUtcTime
+
+  - logsource: { category: image_load, product: windows }
+    # Module Activity, Load, on Windows. The file attributes describe the
+    # loaded module, not the loading process.
+    class: { class_uid: 1005, activity_id: 1, device.os.type_id: 100 }
+    fields:
+      ImageLoaded: module.file.path
+      Image: [actor.process.file.path, actor.process.path]
+      CommandLine: actor.process.cmd_line
+      ProcessId: actor.process.pid
+      ProcessGuid: actor.process.uid
+      User: [actor.user.name, actor.process.user.name]
+      Product: module.file.product.name
+      Company: module.file.company_name
+      Description: module.file.desc
+      FileVersion: module.file.version
+      OriginalFileName: unmapped.OriginalFileName
+      Hashes: unmapped.Hashes
+      # Sysmon's signature fields are strings such as `true` and `Valid`.
+      # OCSF describes signatures with a structured object and enumerations,
+      # so a rule comparing the strings needs them as Sysmon wrote them.
+      Signed: unmapped.Signed
+      Signature: unmapped.Signature
+      SignatureStatus: unmapped.SignatureStatus
+
+  - logsource: { category: network_connection, product: windows }
+    # Network Activity on Windows. No activity is required: producers record
+    # a Sysmon connection as Open or as Traffic.
+    class: { class_uid: 4001, device.os.type_id: 100 }
+    fields:
+      Image: [actor.process.file.path, actor.process.path]
+      CommandLine: actor.process.cmd_line
+      ParentImage:
+        - actor.process.parent_process.file.path
+        - actor.process.parent_process.path
+      ProcessId: actor.process.pid
+      ProcessGuid: actor.process.uid
+      User: [actor.user.name, actor.process.user.name]
+      SourceIp: src_endpoint.ip
+      SourceHostname: src_endpoint.hostname
+      SourcePort: src_endpoint.port
+      DestinationIp: dst_endpoint.ip
+      DestinationHostname: dst_endpoint.hostname
+      DestinationPort: dst_endpoint.port
+      Protocol: connection_info.protocol_name
+      # `true` or `false` in Sysmon; OCSF expresses direction as an
+      # enumeration, which a path alone cannot translate to.
+      Initiated: unmapped.Initiated
+      SourceIsIpv6: unmapped.SourceIsIpv6
+      DestinationIsIpv6: unmapped.DestinationIsIpv6
+
+  - logsource: { category: registry_set, product: windows }
+    # Registry Value Activity, Set, from the OCSF Windows extension.
+    class: { class_uid: 201002, activity_id: 2, device.os.type_id: 100 }
+    fields:
+      TargetObject: reg_value.path
+      # Sysmon renders the value as text, such as `DWORD (0x00000001)`, and
+      # rules match that text. OCSF `reg_value.data` holds the value itself.
+      Details: unmapped.Details
+      EventType: unmapped.EventType
+      Image: [actor.process.file.path, actor.process.path]
+      ProcessId: actor.process.pid
+      ProcessGuid: actor.process.uid
+      User: [actor.user.name, actor.process.user.name]
