@@ -197,6 +197,7 @@ impl Engine {
                     memo: vec![0; group.predicates.len()],
                     memo_value: vec![false; group.predicates.len()],
                     generation: 0,
+                    values: Vec::new(),
                 })
                 .collect(),
         }
@@ -264,6 +265,8 @@ struct GroupScratch {
     memo_value: Vec<bool>,
     /// Increments per evaluation, so stale marks need no clearing.
     generation: u32,
+    /// The buffer for non-string tests' values, kept empty between events.
+    values: Vec<&'static Value>,
 }
 
 impl GroupScratch {
@@ -370,6 +373,7 @@ impl Group {
             candidates,
             memo,
             memo_value,
+            values,
             ..
         } = work;
         let context = Context {
@@ -378,7 +382,7 @@ impl Group {
             hits,
             texts,
             generation,
-            values: RefCell::new(Vec::new()),
+            values: RefCell::new(recycle(std::mem::take(values))),
         };
         for &position in candidates.iter() {
             let (index, node) = &self.rules[position];
@@ -386,6 +390,7 @@ impl Group {
                 matched.push(*index);
             }
         }
+        *values = recycle(context.values.into_inner());
 
         for &literal in found.iter() {
             hits[literal] = 0;
@@ -427,6 +432,19 @@ fn strings(value: &Value, visit: &mut impl FnMut(&str)) {
         Value::Object(map) => map.values().for_each(|item| strings(item, visit)),
         _ => {}
     }
+}
+
+/// Empties `values` and returns its allocation typed for another lifetime.
+///
+/// The collect reuses the allocation, because the element type keeps its
+/// size and alignment, so a buffer of references into one event can be kept
+/// for the next without allocating.
+fn recycle<'b>(mut values: Vec<&Value>) -> Vec<&'b Value> {
+    values.clear();
+    values
+        .into_iter()
+        .map(|_| unreachable!("emptied"))
+        .collect()
 }
 
 /// What one event's evaluation of a group can read.
