@@ -178,7 +178,7 @@ dependencies = [
 
 [[package]]
 name = "goliath-match"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "aho-corasick",
  "allocation-counter",
@@ -194,7 +194,7 @@ dependencies = [
 
 [[package]]
 name = "goliath-normalize"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "goliath-ocsf",
  "goliath-rule",
@@ -207,7 +207,7 @@ dependencies = [
 
 [[package]]
 name = "goliath-ocsf"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -216,7 +216,7 @@ dependencies = [
 
 [[package]]
 name = "goliath-rule"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "goliath-ocsf",
  "goliath-sigma",
@@ -228,7 +228,7 @@ dependencies = [
 
 [[package]]
 name = "goliath-sigma"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde-saphyr",
