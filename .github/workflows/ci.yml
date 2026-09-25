@@ -99,6 +99,13 @@ jobs:
             echo "::error::Long dash found; use a plain hyphen. See CONTRIBUTING.md."
             exit 1
           fi
+      - name: Crate licenses match the root
+        run: |
+          # A published package holds only its crate directory, so each crate
+          # carries a copy of LICENSE; the copies must not drift.
+          for copy in crates/*/LICENSE; do
+            cmp -s LICENSE "$copy" || { echo "::error::$copy differs from LICENSE."; exit 1; }
+          done
       - name: Reject non-English text outside localized files
         run: |
           # CONTRIBUTING.md: everything shipped is English except README_<lang>.md.
