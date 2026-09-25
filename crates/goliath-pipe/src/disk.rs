@@ -19,7 +19,6 @@
 
 use std::collections::BTreeMap;
 use std::fs::{self, File, OpenOptions};
-use std::future::Future;
 use std::io::{self, BufWriter, Read, Seek, SeekFrom, Write};
 use std::num::NonZeroU64;
 use std::path::{Path, PathBuf};
@@ -405,21 +404,35 @@ impl Sender for DiskSender {
             .iter()
             .map(|payload| HEADER + payload.len() as u64)
             .sum();
+        let mut payloads = payloads;
         loop {
             let released = self.shared.released.notified();
-            {
-                let mut log = lock(&self.shared.log);
+            // Writing and syncing block, so they run on a blocking thread;
+            // the runtime's threads stay free for everything else.
+            let shared = Arc::clone(&self.shared);
+            let unsent = blocking(move || {
+                let mut log = lock(&shared.log);
                 let waiting = log.bytes_from(log.floor());
                 if waiting == 0 || waiting + incoming <= log.options.capacity.get() {
                     // Written while holding the lock: appends are ordered,
                     // and a batch is on disk before anyone can receive it.
-                    log.append(&payloads).map_err(PipeError::from)?;
-                    drop(log);
+                    log.append(&payloads)?;
+                    Ok(None)
+                } else {
+                    Ok(Some(payloads))
+                }
+            })
+            .await?;
+            match unsent {
+                None => {
                     self.shared.arrived.notify_waiters();
                     return Ok(());
                 }
+                Some(back) => {
+                    payloads = back;
+                    released.await;
+                }
             }
-            released.await;
         }
     }
 }
@@ -447,18 +460,26 @@ impl Receiver for DiskReceiver {
                 (from < log.end() && max > 0).then(|| log.locate(from, max))
             };
             if let Some(runs) = runs {
-                // Read outside the lock: written records never change, and a
-                // segment is deleted only once this group acknowledged it.
-                let mut batch = Vec::new();
-                for (path, position, count) in runs {
-                    read_run(&path, position, count, &mut |payload| {
-                        batch.push(Delivery {
-                            offset: self.next,
-                            payload,
-                        });
-                        self.next += 1;
-                    })?;
-                }
+                // Read outside the lock, and off the runtime's threads:
+                // written records never change, and a segment is deleted only
+                // once this group acknowledged it.
+                let first = self.next;
+                let payloads = blocking(move || {
+                    let mut payloads = Vec::new();
+                    for (path, position, count) in runs {
+                        read_run(&path, position, count, &mut |payload| {
+                            payloads.push(payload);
+                        })?;
+                    }
+                    Ok(payloads)
+                })
+                .await?;
+                let batch: Vec<Delivery> = payloads
+                    .into_iter()
+                    .zip(first..)
+                    .map(|(payload, offset)| Delivery { offset, payload })
+                    .collect();
+                self.next = first + batch.len() as u64;
                 return Ok(batch);
             }
             if tokio::time::timeout_at(deadline, arrived).await.is_err() {
@@ -467,39 +488,50 @@ impl Receiver for DiskReceiver {
         }
     }
 
-    fn acknowledge(&mut self, offset: u64) -> impl Future<Output = Result<(), PipeError>> + Send {
-        std::future::ready(self.acknowledge_now(offset))
-    }
-}
-
-impl DiskReceiver {
-    /// Writes the position synchronously: it is a few bytes and one sync,
-    /// and must be on disk before the caller treats the records as handled.
-    fn acknowledge_now(&mut self, offset: u64) -> Result<(), PipeError> {
+    async fn acknowledge(&mut self, offset: u64) -> Result<(), PipeError> {
         if offset >= self.next {
             return Err(PipeError::NotReceived {
                 offset,
                 received: self.next,
             });
         }
-        let mut log = lock(&self.shared.log);
-        let Some(current) = log.groups.get(&self.group).copied() else {
-            return Err(PipeError::Unsubscribed(self.group.clone()));
-        };
-        let position = current.max(offset + 1);
-        if position == current {
-            return Ok(());
+        let shared = Arc::clone(&self.shared);
+        let group = self.group.clone();
+        let released = blocking(move || acknowledge(&shared, &group, offset)).await?;
+        if released {
+            self.shared.released.notify_waiters();
         }
-        log.write_group(&self.group, position)
-            .map_err(PipeError::from)?;
-        log.groups.insert(self.group.clone(), position);
-        log.release().map_err(PipeError::from)?;
-        drop(log);
-        // Capacity counts unacknowledged bytes, so any acknowledgement makes
-        // room, whether or not it completed a segment.
-        self.shared.released.notify_waiters();
         Ok(())
     }
+}
+
+/// Records `group`'s position as after `offset`, durably, and deletes the
+/// segments every group has now acknowledged. Returns whether the group's
+/// position moved, which frees capacity.
+fn acknowledge(shared: &Shared, group: &str, offset: u64) -> Result<bool, PipeError> {
+    let mut log = lock(&shared.log);
+    let Some(current) = log.groups.get(group).copied() else {
+        return Err(PipeError::Unsubscribed(group.to_owned()));
+    };
+    let position = current.max(offset + 1);
+    if position == current {
+        return Ok(false);
+    }
+    log.write_group(group, position)?;
+    log.groups.insert(group.to_owned(), position);
+    log.release()?;
+    // Capacity counts unacknowledged bytes, so any acknowledgement makes
+    // room, whether or not it completed a segment.
+    Ok(true)
+}
+
+/// Runs blocking file work on a thread meant for it.
+async fn blocking<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, PipeError> + Send + 'static,
+) -> Result<T, PipeError> {
+    tokio::task::spawn_blocking(work)
+        .await
+        .map_err(|error| PipeError::Io(format!("blocking file work failed: {error}")))?
 }
 
 /// Writes a batch of frames after the segment's last record, indexing them.

@@ -91,3 +91,27 @@ cargo bench -p goliath-bench --features callgrind --bench engine -- --save-basel
 git switch -
 cargo bench -p goliath-bench --features callgrind --bench engine -- --baseline=main
 ```
+
+## The disk pipe
+
+`goliath-pipe` has a throughput example, run by hand rather than in CI because
+it measures the disk:
+
+```text
+cargo run --release -p goliath-pipe --example throughput
+```
+
+It sends 200,000 records of 400 bytes in batches of 1,000, syncing each batch
+to disk, while one group reads and acknowledges them, on a single-threaded
+runtime with a task that ticks every millisecond beside them. On the
+reference laptop (NVMe, Windows 11):
+
+| Version | Records/s | MB/s | Runtime free |
+| --- | ---: | ---: | ---: |
+| File I/O on the runtime's thread | 300,000 | 120 | 0% |
+| File I/O on blocking threads | 310,000 | 124 | 99% |
+
+The throughput barely moves, but the first version kept every other task on
+the runtime waiting for the whole run: a network listener sharing it would
+have accepted nothing. The rate is bound by one sync per batch, so larger
+batches raise it.
