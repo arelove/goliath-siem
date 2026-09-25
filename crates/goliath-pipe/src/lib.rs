@@ -42,8 +42,10 @@
 use std::future::Future;
 use std::time::Duration;
 
+mod disk;
 mod memory;
 
+pub use disk::{DiskOptions, DiskReceiver, DiskSender, DiskTopic};
 pub use memory::{MemoryReceiver, MemorySender, MemoryTopic};
 
 /// A record as a group receives it.
@@ -70,6 +72,20 @@ pub enum PipeError {
     /// The group was removed from its topic while a receiver still used it.
     #[error("group `{0}` no longer reads this topic")]
     Unsubscribed(String),
+    /// A group name that cannot name a file: use letters, digits, `-`, and
+    /// `_`.
+    #[error("`{0}` is not a valid group name: use letters, digits, `-`, and `_`")]
+    GroupName(String),
+    /// A durable topic could not read or write its files, or found them
+    /// damaged.
+    #[error("{0}")]
+    Io(String),
+}
+
+impl From<std::io::Error> for PipeError {
+    fn from(error: std::io::Error) -> Self {
+        Self::Io(error.to_string())
+    }
 }
 
 /// Sends records to a topic.

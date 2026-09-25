@@ -16,8 +16,8 @@ Every implementation keeps one contract, set out in
 | Implementation | Status |
 | --- | --- |
 | Memory | Available |
-| Local disk log | Next |
-| Kafka or Redpanda | Planned |
+| Local disk log | Available: segments with a CRC32C per record, synced before `send` returns, torn writes recovered on opening |
+| Kafka or Redpanda | Next |
 
 ## License
 
