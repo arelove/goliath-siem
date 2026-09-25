@@ -17,7 +17,7 @@ Every implementation keeps one contract, set out in
 | --- | --- |
 | Memory | Available |
 | Local disk log | Available: segments with a CRC32C per record, synced before `send` returns, torn writes recovered on opening |
-| Kafka or Redpanda | Next |
+| Kafka or Redpanda | Available behind the `kafka` feature: one partition per topic, idempotent producer, committed offsets as positions, the bound kept by the sender from the slowest group's lag |
 
 ## License
 
