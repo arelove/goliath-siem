@@ -1,0 +1,30 @@
+[package]
+name = "goliath"
+description = "The Goliath security platform: every role in one binary"
+readme = "README.md"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+clap = { version = "4.6", features = ["derive"] }
+goliath-normalize = { path = "../goliath-normalize", version = "0.2.0" }
+goliath-pipe = { path = "../goliath-pipe", version = "0.1.0" }
+goliath-store = { path = "../goliath-store", version = "0.1.0" }
+serde.workspace = true
+thiserror.workspace = true
+tokio = { version = "1", features = ["fs", "macros", "rt-multi-thread", "signal", "time"] }
+toml = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+clickhouse = { version = "0.15.2", default-features = false, features = ["lz4"] }
+tempfile = "3"
+
+[lints]
+workspace = true
