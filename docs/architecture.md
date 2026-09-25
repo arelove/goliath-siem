@@ -53,7 +53,7 @@ flowchart LR
   D --> AL["Alerts"]
   SC --> AL
   AL --> PG["PostgreSQL<br/>cases · entities"]
-  PG --> T["Temporal<br/>playbooks"]
+  PG --> T["Playbook runtime<br/>durable state"]
 ```
 
 Storage and detection read the event buffer independently. The detector is
@@ -98,13 +98,14 @@ the dominant barrier to adoption for open-source systems of this class.
 | `goliath-pipe` | Rust | - | shared transport |
 | `goliath-normalize` | Rust | crates.io | `normalizer` |
 | `goliath-store` | Rust | - | `writer` |
-| `control-plane` | Go | - | `api` |
-| `case-service` | Go | - | `cases` |
-| `playbooks` | Python | - | `worker` |
+| `control-plane` | Rust | - | `api` |
+| `case-service` | Rust | - | `cases` |
+| `playbook-runtime` | Rust | - | `worker` |
 | `detection-content` | Python | PyPI | CI |
 | `ui` | TypeScript | - | `ui` |
 
-Language choices and the process boundary rule are in
+Language choices are in [ADR-0014](adr/0014-one-language-for-services.md),
+and the process boundary rule in
 [ADR-0005](adr/0005-languages-and-process-boundaries.md).
 
 ## Where the bottleneck is placed

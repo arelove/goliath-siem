@@ -2,6 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-09-21
+- **Amended:** 2026-09-25, playbook state no longer assumes Temporal
+  ([ADR-0014](0014-one-language-for-services.md))
 
 ## Context
 
@@ -24,7 +26,7 @@ format (S3/Iceberg), and two embedded engines (RocksDB, DuckDB).
 | W4 | Correlation windows | Ephemeral, very high churn | RocksDB (embedded) |
 | W5 | Entities and ontology | Mutable, joined | PostgreSQL |
 | W6 | IRP cases | Transactional state machine | PostgreSQL |
-| W7 | Playbook execution state | Temporal backing store | PostgreSQL |
+| W7 | Playbook execution state | Durable workflow state | PostgreSQL |
 | W8 | RBAC and tenancy | Strong consistency | PostgreSQL (row-level security) |
 | W9 | Audit log | Append-only, tamper-evident | PostgreSQL plus hash chain |
 | W10 | Graph traversal | 2-4 hops | PostgreSQL (recursive CTEs) |

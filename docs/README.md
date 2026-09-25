@@ -21,7 +21,7 @@ orchestration, and incident handling in one system.
 | [0002](adr/0002-storage-stack.md) | Storage stack: ClickHouse, PostgreSQL, Valkey, S3/Iceberg | Accepted |
 | [0003](adr/0003-data-boundary.md) | Data boundary: immutable events versus mutable state | Accepted |
 | [0004](adr/0004-configuration-and-extensibility.md) | Configuration compiles; extensions are WASM | Accepted |
-| [0005](adr/0005-languages-and-process-boundaries.md) | Languages and process boundaries | Accepted |
+| [0005](adr/0005-languages-and-process-boundaries.md) | Languages and process boundaries | Superseded in part by 0014 |
 | [0006](adr/0006-deployment-topology.md) | Roles compose; topology is configuration | Accepted |
 | [0007](adr/0007-source-and-parser-model.md) | Source and parser model | Accepted |
 | [0008](adr/0008-threat-intelligence-model.md) | Threat intelligence and indicator model | Accepted |
@@ -31,6 +31,7 @@ orchestration, and incident handling in one system.
 | [0012](adr/0012-sigma-field-mapping.md) | Sigma fields resolve to OCSF paths at load time | Accepted |
 | [0013](adr/0013-event-storage.md) | Event storage layout | Accepted |
 | [0015](adr/0015-pipe-semantics.md) | Pipe semantics: ordered topics, consumer groups, at least once, bounded | Accepted |
+| [0014](adr/0014-one-language-for-services.md) | Rust for every platform service | Accepted |
 
 ## Writing an ADR
 
