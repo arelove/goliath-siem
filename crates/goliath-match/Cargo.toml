@@ -22,6 +22,7 @@ thiserror.workspace = true
 
 [dev-dependencies]
 allocation-counter = "0.8"
+goliath-normalize = { path = "../goliath-normalize" }
 serde.workspace = true
 
 [lints]
