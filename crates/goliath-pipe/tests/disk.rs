@@ -1,4 +1,4 @@
-//! The pipe contract on the disk topic, and what it adds: durability and
+//! The disk topic: the shared contract, and what it adds, durability and
 //! recovery.
 
 #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
@@ -9,7 +9,51 @@ use std::num::NonZeroU64;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use goliath_pipe::{Delivery, DiskOptions, DiskTopic, PipeError, Receiver, Sender};
+use goliath_pipe::{
+    Delivery, DiskOptions, DiskReceiver, DiskSender, DiskTopic, PipeError, Receiver, Sender,
+};
+
+mod contract;
+
+/// A disk topic in a directory of its own, sized in one-byte records, with
+/// small segments so that the contract also crosses segment boundaries.
+struct Disk {
+    topic: DiskTopic,
+    _directory: tempfile::TempDir,
+}
+
+// Nothing here waits; the trait is asynchronous for implementations whose
+// topics live on a server.
+impl contract::Fixture for Disk {
+    type Sender = DiskSender;
+    type Receiver = DiskReceiver;
+
+    fn create(records: usize) -> impl Future<Output = Self> + Send {
+        let directory = tempfile::tempdir().unwrap();
+        // A one-byte record takes its 8-byte header plus the byte.
+        let bytes = u64::try_from(records).unwrap() * 9;
+        let topic = DiskTopic::open(directory.path(), options(bytes, 64)).unwrap();
+        std::future::ready(Self {
+            topic,
+            _directory: directory,
+        })
+    }
+
+    fn sender(&self) -> DiskSender {
+        self.topic.sender()
+    }
+
+    fn subscribe(&self, group: &str) -> impl Future<Output = DiskReceiver> + Send {
+        std::future::ready(self.topic.subscribe(group).unwrap())
+    }
+
+    fn unsubscribe(&self, group: &str) -> impl Future<Output = ()> + Send {
+        self.topic.unsubscribe(group).unwrap();
+        std::future::ready(())
+    }
+}
+
+contract!(Disk);
 
 const SHORT: Duration = Duration::from_millis(20);
 
@@ -162,31 +206,6 @@ async fn acknowledged_segments_are_deleted_whole() {
     detector.acknowledge(batch[1].offset).await.unwrap();
     assert_eq!(segments(directory.path()).len(), 2);
     assert_eq!(topic.offsets(), 2..3);
-}
-
-#[tokio::test]
-async fn a_full_topic_makes_senders_wait_until_records_are_acknowledged() {
-    let directory = tempfile::tempdir().unwrap();
-    // Room for two records of one byte: 9 bytes each with the header.
-    let topic = DiskTopic::open(directory.path(), options(18, 1)).unwrap();
-    let mut group = topic.subscribe("writer").unwrap();
-    topic.sender().send(records(&["a", "b"])).await.unwrap();
-
-    let sender = topic.sender();
-    let waiting = tokio::spawn(async move { sender.send(records(&["c"])).await });
-    tokio::time::sleep(SHORT).await;
-    assert!(
-        !waiting.is_finished(),
-        "the topic is full, so sending must wait"
-    );
-
-    let batch = group.receive(1, SHORT).await.unwrap();
-    group.acknowledge(batch[0].offset).await.unwrap();
-    tokio::time::timeout(Duration::from_secs(5), waiting)
-        .await
-        .expect("acknowledging makes room")
-        .unwrap()
-        .unwrap();
 }
 
 #[tokio::test]
