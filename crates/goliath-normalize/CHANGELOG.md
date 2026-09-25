@@ -9,7 +9,15 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
-## [0.1.2] - 2026-09-25
+## [0.2.0] - 2026-09-25
+
+### Added
+
+- Give every event a content identity for deduplication
+
+### Fixed
+
+- Breaking: release the OCSF schema checks on definitions as the breaking change they are
 
 ## [0.1.1] - 2026-09-25
 
