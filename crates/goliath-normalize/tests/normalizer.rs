@@ -284,3 +284,31 @@ fn enumerated_constants_must_be_defined_values() {
     let definition = MINIMAL.replace("user.name: who", "severity_id: { value: 99 }");
     Normalizer::from_yaml(&definition).expect("99 is Other");
 }
+
+#[test]
+fn a_record_has_the_same_identity_every_time_it_arrives() {
+    let record = r#"{"type": "login", "who": "adam"}"#;
+    let id = |input: &str| match one(MINIMAL, input) {
+        Outcome::Event(normalized) => normalized.id,
+        other => panic!("{other:?}"),
+    };
+    assert_eq!(id(record), id(record));
+    assert_ne!(id(record), id(r#"{"type": "login", "who": "eve"}"#));
+    // Only the bytes count: the same event written differently is another
+    // record.
+    assert_ne!(id(record), id(r#"{"who": "adam", "type": "login"}"#));
+}
+
+#[test]
+fn identities_separate_sources_and_print_as_hex() {
+    use goliath_normalize::EventId;
+
+    assert_ne!(EventId::of("a", b"bc"), EventId::of("ab", b"c"));
+    assert_ne!(EventId::of("sysmon", b"x"), EventId::of("auditd", b"x"));
+    let text = EventId::of("sysmon", b"x").to_string();
+    assert_eq!(text.len(), 32);
+    assert!(
+        text.bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+    );
+}

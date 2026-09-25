@@ -98,6 +98,9 @@ pub enum Outcome {
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Normalized {
+    /// Identifies the record the event came from, so that storage can drop
+    /// a record delivered twice.
+    pub id: EventId,
     /// The event.
     pub event: Value,
     /// The kind of record it was.
@@ -106,6 +109,57 @@ pub struct Normalized {
     /// `unmapped`, and the event is still produced, so that a malformed field
     /// cannot keep an event away from detection.
     pub issues: Vec<Issue>,
+}
+
+/// The identity of a record: 128 bits of the BLAKE3 hash of the source's
+/// name and the record's raw bytes.
+///
+/// It depends on nothing else, so a record delivered again, or collected
+/// again, gets the same identity and can be dropped as a duplicate. Two
+/// records with identical bytes from one source are the same record.
+///
+/// The hash is cryptographic on purpose. Whoever writes the logs chooses the
+/// bytes, and with a hash built only for speed they could craft a record
+/// whose identity equals that of another, and have storage drop one of the
+/// two as a duplicate.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct EventId([u8; 16]);
+
+impl EventId {
+    /// Keys the hash, so that identities cannot be confused with any other
+    /// use of BLAKE3. Changing it changes every identity.
+    const CONTEXT: &str = "goliath 2026-09-25 event id";
+
+    /// The identity of the record `raw` from the source `source`.
+    pub fn of(source: &str, raw: &[u8]) -> Self {
+        let mut hasher = blake3::Hasher::new_derive_key(Self::CONTEXT);
+        // The name's length first, so that no name and record pair can end
+        // where another pair's name does.
+        hasher.update(&(source.len() as u64).to_le_bytes());
+        hasher.update(source.as_bytes());
+        hasher.update(raw);
+        let mut id = [0; 16];
+        hasher.finalize_xof().fill(&mut id);
+        Self(id)
+    }
+
+    /// The identity's bytes.
+    pub fn as_bytes(&self) -> &[u8; 16] {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for EventId {
+    /// Lowercase hexadecimal.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.iter().try_for_each(|byte| write!(f, "{byte:02x}"))
+    }
+}
+
+impl std::fmt::Debug for EventId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "EventId({self})")
+    }
 }
 
 /// A value that did not convert.
@@ -368,6 +422,7 @@ impl Normalizer {
             event.insert("unmapped".to_owned(), Value::Object(unmapped));
         }
         Outcome::Event(Normalized {
+            id: EventId::of(&self.name, raw),
             event: Value::Object(event),
             kind: kind.name.clone(),
             issues,
