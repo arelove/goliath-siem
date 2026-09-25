@@ -79,8 +79,12 @@ integration suite passing against both.
 with dead-letter routing, checked against the OCSF schema, and its Sysmon
 definition feeds the SigmaHQ regression run. `goliath-store` writes its events
 and dead letters to ClickHouse under versioned migrations
-([ADR-0013](adr/0013-event-storage.md)), tested in CI against real servers.
-Transport, retention, and the other sources are next.
+([ADR-0013](adr/0013-event-storage.md)), tested in CI against real servers,
+with retention counted from receipt. `goliath-pipe` carries records between
+roles in memory or in a durable disk log ([ADR-0015](adr/0015-pipe-semantics.md)),
+and the `goliath` binary runs collector, normalizer, and writer in one process:
+the single-process half of the exit criterion is met, and tested end to end in
+CI. The distributed half needs the Kafka pipe; the other sources come after.
 
 ## M2.5 - Event search
 
