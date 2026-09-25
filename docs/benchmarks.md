@@ -4,7 +4,7 @@ Two different questions are answered by two different kinds of measurement:
 
 | Question | Measured by | Where |
 | --- | --- | --- |
-| How fast is the engine on real rules and real attacks? | Wall clock, events per second on one core | [sigma-coverage.md](sigma-coverage.md#the-engine-on-the-same-events) |
+| How fast is the engine on real rules and real attacks? | Wall clock, events per second on one core and on every core | [sigma-coverage.md](sigma-coverage.md#the-engine-on-the-same-events) |
 | Did this change make the engine slower? | Instructions counted by Callgrind, compared with the base of the pull request | This document, and CI |
 | Did this change make evaluation allocate again? | Allocations counted per event | `crates/goliath-match/tests/allocations.rs` |
 
