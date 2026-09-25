@@ -23,10 +23,14 @@ rule already meet in a match:
 
 | Step | Crate |
 | --- | --- |
-| Normalize raw Sysmon events to OCSF through a declarative source definition, dropping nothing | `goliath-normalize` |
-| Parse Sigma rules, treating the YAML as untrusted input | `goliath-sigma` |
-| Resolve Sigma fields to OCSF paths through versioned mappings | `goliath-rule` |
-| Evaluate thousands of rules against each event, sharing the work between them | `goliath-match` |
+| Normalize raw Sysmon events to OCSF through a declarative source definition, dropping nothing | [`goliath-normalize`](https://crates.io/crates/goliath-normalize) |
+| Parse Sigma rules, treating the YAML as untrusted input | [`goliath-sigma`](https://crates.io/crates/goliath-sigma) |
+| Resolve Sigma fields to OCSF paths through versioned mappings | [`goliath-rule`](https://crates.io/crates/goliath-rule) |
+| Evaluate thousands of rules against each event, sharing the work between them | [`goliath-match`](https://crates.io/crates/goliath-match) |
+
+All of them share the OCSF types of [`goliath-ocsf`](https://crates.io/crates/goliath-ocsf).
+Each crate is published on crates.io and usable without the rest of the
+platform; API documentation is on [docs.rs](https://docs.rs/goliath-match).
 
 Measured against the whole [SigmaHQ](https://github.com/SigmaHQ/sigma)
 repository, with details and reproduction steps in

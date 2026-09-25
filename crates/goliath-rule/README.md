@@ -1,5 +1,9 @@
 # goliath-rule
 
+[![crates.io](https://img.shields.io/crates/v/goliath-rule.svg)](https://crates.io/crates/goliath-rule)
+[![docs.rs](https://img.shields.io/docsrs/goliath-rule)](https://docs.rs/goliath-rule)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/arelove/goliath-siem/blob/main/LICENSE)
+
 Detection rules resolved to OCSF paths, in the one form that every execution
 path of [Goliath](https://github.com/arelove/goliath-siem) consumes.
 
@@ -7,7 +11,7 @@ A rule language such as Sigma names fields the way a log source names them.
 This crate holds the resolved form, which refers only to OCSF paths, so that
 the streaming match engine and the ClickHouse backend cannot disagree about
 what a rule means. The reasoning is in
-[ADR-0012](../../docs/adr/0012-sigma-field-mapping.md).
+[ADR-0012](https://github.com/arelove/goliath-siem/blob/main/docs/adr/0012-sigma-field-mapping.md).
 
 ## Scope
 
@@ -24,4 +28,4 @@ what a rule means. The reasoning is in
 
 ## License
 
-[Apache License 2.0](../../LICENSE).
+[Apache License 2.0](https://github.com/arelove/goliath-siem/blob/main/LICENSE).

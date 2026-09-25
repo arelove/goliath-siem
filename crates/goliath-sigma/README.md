@@ -1,5 +1,9 @@
 # goliath-sigma
 
+[![crates.io](https://img.shields.io/crates/v/goliath-sigma.svg)](https://crates.io/crates/goliath-sigma)
+[![docs.rs](https://img.shields.io/docsrs/goliath-sigma)](https://docs.rs/goliath-sigma)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/arelove/goliath-siem/blob/main/LICENSE)
+
 Parses [Sigma](https://github.com/SigmaHQ/sigma) detection rules into a typed,
 inspectable AST.
 
@@ -27,4 +31,4 @@ depend on an error that names where and what, not just that something failed.
 
 ## License
 
-[Apache License 2.0](../../LICENSE).
+[Apache License 2.0](https://github.com/arelove/goliath-siem/blob/main/LICENSE).
