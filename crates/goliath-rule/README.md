@@ -11,7 +11,7 @@ A rule language such as Sigma names fields the way a log source names them.
 This crate holds the resolved form, which refers only to OCSF paths, so that
 the streaming match engine and the ClickHouse backend cannot disagree about
 what a rule means. The reasoning is in
-[ADR-0012](../../docs/adr/0012-sigma-field-mapping.md).
+[ADR-0012](https://github.com/arelove/goliath-siem/blob/main/docs/adr/0012-sigma-field-mapping.md).
 
 ## Scope
 
