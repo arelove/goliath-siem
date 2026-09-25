@@ -1,5 +1,9 @@
 # goliath-ocsf
 
+[![crates.io](https://img.shields.io/crates/v/goliath-ocsf.svg)](https://crates.io/crates/goliath-ocsf)
+[![docs.rs](https://img.shields.io/docsrs/goliath-ocsf)](https://docs.rs/goliath-ocsf)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/arelove/goliath-siem/blob/main/LICENSE)
+
 OCSF (Open Cybersecurity Schema Framework) event types, validation, and
 observable extraction.
 
@@ -19,4 +23,4 @@ Schema version targeted: **OCSF 1.5.0**.
 
 ## License
 
-[Apache License 2.0](../../LICENSE).
+[Apache License 2.0](https://github.com/arelove/goliath-siem/blob/main/LICENSE).

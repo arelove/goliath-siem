@@ -1,5 +1,9 @@
 # goliath-normalize
 
+[![crates.io](https://img.shields.io/crates/v/goliath-normalize.svg)](https://crates.io/crates/goliath-normalize)
+[![docs.rs](https://img.shields.io/docsrs/goliath-normalize)](https://docs.rs/goliath-normalize)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/arelove/goliath-siem/blob/main/LICENSE)
+
 Declarative source definitions that turn raw log records into OCSF events, for
 the [Goliath](https://github.com/arelove/goliath-siem) security platform.
 
@@ -31,4 +35,4 @@ every one of its 357 cases also tests this crate on real recorded attacks.
 
 ## License
 
-[Apache License 2.0](../../LICENSE).
+[Apache License 2.0](https://github.com/arelove/goliath-siem/blob/main/LICENSE).

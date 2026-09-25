@@ -1,5 +1,9 @@
 # goliath-rule
 
+[![crates.io](https://img.shields.io/crates/v/goliath-rule.svg)](https://crates.io/crates/goliath-rule)
+[![docs.rs](https://img.shields.io/docsrs/goliath-rule)](https://docs.rs/goliath-rule)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/arelove/goliath-siem/blob/main/LICENSE)
+
 Detection rules resolved to OCSF paths, in the one form that every execution
 path of [Goliath](https://github.com/arelove/goliath-siem) consumes.
 
@@ -24,4 +28,4 @@ what a rule means. The reasoning is in
 
 ## License
 
-[Apache License 2.0](../../LICENSE).
+[Apache License 2.0](https://github.com/arelove/goliath-siem/blob/main/LICENSE).

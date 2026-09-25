@@ -23,10 +23,14 @@
 
 | Шаг | Крейт |
 | --- | --- |
-| Нормализация сырых событий Sysmon в OCSF по декларативному описанию источника, без потери данных | `goliath-normalize` |
-| Разбор правил Sigma, YAML считается недоверенным вводом | `goliath-sigma` |
-| Перевод полей Sigma в пути OCSF через версионированные сопоставления | `goliath-rule` |
-| Проверка тысяч правил на каждом событии с общей работой между ними | `goliath-match` |
+| Нормализация сырых событий Sysmon в OCSF по декларативному описанию источника, без потери данных | [`goliath-normalize`](https://crates.io/crates/goliath-normalize) |
+| Разбор правил Sigma, YAML считается недоверенным вводом | [`goliath-sigma`](https://crates.io/crates/goliath-sigma) |
+| Перевод полей Sigma в пути OCSF через версионированные сопоставления | [`goliath-rule`](https://crates.io/crates/goliath-rule) |
+| Проверка тысяч правил на каждом событии с общей работой между ними | [`goliath-match`](https://crates.io/crates/goliath-match) |
+
+Все они используют типы OCSF из [`goliath-ocsf`](https://crates.io/crates/goliath-ocsf).
+Каждый крейт опубликован на crates.io и работает без остальной платформы;
+документация API на [docs.rs](https://docs.rs/goliath-match).
 
 Замеры на всём репозитории [SigmaHQ](https://github.com/SigmaHQ/sigma),
 подробности и команды для повторения в

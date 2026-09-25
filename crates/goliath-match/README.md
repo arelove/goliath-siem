@@ -1,5 +1,9 @@
 # goliath-match
 
+[![crates.io](https://img.shields.io/crates/v/goliath-match.svg)](https://crates.io/crates/goliath-match)
+[![docs.rs](https://img.shields.io/docsrs/goliath-match)](https://docs.rs/goliath-match)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/arelove/goliath-siem/blob/main/LICENSE)
+
 Evaluation of resolved detection rules against OCSF events, for the
 [Goliath](https://github.com/arelove/goliath-siem) security platform.
 
@@ -27,4 +31,4 @@ backtracking engine would let one crafted log line stall detection.
 
 ## License
 
-[Apache License 2.0](../../LICENSE).
+[Apache License 2.0](https://github.com/arelove/goliath-siem/blob/main/LICENSE).
