@@ -9,6 +9,13 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-25
+
+
+### Added
+
+- Encode outcomes for the pipe between roles
+
 ## [0.2.0] - 2026-09-25
 
 ### Added
