@@ -38,6 +38,12 @@ publish = true
 name = "goliath-normalize"
 publish = true
 
+# Not published until the storage layout settles; see its Cargo.toml.
+[[package]]
+name = "goliath-store"
+publish = false
+release = false
+
 # Workloads and benchmarks; never released.
 [[package]]
 name = "goliath-bench"

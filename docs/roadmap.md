@@ -74,8 +74,11 @@ table in both single-process and fully distributed topologies, with the same
 integration suite passing against both.
 
 **Status:** started. `goliath-normalize` runs declarative source definitions
-with dead-letter routing, and its Sysmon definition feeds the SigmaHQ
-regression run. Transport, storage, and the other sources are next.
+with dead-letter routing, checked against the OCSF schema, and its Sysmon
+definition feeds the SigmaHQ regression run. `goliath-store` writes its events
+and dead letters to ClickHouse under versioned migrations
+([ADR-0013](adr/0013-event-storage.md)), tested in CI against real servers.
+Transport, retention, and the other sources are next.
 
 ## M3 - Benchmark rig
 

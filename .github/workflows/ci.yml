@@ -28,6 +28,40 @@ jobs:
       - run: cargo test --workspace --all-targets
       - run: cargo test --workspace --doc
 
+  storage:
+    # The event store against real ClickHouse servers: the oldest release
+    # supported, an LTS with the JSON type, and the newest.
+    name: storage / clickhouse ${{ matrix.clickhouse }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        clickhouse: ["25.8", latest]
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:${{ matrix.clickhouse }}
+        env:
+          CLICKHOUSE_USER: goliath
+          CLICKHOUSE_PASSWORD: goliath
+        ports:
+          - 8123:8123
+        options: >-
+          --ulimit nofile=262144:262144
+          --health-cmd "clickhouse-client --user goliath --password goliath --query 'SELECT 1'"
+          --health-interval 2s
+          --health-retries 30
+    env:
+      GOLIATH_CLICKHOUSE_URL: http://localhost:8123
+      GOLIATH_CLICKHOUSE_USER: goliath
+      GOLIATH_CLICKHOUSE_PASSWORD: goliath
+      # Fail rather than skip if the server settings above go missing.
+      GOLIATH_REQUIRE_CLICKHOUSE: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p goliath-store
+
   lint:
     name: lint
     runs-on: ubuntu-latest
