@@ -2,9 +2,9 @@
 
 use std::time::{Duration, Instant};
 
-use goliath_normalize::{Normalizer, Outcome};
+use goliath_normalize::Envelope;
 
-use crate::batch::Batch;
+use crate::batch::{Batch, now};
 use crate::error::StoreError;
 use crate::store::Store;
 
@@ -57,27 +57,30 @@ impl Writer {
         }
     }
 
-    /// Adds an outcome of `normalizer`'s source, and flushes if that fills
-    /// the writer.
+    /// Adds an outcome, as the normalizer role sends it, and flushes if that
+    /// fills the writer.
     ///
     /// # Errors
     ///
     /// Returns [`StoreError::UnknownOutcome`] for an outcome the store has
     /// no table for, and the errors of [`flush`](Self::flush). If the flush
     /// fails, the outcome is already kept: do not push it again.
-    pub async fn push(
-        &mut self,
-        normalizer: &Normalizer,
-        outcome: Outcome,
-    ) -> Result<(), StoreError> {
+    pub async fn push(&mut self, envelope: Envelope) -> Result<(), StoreError> {
+        let Envelope {
+            source,
+            version,
+            outcome,
+            ..
+        } = envelope;
         let index = if let Some(index) = self
             .pending
             .iter()
-            .position(|batch| batch.is_for(normalizer))
+            .position(|batch| batch.is_for(&source, version))
         {
             index
         } else {
-            self.pending.push(Batch::new(normalizer));
+            self.pending
+                .push(Batch::for_source(&source, version, now()));
             self.pending.len() - 1
         };
         self.pending[index].push(outcome)?;

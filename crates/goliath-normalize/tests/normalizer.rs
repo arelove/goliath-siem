@@ -312,3 +312,42 @@ fn identities_separate_sources_and_print_as_hex() {
             .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
     );
 }
+
+#[test]
+fn outcomes_travel_between_roles_unchanged() {
+    use goliath_normalize::{Envelope, WireError};
+
+    let input = "{\"type\": \"login\", \"who\": \"adam\", \"port\": \"x\", \"extra\": {\"tty\": 1}}\nnot json\n";
+    for outcome in outcomes(MINIMAL, input) {
+        let envelope = Envelope::new("test", 3, outcome);
+        let bytes = envelope.encode();
+        assert_eq!(bytes[0], 1, "the format byte comes first");
+        assert_eq!(Envelope::decode(&bytes).expect("decodes"), envelope);
+    }
+    assert!(matches!(Envelope::decode(b""), Err(WireError { .. })));
+    assert!(
+        Envelope::decode(b"\x09{}")
+            .expect_err("unknown format")
+            .to_string()
+            .contains("unknown format 9")
+    );
+    assert!(Envelope::decode(b"\x01{").is_err());
+}
+
+#[test]
+fn identities_read_back_from_their_text() {
+    use goliath_normalize::EventId;
+
+    let id = EventId::of("sysmon", b"x");
+    assert_eq!(id.to_string().parse::<EventId>().expect("parses"), id);
+    assert_eq!(
+        id.to_string()
+            .to_uppercase()
+            .parse::<EventId>()
+            .expect("parses"),
+        id
+    );
+    for bad in ["", "abc", &"g".repeat(32), &"a".repeat(33)] {
+        assert!(bad.parse::<EventId>().is_err(), "{bad}");
+    }
+}
