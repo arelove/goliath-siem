@@ -4,7 +4,7 @@
 
 use goliath_rule::{ClassValue, FieldPath, LogSourceSelector, MappingSet};
 
-const SIGMA_WINDOWS: &str = include_str!("../mappings/sigma-windows.yaml");
+const SIGMA_WINDOWS: &str = goliath_rule::SIGMA_WINDOWS;
 
 fn process_creation() -> LogSourceSelector {
     LogSourceSelector {
