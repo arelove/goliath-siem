@@ -1,5 +1,6 @@
 //! Source definitions compiled for use, and records through them.
 
+use goliath_ocsf::schema::{self, Base};
 use goliath_rule::FieldPath;
 use serde_json::{Map, Value};
 
@@ -175,7 +176,9 @@ impl Normalizer {
     ///
     /// Returns [`DefinitionError`] if a path does not parse, two fields
     /// would write over each other, a field writes an attribute that is set
-    /// otherwise, or a kind would accept every record.
+    /// otherwise, or a kind would accept every record; and if a class,
+    /// activity, or target is not in the OCSF schema, or a field writes a
+    /// value its attribute cannot hold.
     pub fn new(definition: &SourceDefinition) -> Result<Self, DefinitionError> {
         if definition.kinds.is_empty() {
             return Err(DefinitionError::NoKinds);
@@ -196,6 +199,12 @@ impl Normalizer {
             let mut fields = common.clone();
             fields.extend(compile_fields(&kind.name, &kind.fields)?);
             check_overlaps(&kind.name, &fields)?;
+            check_schema(
+                &kind.name,
+                kind.class.class_uid,
+                kind.class.activity_id,
+                &fields,
+            )?;
             let unmapped = kind
                 .unmapped
                 .iter()
@@ -454,6 +463,129 @@ fn check_overlaps(kind: &str, fields: &[Field]) -> Result<(), DefinitionError> {
         }
     }
     Ok(())
+}
+
+/// Checks the class, the activity, and every field against the OCSF schema,
+/// so that a misspelled attribute fails here rather than produce events no
+/// rule reads.
+fn check_schema(
+    kind: &str,
+    class_uid: u32,
+    activity_id: u32,
+    fields: &[Field],
+) -> Result<(), DefinitionError> {
+    let class = schema::class(class_uid).ok_or_else(|| DefinitionError::UnknownClass {
+        kind: kind.to_owned(),
+        class_uid,
+        version: goliath_ocsf::SCHEMA_VERSION,
+    })?;
+    let activities = class
+        .attribute("activity_id")
+        .map(schema::Attribute::enum_values)
+        .unwrap_or_default();
+    if !activities.contains(&i64::from(activity_id)) {
+        return Err(DefinitionError::UnknownActivity {
+            kind: kind.to_owned(),
+            class: class.name(),
+            activity_id,
+        });
+    }
+    for field in fields {
+        let target = field.target.as_str();
+        let found = class
+            .resolve(target)
+            .map_err(|source| DefinitionError::Attribute {
+                kind: kind.to_owned(),
+                source,
+            })?;
+        if found.within_array {
+            return Err(DefinitionError::WithinArray {
+                kind: kind.to_owned(),
+                target: target.to_owned(),
+            });
+        }
+        // A copy keeps whatever the source holds, and a free-form attribute
+        // takes anything, so neither has a type to check.
+        let Some(writes) = field.source.writes() else {
+            continue;
+        };
+        if found.free_form {
+            continue;
+        }
+        let attribute = found.attribute;
+        let fits = !attribute.is_array()
+            && match writes {
+                Writes::Boolean => attribute.base() == Base::Boolean,
+                Writes::Integer => matches!(attribute.base(), Base::Integer | Base::Long),
+                Writes::Text => attribute.base() == Base::String,
+                Writes::Timestamp => attribute.type_name() == "timestamp_t",
+            };
+        if !fits {
+            let holds = match (attribute.is_array(), attribute.base()) {
+                (true, _) => format!("an array of `{}`", attribute.type_name()),
+                (false, Base::Object) => format!("an object `{}`", attribute.type_name()),
+                (false, _) => format!("`{}`", attribute.type_name()),
+            };
+            return Err(DefinitionError::Type {
+                kind: kind.to_owned(),
+                target: target.to_owned(),
+                holds,
+                writes: writes.describe(),
+            });
+        }
+        let values = attribute.enum_values();
+        if let Source::Constant(Value::Number(number)) = &field.source
+            && let Some(value) = number.as_i64()
+            && !values.is_empty()
+            && !values.contains(&value)
+        {
+            return Err(DefinitionError::UnknownValue {
+                kind: kind.to_owned(),
+                target: target.to_owned(),
+                value,
+            });
+        }
+    }
+    Ok(())
+}
+
+/// What a field writes, where that is known before any record is read.
+#[derive(Debug, Clone, Copy)]
+enum Writes {
+    Boolean,
+    Integer,
+    Text,
+    Timestamp,
+}
+
+impl Writes {
+    fn describe(self) -> &'static str {
+        match self {
+            Self::Boolean => "a boolean",
+            Self::Integer => "an integer",
+            Self::Text => "text",
+            Self::Timestamp => "a timestamp",
+        }
+    }
+}
+
+impl Source {
+    fn writes(&self) -> Option<Writes> {
+        match self {
+            Self::Constant(Value::Bool(_)) => Some(Writes::Boolean),
+            Self::Constant(Value::Number(_)) => Some(Writes::Integer),
+            Self::Constant(Value::String(_)) => Some(Writes::Text),
+            Self::Constant(_) | Self::Path { coercion: None, .. } => None,
+            Self::Path {
+                coercion: Some(coercion),
+                ..
+            } => Some(match coercion {
+                Coercion::String => Writes::Text,
+                Coercion::Integer => Writes::Integer,
+                Coercion::Timestamp => Writes::Timestamp,
+            }),
+        }
+    }
 }
 
 /// Writes `value` at `segments`, creating objects on the way. Overlapping

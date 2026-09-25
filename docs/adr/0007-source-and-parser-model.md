@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-09-21
 - **Amended:** 2026-09-25, conversion failures no longer dead-letter the
-  record; fixtures run under `cargo test`
+  record; fixtures run under `cargo test`; definitions are checked against
+  the OCSF schema when they load
 
 ## Context
 
@@ -74,6 +75,13 @@ expected OCSF output, including the dead letters and issues they must produce.
 cleanly converted event against the OCSF invariants. A source definition
 without fixtures does not merge.
 
+A definition is also checked against the OCSF schema when it loads, before
+any record: its classes and activities must exist, every target must be an
+attribute of the class and not inside an array, and a constant or conversion
+must produce what the attribute holds. A misspelled target would otherwise
+produce events that load, store, and are never read by any rule, which no
+fixture written by the same author would notice.
+
 This makes source definitions contributable by people who do not write Rust,
 which is the only way the parser library ever reaches useful size.
 
@@ -97,7 +105,9 @@ can be identified and the affected range reprocessed.
 - We own a decoder library and must keep it fast; decoders are on the hot path.
 - Dead letter storage consumes capacity and needs its own retention policy.
 - The OCSF mapping surface must be discoverable, or operators will guess. This
-  requires schema-driven tooling, not just documentation.
+  requires schema-driven tooling, not just documentation. The first piece is
+  the compiled-in schema in `goliath-ocsf`, which names the exact attribute and
+  object where a path goes wrong.
 
 ## When to revisit
 

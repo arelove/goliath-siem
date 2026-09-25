@@ -12,6 +12,7 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
+goliath-ocsf = { path = "../goliath-ocsf", version = "0.1.0" }
 goliath-sigma = { path = "../goliath-sigma", version = "0.1.0" }
 icu_casemap = "2"
 serde.workspace = true

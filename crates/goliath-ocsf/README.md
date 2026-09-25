@@ -20,6 +20,21 @@ Schema version targeted: **OCSF 1.5.0**.
 - Observable types and values, forward-compatible with schema additions.
 - Validation of the invariants the schema states but JSON cannot express.
 - Observable extraction, the input to per-event indicator matching.
+- The schema itself, compiled in: every class and object of OCSF 1.5.0 and
+  its extensions, so a path such as `process.file.path` can be checked
+  against a class, and its type found, without a network or a parse.
+
+## Schema tables
+
+`src/schema/tables.rs` is generated from the export of the
+[OCSF schema](https://github.com/ocsf/ocsf-schema), which is published under
+the Apache License 2.0, and keeps only attribute names, types, and enumerated
+values. To regenerate it for a new version:
+
+```sh
+curl -sSL https://schema.ocsf.io/1.5.0/export/schema -o ocsf.json
+cargo run -p goliath-ocsf --example generate_schema -- ocsf.json > crates/goliath-ocsf/src/schema/tables.rs
+```
 
 ## License
 
