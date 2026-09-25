@@ -43,9 +43,13 @@ use std::future::Future;
 use std::time::Duration;
 
 mod disk;
+#[cfg(feature = "kafka")]
+mod kafka;
 mod memory;
 
 pub use disk::{DiskOptions, DiskReceiver, DiskSender, DiskTopic};
+#[cfg(feature = "kafka")]
+pub use kafka::{KafkaOptions, KafkaReceiver, KafkaSender, KafkaTopic};
 pub use memory::{MemoryReceiver, MemorySender, MemoryTopic};
 
 /// A record as a group receives it.

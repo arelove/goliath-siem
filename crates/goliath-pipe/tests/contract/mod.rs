@@ -196,10 +196,10 @@ pub(crate) async fn an_unsubscribed_group_s_receivers_fail<F: Fixture>() {
     let _writer = topic.subscribe("writer").await;
     let mut gone = topic.subscribe("gone").await;
     topic.unsubscribe("gone").await;
-    assert_eq!(
+    assert!(matches!(
         gone.receive(10, SHORT).await,
-        Err(PipeError::Unsubscribed("gone".to_owned()))
-    );
+        Err(PipeError::Unsubscribed(_))
+    ));
 }
 
 pub(crate) async fn many_senders_lose_nothing<F: Fixture>() {

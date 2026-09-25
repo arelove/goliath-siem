@@ -62,6 +62,29 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test -p goliath-store -p goliath
 
+  kafka:
+    # The pipe contract on a real Kafka API, the same suite memory and disk
+    # run. A step starts Redpanda: service containers cannot take its
+    # command-line arguments.
+    name: pipe / kafka
+    runs-on: ubuntu-latest
+    env:
+      GOLIATH_KAFKA_BROKERS: localhost:9092
+    steps:
+      - uses: actions/checkout@v7
+      - name: Start Redpanda
+        run: |
+          docker run -d --name redpanda -p 9092:9092 redpandadata/redpanda:latest             redpanda start --mode dev-container --smp 1 --overprovisioned             --kafka-addr PLAINTEXT://0.0.0.0:9092 --advertise-kafka-addr PLAINTEXT://localhost:9092
+          for attempt in $(seq 1 60); do
+            docker exec redpanda rpk cluster health --exit-when-healthy --watch=false >/dev/null 2>&1 && exit 0
+            sleep 1
+          done
+          docker logs redpanda
+          exit 1
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p goliath-pipe --features kafka
+
   lint:
     name: lint
     runs-on: ubuntu-latest

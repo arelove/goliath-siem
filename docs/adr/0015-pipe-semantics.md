@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-09-25
+- **Amended:** 2026-09-25, how Kafka keeps the contract
 
 ## Context
 
@@ -48,6 +49,29 @@ for it. A group that is gone for good is removed explicitly.
 | Memory | No | Tests, and roles in one process that can replay their input |
 | Local disk log | Yes | Single-binary mode; roles in one process on one host |
 | Kafka or Redpanda | Yes | Roles on several hosts |
+
+Every implementation runs the same contract test suite, one test per point
+above; only what an implementation adds, such as crash recovery on disk, is
+tested separately.
+
+### Kafka
+
+Kafka keeps order per partition, so a topic has **one partition**, written by
+an idempotent producer with `acks=all`: offsets are Kafka's own and
+consecutive. A group's position is its committed offset; a receiver assigns
+the partition itself rather than joining the group, so there are no
+rebalances, and a new group commits the end of the topic at once.
+
+Kafka deletes records by age or size, whether or not a group has read them,
+which would break points 4 and 5 for a slow group. So the bound is kept by the
+sender: before each batch it measures how far the slowest reading group is
+behind, and waits while that exceeds the capacity. The reading groups are
+those subscribed in the same process and those the configuration names.
+Kafka's own retention is set well beyond the capacity, as a safety net only.
+
+One partition bounds a topic's throughput to what one broker can append,
+hundreds of megabytes per second. Partitioning a topic changes point 2 to
+order per partition, and is a change to this record when it is needed.
 
 The memory pipe loses what it holds when the process ends. It is correct only
 where the input itself can be read again from the last acknowledged position,

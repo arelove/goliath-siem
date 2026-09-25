@@ -18,9 +18,24 @@ crc32c = "0.6"
 thiserror.workspace = true
 tokio = { version = "1", default-features = false, features = ["rt", "sync", "time"] }
 
+# Behind `kafka`, since only the distributed topology needs it: librdkafka, a
+# C library, built from source and linked statically. On Linux and macOS it
+# builds with its own configure script, its primary build; its CMake build
+# there includes curl headers even with curl disabled. Windows has no
+# configure, so it uses CMake.
+[target.'cfg(not(windows))'.dependencies]
+rdkafka = { version = "0.39", default-features = false, features = ["libz-static", "tokio"], optional = true }
+
+[target.'cfg(windows)'.dependencies]
+rdkafka = { version = "0.39", default-features = false, features = ["cmake-build", "libz-static", "tokio"], optional = true }
+
 [dev-dependencies]
 tempfile = "3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+
+[features]
+# The Kafka or Redpanda implementation.
+kafka = ["dep:rdkafka"]
 
 [lints]
 workspace = true
