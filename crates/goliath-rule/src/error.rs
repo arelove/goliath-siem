@@ -1,5 +1,6 @@
 //! Error types.
 
+use goliath_ocsf::schema::PathError as SchemaPathError;
 use goliath_sigma::YamlError;
 use thiserror::Error;
 
@@ -60,6 +61,51 @@ pub enum MappingError {
         earlier: usize,
         /// The zero-based index of the repeated entry.
         index: usize,
+    },
+
+    /// An entry's `class_uid` is not a class of the OCSF schema.
+    #[error("mapping {index}: OCSF {version} has no class {class_uid}")]
+    UnknownClass {
+        /// The zero-based index of the entry.
+        index: usize,
+        /// The `class_uid` as written.
+        class_uid: i64,
+        /// The schema version checked against.
+        version: &'static str,
+    },
+
+    /// A path is not an attribute of the entry's class.
+    #[error("mapping {index}: {source}")]
+    Attribute {
+        /// The zero-based index of the entry.
+        index: usize,
+        /// Where the path left the schema.
+        source: SchemaPathError,
+    },
+
+    /// A path names an attribute no value of a rule can be compared with.
+    #[error("mapping {index}: `{path}` holds {holds}, which cannot equal {value}")]
+    Type {
+        /// The zero-based index of the entry.
+        index: usize,
+        /// The path as written.
+        path: String,
+        /// What the attribute holds, such as `` an object `file` ``.
+        holds: String,
+        /// What it would be compared with, such as `a rule's value`.
+        value: String,
+    },
+
+    /// A class condition requires a value its enumerated attribute does
+    /// not define, so no event could satisfy it.
+    #[error("mapping {index}: {value} is not a defined value of `{path}`")]
+    UnknownValue {
+        /// The zero-based index of the entry.
+        index: usize,
+        /// The path as written.
+        path: String,
+        /// The value.
+        value: i64,
     },
 
     /// No entry applies to a rule's log source.
