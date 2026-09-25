@@ -214,6 +214,9 @@ async fn dead_letters_keep_their_raw_bytes() {
     scratch.drop().await;
 }
 
+/// One day in milliseconds.
+const DAY: i64 = 86_400_000;
+
 fn now() -> i64 {
     let elapsed = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -227,7 +230,6 @@ async fn retention_counts_from_receipt_not_from_the_claimed_time() {
         return;
     };
     scratch.store.migrate().await.unwrap();
-    const DAY: i64 = 86_400_000;
 
     // Received 60 days ago, with ordinary times.
     let old = batch(KINDS, now() - 60 * DAY);
@@ -299,13 +301,13 @@ async fn the_writer_flushes_when_full_and_keeps_rows_until_written() {
     writer.flush_if_due().await.unwrap();
     let written = scratch.count("SELECT count() FROM events").await
         + scratch.count("SELECT count() FROM dead_letters").await;
-    assert_eq!(written as usize + writer.waiting(), total);
+    assert_eq!(written, (total - writer.waiting()) as u64);
 
     writer.flush().await.unwrap();
     assert_eq!(writer.waiting(), 0);
     assert_eq!(writer.deadline(), None);
     let written = scratch.count("SELECT count() FROM events").await
         + scratch.count("SELECT count() FROM dead_letters").await;
-    assert_eq!(written as usize, total);
+    assert_eq!(written, total as u64);
     scratch.drop().await;
 }
