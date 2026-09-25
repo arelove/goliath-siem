@@ -85,6 +85,19 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test -p goliath-pipe --features kafka
 
+  container:
+    # The image and compose.yaml, as a user runs them: build, start, drop a
+    # Sysmon file, and find its events in ClickHouse.
+    name: container / compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: scripts/compose-smoke.sh
+      - if: failure()
+        run: docker compose logs
+      - if: always()
+        run: docker compose down --volumes
+
   lint:
     name: lint
     runs-on: ubuntu-latest

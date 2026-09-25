@@ -234,10 +234,10 @@ impl DiskTopic {
     /// or holds damage other than a torn last record.
     pub fn open(directory: impl AsRef<Path>, options: DiskOptions) -> Result<Self, PipeError> {
         let directory = directory.as_ref().to_path_buf();
-        fs::create_dir_all(directory.join("groups")).map_err(PipeError::from)?;
+        fs::create_dir_all(directory.join("groups")).map_err(|error| at(&directory, &error))?;
 
         let mut bases = Vec::new();
-        for entry in fs::read_dir(&directory).map_err(PipeError::from)? {
+        for entry in fs::read_dir(&directory).map_err(|error| at(&directory, &error))? {
             let name = entry.map_err(PipeError::from)?.file_name();
             let name = name.to_string_lossy();
             if let Some(base) = name
@@ -265,7 +265,9 @@ impl DiskTopic {
         }
 
         let mut groups = BTreeMap::new();
-        for entry in fs::read_dir(directory.join("groups")).map_err(PipeError::from)? {
+        for entry in
+            fs::read_dir(directory.join("groups")).map_err(|error| at(&directory, &error))?
+        {
             let path = entry.map_err(PipeError::from)?.path();
             if path
                 .extension()
@@ -668,6 +670,12 @@ fn sync_directory(directory: &Path) -> io::Result<()> {
 
 fn lock(log: &Mutex<Log>) -> MutexGuard<'_, Log> {
     log.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// An I/O error, with the path it happened at: without it, "permission
+/// denied" at startup says nothing about which directory to fix.
+fn at(path: &Path, error: &io::Error) -> PipeError {
+    PipeError::Io(format!("{}: {error}", path.display()))
 }
 
 fn damage(path: &Path, reason: &str) -> PipeError {

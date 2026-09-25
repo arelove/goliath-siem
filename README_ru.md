@@ -57,6 +57,27 @@
 Ещё не построены: приём событий, хранение, детект по расписанию, реагирование
 и интерфейс. Порядок описан в [docs/roadmap.md](docs/roadmap.md).
 
+## Запустить
+
+Платформа в текущем виде: файлы Sysmon на входе, события OCSF в ClickHouse на
+выходе, в двух контейнерах:
+
+```text
+cp .env.example .env          # задайте CLICKHOUSE_PASSWORD
+docker compose up -d --build
+```
+
+Положите события Sysmon в формате `evtx_dump -o json` в `inbox/sysmon/` и
+запрашивайте их по любому пути OCSF:
+
+```sql
+SELECT time, event.process.cmd_line FROM goliath.events WHERE class_uid = 1007
+```
+
+Пароль хранится в `.env`, который git игнорирует, и попадает в goliath как
+смонтированный файл секрета, а не переменная окружения. `scripts/compose-smoke.sh`
+проделывает всё это целиком и запускается в CI.
+
 ## Попробовать
 
 ```text

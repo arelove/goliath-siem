@@ -1,0 +1,8 @@
+# Only sources go into the build context.
+target/
+.git/
+data/
+inbox/
+.env
+.env.*
+**/*.log
