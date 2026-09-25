@@ -84,6 +84,7 @@ impl SourcePath {
 }
 
 /// What became of one record.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Outcome {
     /// The record became an OCSF event.
@@ -93,6 +94,7 @@ pub enum Outcome {
 }
 
 /// An OCSF event, and anything that did not convert on the way.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Normalized {
     /// The event.
@@ -106,6 +108,7 @@ pub struct Normalized {
 }
 
 /// A value that did not convert.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Issue {
     /// The OCSF attribute it was meant for.
@@ -120,6 +123,7 @@ pub struct Issue {
 ///
 /// The raw bytes are kept exactly, so the record can be processed again once
 /// the source definition is fixed. Nothing a source sends is dropped.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeadLetter {
     /// The stage that failed.
@@ -132,6 +136,7 @@ pub struct DeadLetter {
 }
 
 /// A stage of normalization, in order.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Stage {
     /// Splitting the stream into records.

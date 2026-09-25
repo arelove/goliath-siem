@@ -8,7 +8,7 @@ use goliath_rule::{
 };
 use goliath_sigma::{Pattern, PatternPart, parse_rule};
 
-const SIGMA_WINDOWS: &str = include_str!("../mappings/sigma-windows.yaml");
+const SIGMA_WINDOWS: &str = goliath_rule::SIGMA_WINDOWS;
 
 fn resolve(detection: &str) -> Result<Expr, ResolveError> {
     let source = format!(

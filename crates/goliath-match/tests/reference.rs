@@ -7,7 +7,7 @@ use goliath_match::{CompileError, ReferenceRule};
 use goliath_rule::{MappingSet, sigma};
 use serde_json::{Value, json};
 
-const SIGMA_WINDOWS: &str = include_str!("../../goliath-rule/mappings/sigma-windows.yaml");
+const SIGMA_WINDOWS: &str = goliath_rule::SIGMA_WINDOWS;
 
 fn rule(detection: &str) -> ReferenceRule {
     try_rule(detection).expect("rule compiles")

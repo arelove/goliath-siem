@@ -20,7 +20,7 @@ use std::fmt::Write as _;
 use goliath_rule::{MappingSet, ResolvedRule, sigma};
 use serde_json::{Value, json};
 
-const SIGMA_WINDOWS: &str = include_str!("../../goliath-rule/mappings/sigma-windows.yaml");
+const SIGMA_WINDOWS: &str = goliath_rule::SIGMA_WINDOWS;
 
 /// Rules and the events to evaluate them against.
 #[derive(Debug, Clone)]

@@ -6,6 +6,7 @@ use thiserror::Error;
 use crate::mapping::LogSourceSelector;
 
 /// A field path that cannot be parsed.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum PathError {
     /// The path is empty.

@@ -15,7 +15,7 @@ use goliath_match::Engine;
 use goliath_rule::{MappingSet, ResolvedRule, sigma};
 use serde_json::{Value, json};
 
-const SIGMA_WINDOWS: &str = include_str!("../../goliath-rule/mappings/sigma-windows.yaml");
+const SIGMA_WINDOWS: &str = goliath_rule::SIGMA_WINDOWS;
 
 fn rule(category: &str, detection: &str) -> ResolvedRule {
     let source = format!(

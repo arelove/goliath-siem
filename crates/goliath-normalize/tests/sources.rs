@@ -39,6 +39,7 @@ fn render(outcome: &Outcome) -> Value {
                 "raw": String::from_utf8_lossy(&dead.raw),
             }
         }),
+        other => panic!("an outcome this test does not know: {other:?}"),
     }
 }
 

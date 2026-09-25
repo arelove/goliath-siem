@@ -142,6 +142,7 @@ pub enum ModifierError {
 ///
 /// Raised both for syntax errors and for input refused on safety grounds:
 /// duplicate keys, unsupported tags, or alias expansion beyond the budget.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[error("{message}")]
 pub struct YamlError {
