@@ -38,7 +38,9 @@ repository, with details and reproduction steps in
   expects on real recorded attack events;
 - the engine evaluates those 2,046 rules at about 129,000 events/s on one
   core, and returns exactly what a deliberately naive reference evaluator
-  returns on every event.
+  returns on every event;
+- one engine shared by every thread of a 16-core laptop evaluates about
+  2,000,000 events/s, past the 1,000,000 events/s target for detection.
 
 The engine's speed is guarded in CI: a pull request fails if evaluating an
 event allocates, or if the engine spends more than 2% more instructions on a
