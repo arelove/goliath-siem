@@ -1,0 +1,27 @@
+# Every role in one process: files dropped into the inbox are normalized and
+# stored in ClickHouse. Relative paths are taken from this file's directory.
+
+roles = ["collector", "normalizer", "writer"]
+
+# Durable topics between the roles, and each role's position in them.
+data = "data"
+
+[[sources]]
+# A built-in definition, or the path of a YAML source definition.
+definition = "sysmon"
+# Drop `evtx_dump -o json` output here. Write a file under a name ending in
+# `.tmp` and rename it when complete; collected files move to `done/`.
+inbox = "inbox/sysmon"
+
+[store]
+url = "http://localhost:8123"
+database = "goliath"
+user = "goliath"
+# The password is read from this environment variable, never from the file.
+password_env = "GOLIATH_CLICKHOUSE_PASSWORD"
+# Counted from when a record was received, not from the time it claims.
+retention_days = 30
+
+[writer]
+max_rows = 50000
+max_delay_ms = 1000

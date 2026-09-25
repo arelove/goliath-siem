@@ -50,6 +50,12 @@ name = "goliath-pipe"
 publish = false
 release = false
 
+# The binary; released as a container and archives later, not a crate.
+[[package]]
+name = "goliath"
+publish = false
+release = false
+
 # Workloads and benchmarks; never released.
 [[package]]
 name = "goliath-bench"
