@@ -14,8 +14,10 @@ mod batch;
 mod error;
 mod migrate;
 mod store;
+mod writer;
 
 pub use batch::Batch;
 pub use error::StoreError;
 pub use migrate::{MIGRATIONS, Migration};
 pub use store::Store;
+pub use writer::{Limits, Writer};

@@ -213,3 +213,101 @@ async fn dead_letters_keep_their_raw_bytes() {
     }
     scratch.drop().await;
 }
+
+/// One day in milliseconds.
+const DAY: i64 = 86_400_000;
+
+fn now() -> i64 {
+    let elapsed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap();
+    i64::try_from(elapsed.as_millis()).unwrap()
+}
+
+#[tokio::test]
+async fn retention_counts_from_receipt_not_from_the_claimed_time() {
+    let Some(scratch) = Scratch::new("retention") else {
+        return;
+    };
+    scratch.store.migrate().await.unwrap();
+
+    // Received 60 days ago, with ordinary times.
+    let old = batch(KINDS, now() - 60 * DAY);
+    // Received now, but claiming to be from 2001: a forged time must not
+    // make evidence expire.
+    let forged = batch(
+        &KINDS.replace("\"SystemTime\": \"2026-", "\"SystemTime\": \"2001-"),
+        now(),
+    );
+    scratch.store.write(&old).await.unwrap();
+    scratch.store.write(&forged).await.unwrap();
+    assert_eq!(
+        scratch
+            .count("SELECT count() FROM events WHERE toYear(time) = 2001")
+            .await,
+        forged.events() as u64
+    );
+
+    let thirty = std::num::NonZeroU16::new(30);
+    scratch.store.set_retention(thirty).await.unwrap();
+    assert_eq!(scratch.store.retention().await.unwrap(), thirty);
+    // Setting it again changes nothing.
+    scratch.store.set_retention(thirty).await.unwrap();
+
+    scratch
+        .client
+        .query("OPTIMIZE TABLE events FINAL")
+        .execute()
+        .await
+        .unwrap();
+    assert_eq!(
+        scratch.count("SELECT count() FROM events").await,
+        forged.events() as u64
+    );
+
+    scratch.store.set_retention(None).await.unwrap();
+    assert_eq!(scratch.store.retention().await.unwrap(), None);
+    scratch.drop().await;
+}
+
+#[tokio::test]
+async fn the_writer_flushes_when_full_and_keeps_rows_until_written() {
+    use goliath_store::{Limits, Writer};
+    use std::time::Duration;
+
+    let Some(scratch) = Scratch::new("writer") else {
+        return;
+    };
+    scratch.store.migrate().await.unwrap();
+    let sysmon = Normalizer::from_yaml(SYSMON).unwrap();
+    let mut outcomes = Vec::new();
+    sysmon.normalize(KINDS.as_bytes(), |outcome| outcomes.push(outcome));
+    sysmon.normalize(MALFORMED.as_bytes(), |outcome| outcomes.push(outcome));
+    let total = outcomes.len();
+    assert!(total > 3);
+
+    let limits = Limits {
+        max_rows: 3,
+        max_delay: Duration::from_secs(3600),
+    };
+    let mut writer = Writer::new(scratch.store.clone(), limits);
+    assert_eq!(writer.deadline(), None);
+    for outcome in outcomes {
+        writer.push(&sysmon, outcome).await.unwrap();
+        assert!(writer.waiting() < 3);
+    }
+    assert!(writer.deadline().is_some());
+    // Not due for an hour, so nothing moves.
+    writer.flush_if_due().await.unwrap();
+    let written = scratch.count("SELECT count() FROM events").await
+        + scratch.count("SELECT count() FROM dead_letters").await;
+    assert_eq!(written, (total - writer.waiting()) as u64);
+
+    writer.flush().await.unwrap();
+    assert_eq!(writer.waiting(), 0);
+    assert_eq!(writer.deadline(), None);
+    let written = scratch.count("SELECT count() FROM events").await
+        + scratch.count("SELECT count() FROM dead_letters").await;
+    assert_eq!(written, total as u64);
+    scratch.drop().await;
+}

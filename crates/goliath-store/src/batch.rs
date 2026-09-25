@@ -139,6 +139,12 @@ impl Batch {
         Ok(())
     }
 
+    /// Whether the batch is for records of `normalizer`'s source and
+    /// definition version.
+    pub(crate) fn is_for(&self, normalizer: &Normalizer) -> bool {
+        self.source == normalizer.name() && self.source_version == normalizer.version()
+    }
+
     /// How many events the batch holds.
     pub fn events(&self) -> usize {
         self.events.len()
