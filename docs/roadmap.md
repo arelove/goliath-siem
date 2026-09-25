@@ -73,6 +73,10 @@ Get real events into real storage.
 table in both single-process and fully distributed topologies, with the same
 integration suite passing against both.
 
+**Status:** started. `goliath-normalize` runs declarative source definitions
+with dead-letter routing, and its Sysmon definition feeds the SigmaHQ
+regression run. Transport, storage, and the other sources are next.
+
 ## M3 - Benchmark rig
 
 Without this, nothing after it can be honestly measured.

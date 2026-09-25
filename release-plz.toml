@@ -34,6 +34,10 @@ publish = true
 name = "goliath-match"
 publish = true
 
+[[package]]
+name = "goliath-normalize"
+publish = true
+
 # Workloads and benchmarks; never released.
 [[package]]
 name = "goliath-bench"

@@ -126,8 +126,13 @@ impl Event {
     }
 
     /// Derives `category_uid` from a class, per the OCSF rule.
+    ///
+    /// A core class number is its category times 1,000 plus a number within
+    /// it. An extension class adds the extension's number times 100,000, and
+    /// keeps the category of the core class it extends: Registry Value
+    /// Activity, 201002 in the Windows extension, is System Activity, 1.
     pub const fn derive_category_uid(class_uid: u32) -> u32 {
-        class_uid / 1000
+        class_uid % 100_000 / 1000
     }
 
     /// Checks the invariants the schema states but JSON cannot express.
@@ -231,6 +236,12 @@ mod tests {
         assert_eq!(Event::derive_type_uid(1007, 1), 100_701);
         assert_eq!(Event::derive_category_uid(1007), 1);
         assert_eq!(Event::derive_category_uid(4001), 4);
+    }
+
+    #[test]
+    fn extension_classes_keep_the_category_they_extend() {
+        assert_eq!(Event::derive_category_uid(201_002), 1);
+        assert_eq!(Event::derive_type_uid(201_002, 2), 20_100_202);
     }
 
     #[test]

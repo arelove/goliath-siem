@@ -1,0 +1,123 @@
+# Sysmon events from the Windows event log, as `evtx_dump -o json` writes
+# them: one JSON object per record, `Event.System` and `Event.EventData`.
+#
+# Kinds cover the Sysmon events the `sigma-windows` mapping set has entries
+# for, and write the OCSF paths it reads. Every EventData member not mapped
+# below is kept under `unmapped` by its Sysmon name, which is where that
+# mapping set looks for fields OCSF has no attribute for, such as
+# `OriginalFileName`.
+#
+# Values are kept as Sysmon wrote them wherever a Sigma rule may match their
+# text. IP addresses in particular are not rewritten to a canonical form:
+# `fe80:0:0:0:...` would become `fe80::...`, and a rule written against
+# Sysmon's spelling would stop matching.
+
+name: sysmon
+version: 1
+framing: json-values
+decoding: json
+
+common:
+  time: { from: Event.System.TimeCreated.#attributes.SystemTime, as: timestamp }
+  severity_id: { value: 1 }
+  metadata.version: { value: "1.5.0" }
+  metadata.product.name: { value: Sysmon }
+  metadata.product.vendor_name: { value: Microsoft }
+  metadata.log_name: Event.System.Channel
+  metadata.uid: { from: Event.System.EventRecordID, as: string }
+  device.hostname: Event.System.Computer
+  device.os.type_id: { value: 100 }
+  device.os.name: { value: Windows }
+
+kinds:
+  - name: process_creation
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Sysmon
+      Event.System.EventID: 1
+    # Process Activity: Launch.
+    class: { class_uid: 1007, activity_id: 1 }
+    fields:
+      process.file.path: Event.EventData.Image
+      process.cmd_line: Event.EventData.CommandLine
+      process.pid: { from: Event.EventData.ProcessId, as: integer }
+      process.uid: Event.EventData.ProcessGuid
+      process.working_directory: Event.EventData.CurrentDirectory
+      process.integrity: Event.EventData.IntegrityLevel
+      process.user.name: Event.EventData.User
+      process.session.uid: Event.EventData.LogonId
+      process.file.product.name: Event.EventData.Product
+      process.file.company_name: Event.EventData.Company
+      process.file.desc: Event.EventData.Description
+      process.file.version: Event.EventData.FileVersion
+      process.parent_process.file.path: Event.EventData.ParentImage
+      process.parent_process.cmd_line: Event.EventData.ParentCommandLine
+      process.parent_process.pid: { from: Event.EventData.ParentProcessId, as: integer }
+      process.parent_process.uid: Event.EventData.ParentProcessGuid
+      process.parent_process.user.name: Event.EventData.ParentUser
+    unmapped: [Event.EventData]
+
+  - name: network_connection
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Sysmon
+      Event.System.EventID: 3
+    # Network Activity: Open.
+    class: { class_uid: 4001, activity_id: 1 }
+    fields:
+      actor.process.file.path: Event.EventData.Image
+      actor.process.pid: { from: Event.EventData.ProcessId, as: integer }
+      actor.process.uid: Event.EventData.ProcessGuid
+      actor.user.name: Event.EventData.User
+      connection_info.protocol_name: Event.EventData.Protocol
+      src_endpoint.ip: Event.EventData.SourceIp
+      src_endpoint.hostname: Event.EventData.SourceHostname
+      src_endpoint.port: { from: Event.EventData.SourcePort, as: integer }
+      dst_endpoint.ip: Event.EventData.DestinationIp
+      dst_endpoint.hostname: Event.EventData.DestinationHostname
+      dst_endpoint.port: { from: Event.EventData.DestinationPort, as: integer }
+    unmapped: [Event.EventData]
+
+  - name: image_load
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Sysmon
+      Event.System.EventID: 7
+    # Module Activity: Load.
+    class: { class_uid: 1005, activity_id: 1 }
+    fields:
+      actor.process.file.path: Event.EventData.Image
+      actor.process.pid: { from: Event.EventData.ProcessId, as: integer }
+      actor.process.uid: Event.EventData.ProcessGuid
+      actor.user.name: Event.EventData.User
+      module.file.path: Event.EventData.ImageLoaded
+      module.file.product.name: Event.EventData.Product
+      module.file.company_name: Event.EventData.Company
+      module.file.desc: Event.EventData.Description
+      module.file.version: Event.EventData.FileVersion
+    unmapped: [Event.EventData]
+
+  - name: file_create
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Sysmon
+      Event.System.EventID: 11
+    # File System Activity: Create.
+    class: { class_uid: 1001, activity_id: 1 }
+    fields:
+      actor.process.file.path: Event.EventData.Image
+      actor.process.pid: { from: Event.EventData.ProcessId, as: integer }
+      actor.process.uid: Event.EventData.ProcessGuid
+      actor.user.name: Event.EventData.User
+      file.path: Event.EventData.TargetFilename
+    unmapped: [Event.EventData]
+
+  - name: registry_set
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Sysmon
+      Event.System.EventID: 13
+    # Registry Value Activity: Set, from the OCSF Windows extension.
+    class: { class_uid: 201002, activity_id: 2 }
+    fields:
+      actor.process.file.path: Event.EventData.Image
+      actor.process.pid: { from: Event.EventData.ProcessId, as: integer }
+      actor.process.uid: Event.EventData.ProcessGuid
+      actor.user.name: Event.EventData.User
+      reg_value.path: Event.EventData.TargetObject
+    unmapped: [Event.EventData]

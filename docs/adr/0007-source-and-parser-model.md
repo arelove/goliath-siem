@@ -2,6 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-09-21
+- **Amended:** 2026-09-25, conversion failures no longer dead-letter the
+  record; fixtures run under `cargo test`
 
 ## Context
 
@@ -23,9 +25,10 @@ flowchart LR
   D --> M["Mapping<br/>fields to OCSF"]
   M --> C["Coercion<br/>types · timestamps · enums"]
   C --> O["OCSF event"]
-  D -.->|failure| X["Dead letter<br/>raw bytes preserved"]
-  M -.->|failure| X
-  C -.->|failure| X
+  F -.->|failure| X["Dead letter<br/>raw bytes preserved"]
+  D -.->|failure| X
+  M -.->|no kind fits| X
+  C -.->|value does not convert| U["Event still produced<br/>value kept under unmapped<br/>issue reported"]
 ```
 
 ## Stages
@@ -46,9 +49,17 @@ enum translation to OCSF values, unit conversion.
 
 ## Data is never dropped
 
-A parse failure at any stage routes the record to a **dead letter stream with
-its raw bytes intact**, tagged with the stage, the source version, and the
-error. Failures are counted per source and surfaced as an operational metric.
+A record that cannot become an event, because it cannot be framed, decoded, or
+matched to a kind of the source, goes to a **dead letter stream with its raw
+bytes intact**, tagged with the stage, the source version, and the error.
+Failures are counted per source and surfaced as an operational metric.
+
+A value that does not convert is different, and does not send its record to
+the dead letter stream. The event is produced without that attribute, the
+value is kept as written under `unmapped`, and the failure is reported with the
+event as an issue. Dead-lettering the whole record would keep it away from
+detection, and would give an attacker a way to hide an event from every rule:
+write one field the parser cannot convert.
 
 This is non-negotiable. A SIEM that silently discards what it cannot parse
 loses the evidence precisely when an attacker uses an unusual code path.
@@ -58,8 +69,10 @@ supported operation.
 ## Testing
 
 Every source definition ships with fixtures: sample raw records and their
-expected OCSF output. CI runs them through DuckDB in seconds without
-infrastructure. A source definition without fixtures does not merge.
+expected OCSF output, including the dead letters and issues they must produce.
+`cargo test` runs them in seconds without infrastructure, and checks every
+cleanly converted event against the OCSF invariants. A source definition
+without fixtures does not merge.
 
 This makes source definitions contributable by people who do not write Rust,
 which is the only way the parser library ever reaches useful size.

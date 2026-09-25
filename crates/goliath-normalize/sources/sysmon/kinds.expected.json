@@ -1,0 +1,289 @@
+[
+  {
+    "event": {
+      "activity_id": 1,
+      "category_uid": 1,
+      "class_uid": 1007,
+      "device": {
+        "hostname": "WS-FINANCE-07",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "log_name": "Microsoft-Windows-Sysmon/Operational",
+        "product": {
+          "name": "Sysmon",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "1001",
+        "version": "1.5.0"
+      },
+      "process": {
+        "cmd_line": "\"C:\\Windows\\System32\\notepad.exe\" C:\\Users\\adam\\notes.txt",
+        "file": {
+          "company_name": "Microsoft Corporation",
+          "desc": "Notepad",
+          "path": "C:\\Windows\\System32\\notepad.exe",
+          "product": {
+            "name": "Microsoft® Windows® Operating System"
+          },
+          "version": "10.0.26100.1"
+        },
+        "integrity": "Medium",
+        "parent_process": {
+          "cmd_line": "C:\\Windows\\Explorer.EXE",
+          "file": {
+            "path": "C:\\Windows\\explorer.exe"
+          },
+          "pid": 4012,
+          "uid": "4E2A1C3B-EC48-694C-AA0C-000000000800",
+          "user": {
+            "name": "CORP\\adam"
+          }
+        },
+        "pid": 5120,
+        "session": {
+          "uid": "0x3144c"
+        },
+        "uid": "4E2A1C3B-7F11-6512-0A00-000000000A00",
+        "user": {
+          "name": "CORP\\adam"
+        },
+        "working_directory": "C:\\Users\\adam\\"
+      },
+      "severity_id": 1,
+      "time": 1790244930123,
+      "type_uid": 100701,
+      "unmapped": {
+        "Hashes": "SHA256=0000000000000000000000000000000000000000000000000000000000000001",
+        "LogonGuid": "4E2A1C3B-AB9F-67AA-4C14-030000000000",
+        "OriginalFileName": "NOTEPAD.EXE",
+        "RuleName": "-",
+        "TerminalSessionId": 1,
+        "UtcTime": "2026-09-24 10:15:30.120"
+      }
+    },
+    "issues": [],
+    "kind": "process_creation"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "process": {
+          "file": {
+            "path": "C:\\Program Files\\Browser\\browser.exe"
+          },
+          "pid": 5120,
+          "uid": "4E2A1C3B-7F11-6512-0A00-000000000A00"
+        },
+        "user": {
+          "name": "CORP\\adam"
+        }
+      },
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "protocol_name": "tcp"
+      },
+      "device": {
+        "hostname": "WS-FINANCE-07",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "dst_endpoint": {
+        "ip": "192.0.2.10",
+        "port": 443
+      },
+      "metadata": {
+        "log_name": "Microsoft-Windows-Sysmon/Operational",
+        "product": {
+          "name": "Sysmon",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "1002",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "hostname": "WS-FINANCE-07.corp.example",
+        "ip": "10.20.30.40",
+        "port": 51544
+      },
+      "time": 1790244930123,
+      "type_uid": 400101,
+      "unmapped": {
+        "DestinationIsIpv6": false,
+        "DestinationPortName": "https",
+        "Initiated": true,
+        "RuleName": "-",
+        "SourceIsIpv6": false,
+        "SourcePortName": "-",
+        "UtcTime": "2026-09-24 10:15:31.000"
+      }
+    },
+    "issues": [],
+    "kind": "network_connection"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "process": {
+          "file": {
+            "path": "C:\\Windows\\System32\\notepad.exe"
+          },
+          "pid": 5120,
+          "uid": "4E2A1C3B-7F11-6512-0A00-000000000A00"
+        },
+        "user": {
+          "name": "CORP\\adam"
+        }
+      },
+      "category_uid": 1,
+      "class_uid": 1005,
+      "device": {
+        "hostname": "WS-FINANCE-07",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "log_name": "Microsoft-Windows-Sysmon/Operational",
+        "product": {
+          "name": "Sysmon",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "1003",
+        "version": "1.5.0"
+      },
+      "module": {
+        "file": {
+          "company_name": "Microsoft Corporation",
+          "desc": "Microsoft UxTheme Library",
+          "path": "C:\\Windows\\System32\\uxtheme.dll",
+          "product": {
+            "name": "Microsoft® Windows® Operating System"
+          },
+          "version": "10.0.26100.1"
+        }
+      },
+      "severity_id": 1,
+      "time": 1790244930123,
+      "type_uid": 100501,
+      "unmapped": {
+        "Hashes": "SHA256=0000000000000000000000000000000000000000000000000000000000000002",
+        "OriginalFileName": "UxTheme.dll",
+        "RuleName": "-",
+        "Signature": "Microsoft Windows",
+        "SignatureStatus": "Valid",
+        "Signed": "true",
+        "UtcTime": "2026-09-24 10:15:32.000"
+      }
+    },
+    "issues": [],
+    "kind": "image_load"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "process": {
+          "file": {
+            "path": "C:\\Windows\\System32\\notepad.exe"
+          },
+          "pid": 5120,
+          "uid": "4E2A1C3B-7F11-6512-0A00-000000000A00"
+        },
+        "user": {
+          "name": "CORP\\adam"
+        }
+      },
+      "category_uid": 1,
+      "class_uid": 1001,
+      "device": {
+        "hostname": "WS-FINANCE-07",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "file": {
+        "path": "C:\\Users\\adam\\notes.txt"
+      },
+      "metadata": {
+        "log_name": "Microsoft-Windows-Sysmon/Operational",
+        "product": {
+          "name": "Sysmon",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "1004",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790244930123,
+      "type_uid": 100101,
+      "unmapped": {
+        "CreationUtcTime": "2026-09-24 10:15:33.000",
+        "RuleName": "-",
+        "UtcTime": "2026-09-24 10:15:33.000"
+      }
+    },
+    "issues": [],
+    "kind": "file_create"
+  },
+  {
+    "event": {
+      "activity_id": 2,
+      "actor": {
+        "process": {
+          "file": {
+            "path": "C:\\Windows\\System32\\notepad.exe"
+          },
+          "pid": 5120,
+          "uid": "4E2A1C3B-7F11-6512-0A00-000000000A00"
+        },
+        "user": {
+          "name": "CORP\\adam"
+        }
+      },
+      "category_uid": 1,
+      "class_uid": 201002,
+      "device": {
+        "hostname": "WS-FINANCE-07",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "log_name": "Microsoft-Windows-Sysmon/Operational",
+        "product": {
+          "name": "Sysmon",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "1005",
+        "version": "1.5.0"
+      },
+      "reg_value": {
+        "path": "HKU\\S-1-5-21-1-2-3-1001\\Software\\Microsoft\\Notepad\\iWindowPosX"
+      },
+      "severity_id": 1,
+      "time": 1790244930123,
+      "type_uid": 20100202,
+      "unmapped": {
+        "Details": "DWORD (0x00000064)",
+        "EventType": "SetValue",
+        "RuleName": "-",
+        "UtcTime": "2026-09-24 10:15:34.000"
+      }
+    },
+    "issues": [],
+    "kind": "registry_set"
+  }
+]

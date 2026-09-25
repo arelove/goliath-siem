@@ -1,0 +1,16 @@
+[
+  {
+    "dead_letter": {
+      "error": "no kind of source `sysmon` accepts the record",
+      "raw": "{\n  \"Event\": {\n    \"#attributes\": {\n      \"xmlns\": \"http://schemas.microsoft.com/win/2004/08/events/event\"\n    },\n    \"System\": {\n      \"Provider\": {\n        \"#attributes\": {\n          \"Name\": \"Microsoft-Windows-Security-Auditing\",\n          \"Guid\": \"5770385F-C22A-43E0-BF4C-06F5698FFBD9\"\n        }\n      },\n      \"EventID\": 4688,\n      \"Version\": 5,\n      \"Level\": 4,\n      \"Task\": 1,\n      \"Opcode\": 0,\n      \"TimeCreated\": {\n        \"#attributes\": {\n          \"SystemTime\": \"2026-09-24T10:15:30.1234567Z\"\n        }\n      },\n      \"EventRecordID\": 2001,\n      \"Correlation\": null,\n      \"Channel\": \"Security\",\n      \"Computer\": \"WS-FINANCE-07\"\n    },\n    \"EventData\": {\n      \"SubjectUserName\": \"adam\",\n      \"NewProcessName\": \"C:\\\\Windows\\\\System32\\\\notepad.exe\"\n    }\n  }\n}",
+      "stage": "mapping"
+    }
+  },
+  {
+    "dead_letter": {
+      "error": "no kind of source `sysmon` accepts the record",
+      "raw": "{\n  \"Event\": {\n    \"#attributes\": {\n      \"xmlns\": \"http://schemas.microsoft.com/win/2004/08/events/event\"\n    },\n    \"System\": {\n      \"Provider\": {\n        \"#attributes\": {\n          \"Name\": \"Microsoft-Windows-Sysmon\",\n          \"Guid\": \"5770385F-C22A-43E0-BF4C-06F5698FFBD9\"\n        }\n      },\n      \"EventID\": 22,\n      \"Version\": 5,\n      \"Level\": 4,\n      \"Task\": 1,\n      \"Opcode\": 0,\n      \"TimeCreated\": {\n        \"#attributes\": {\n          \"SystemTime\": \"2026-09-24T10:15:30.1234567Z\"\n        }\n      },\n      \"EventRecordID\": 2002,\n      \"Correlation\": null,\n      \"Channel\": \"Microsoft-Windows-Sysmon/Operational\",\n      \"Computer\": \"WS-FINANCE-07\"\n    },\n    \"EventData\": {\n      \"RuleName\": \"-\",\n      \"QueryName\": \"example.org\",\n      \"Image\": \"C:\\\\Program Files\\\\Browser\\\\browser.exe\"\n    }\n  }\n}",
+      "stage": "mapping"
+    }
+  }
+]

@@ -69,8 +69,10 @@ Loading a rule proves little: a loaded rule that never fires is worse than a
 rule that refuses to load. SigmaHQ's `regression_data` holds, for many rules,
 real Windows events recorded while the attack was performed, and the number of
 times the rule must fire on them. Each case is run end to end: the events are
-converted from Sysmon to OCSF, and the resolved rule is evaluated by the
-reference evaluator.
+normalized to OCSF by the Sysmon source definition of `goliath-normalize`,
+exactly as a deployment would, and the resolved rule is evaluated by the
+reference evaluator. All 393 Sysmon events of the loaded cases normalize with
+no value that fails to convert.
 
 | Outcome | Cases |
 | --- | ---: |
@@ -93,13 +95,14 @@ was run twice with a deliberate fault:
 
 What this does and does not show:
 
-- It shows that parsing, modifier handling, resolution, and evaluation agree
-  with SigmaHQ on real attack telemetry.
-- It does not show on its own that the mapping chose the right OCSF
-  attributes. The Sysmon to OCSF conversion used here is a stand-in for the
-  Sysmon source definition of milestone M2, written by the same project as the
-  mapping, so an attribute chosen wrongly in both would go unnoticed. The M2
-  source definition, tested against its own fixtures, closes that gap.
+- It shows that normalization, parsing, modifier handling, resolution, and
+  evaluation agree with SigmaHQ on real attack telemetry.
+- It does not show on its own that the two chose the right OCSF attributes.
+  The source definition and the mapping set are written by the same project,
+  so an attribute chosen wrongly in both would go unnoticed. The source
+  definition's fixtures check that its events satisfy the OCSF invariants,
+  but not yet that every attribute exists in the schema with the type
+  written; that needs the schema itself, which is the next step there.
 
 Each event is also evaluated against every other loaded rule. 152 rules fire on
 at least one other rule's attack. That is expected, since attacks share steps,
