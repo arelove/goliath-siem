@@ -5,6 +5,7 @@
 //! acceptable.
 
 use std::collections::{BTreeMap, VecDeque};
+use std::future::{self, Future};
 use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
@@ -199,7 +200,15 @@ impl Receiver for MemoryReceiver {
         }
     }
 
-    async fn acknowledge(&mut self, offset: u64) -> Result<(), PipeError> {
+    fn acknowledge(&mut self, offset: u64) -> impl Future<Output = Result<(), PipeError>> + Send {
+        // Nothing here waits; the trait is asynchronous for durable
+        // implementations, which write the position before returning.
+        future::ready(self.acknowledge_now(offset))
+    }
+}
+
+impl MemoryReceiver {
+    fn acknowledge_now(&mut self, offset: u64) -> Result<(), PipeError> {
         if offset >= self.next {
             return Err(PipeError::NotReceived {
                 offset,
