@@ -11,6 +11,10 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [0.1.1] - 2026-09-25
 
+### Added
+
+- The OCSF 1.5.0 schema, compiled in, with path resolution against a class
+
 ## [0.1.0] - 2026-09-25
 
 
