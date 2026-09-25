@@ -67,6 +67,11 @@ pub struct StoreConfig {
     /// The environment variable holding the password. The password itself
     /// is never written in the file.
     pub password_env: Option<String>,
+    /// A file holding the password, as Docker and Kubernetes mount secrets,
+    /// such as `/run/secrets/clickhouse_password`. Surrounding whitespace is
+    /// ignored. Preferred over `password_env`: a file is not inherited by
+    /// child processes or shown by `docker inspect`.
+    pub password_file: Option<PathBuf>,
     /// Days to keep events and dead letters, counted from receipt; kept
     /// forever if absent.
     pub retention_days: Option<NonZeroU16>,
@@ -123,6 +128,13 @@ impl Config {
             .map_err(|error| RunError::Config(format!("{}: {error}", path.display())))?;
         let base = path.parent().unwrap_or(Path::new("."));
         config.data = base.join(&config.data);
+        if let Some(file) = config
+            .store
+            .as_mut()
+            .and_then(|store| store.password_file.as_mut())
+        {
+            *file = base.join(&*file);
+        }
         for source in &mut config.sources {
             source.inbox = base.join(&source.inbox);
             if !is_builtin(&source.definition) {
@@ -155,12 +167,43 @@ impl Config {
                 "the writer role needs a [store] section".to_owned(),
             ));
         }
+        if let Some(store) = &self.store
+            && store.password_env.is_some()
+            && store.password_file.is_some()
+        {
+            return Err(RunError::Config(
+                "[store] takes password_env or password_file, not both".to_owned(),
+            ));
+        }
         if self.writer.max_rows == 0 || self.writer.max_delay_ms == 0 {
             return Err(RunError::Config(
                 "writer limits must be above zero".to_owned(),
             ));
         }
         Ok(())
+    }
+}
+
+impl StoreConfig {
+    /// The password, from the file or the environment variable named, or
+    /// empty if neither is.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RunError::Config`] if the file cannot be read or the
+    /// variable is not set.
+    pub fn password(&self) -> Result<String, RunError> {
+        if let Some(path) = &self.password_file {
+            let text = std::fs::read_to_string(path)
+                .map_err(|error| RunError::Config(format!("{}: {error}", path.display())))?;
+            return Ok(text.trim().to_owned());
+        }
+        match &self.password_env {
+            Some(variable) => std::env::var(variable).map_err(|_| {
+                RunError::Config(format!("environment variable {variable} is not set"))
+            }),
+            None => Ok(String::new()),
+        }
     }
 }
 
@@ -234,5 +277,26 @@ inbox = \"other\"
         assert!(parse(&twice).is_err());
         let no_store = MINIMAL.split("[store]").next().unwrap().to_owned();
         assert!(parse(&no_store).is_err());
+    }
+
+    #[test]
+    fn a_password_comes_from_a_file_without_its_newline() {
+        let directory = std::env::temp_dir().join(format!("goliath-config-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let secret = directory.join("clickhouse_password");
+        std::fs::write(&secret, "s3cret\n").unwrap();
+        let text = MINIMAL.replace(
+            "database = \"goliath\"",
+            &format!("database = \"goliath\"\nuser = \"goliath\"\npassword_file = {secret:?}"),
+        );
+        let config = parse(&text).unwrap();
+        assert_eq!(config.store.unwrap().password().unwrap(), "s3cret");
+
+        let both = text.replace(
+            "user = \"goliath\"",
+            "user = \"goliath\"\npassword_env = \"X\"",
+        );
+        assert!(parse(&both).is_err());
+        std::fs::remove_dir_all(directory).unwrap();
     }
 }

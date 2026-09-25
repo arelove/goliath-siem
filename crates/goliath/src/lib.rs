@@ -126,15 +126,7 @@ pub async fn run(config: Config, shutdown: impl Future<Output = ()>) -> Result<(
 fn connect(settings: &config::StoreConfig) -> Result<Store, RunError> {
     let store = Store::new(&settings.url, &settings.database)?;
     Ok(match &settings.user {
-        Some(user) => {
-            let password = match &settings.password_env {
-                Some(variable) => std::env::var(variable).map_err(|_| {
-                    RunError::Config(format!("environment variable {variable} is not set"))
-                })?,
-                None => String::new(),
-            };
-            store.with_credentials(user, &password)
-        }
+        Some(user) => store.with_credentials(user, &settings.password()?),
         None => store,
     })
 }
