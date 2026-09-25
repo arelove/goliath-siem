@@ -1,0 +1,3 @@
+# Product names that doc comments spell as prose, not code.
+# ".." keeps the default list.
+doc-valid-idents = ["ClickHouse", ".."]
