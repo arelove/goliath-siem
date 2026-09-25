@@ -12,7 +12,7 @@
 use std::env;
 
 use clickhouse::Client;
-use goliath_normalize::{Normalizer, SYSMON};
+use goliath_normalize::{Envelope, Normalizer, SYSMON};
 use goliath_store::{Batch, MIGRATIONS, Store, StoreError};
 
 const KINDS: &str = include_str!("../../goliath-normalize/sources/sysmon/kinds.input.json");
@@ -293,7 +293,8 @@ async fn the_writer_flushes_when_full_and_keeps_rows_until_written() {
     let mut writer = Writer::new(scratch.store.clone(), limits);
     assert_eq!(writer.deadline(), None);
     for outcome in outcomes {
-        writer.push(&sysmon, outcome).await.unwrap();
+        let envelope = Envelope::new(sysmon.name(), sysmon.version(), outcome);
+        writer.push(envelope).await.unwrap();
         assert!(writer.waiting() < 3);
     }
     assert!(writer.deadline().is_some());

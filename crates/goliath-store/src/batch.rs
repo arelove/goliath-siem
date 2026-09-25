@@ -62,21 +62,23 @@ impl Batch {
     /// An empty batch for records of the source `normalizer` reads, received
     /// now.
     pub fn new(normalizer: &Normalizer) -> Self {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |elapsed| {
-                i64::try_from(elapsed.as_millis()).unwrap_or(i64::MAX)
-            });
-        Self::received_at(normalizer, now)
+        Self::for_source(normalizer.name(), normalizer.version(), now())
     }
 
     /// An empty batch for records of the source `normalizer` reads, received
     /// at `received` milliseconds since the Unix epoch.
     pub fn received_at(normalizer: &Normalizer, received: i64) -> Self {
+        Self::for_source(normalizer.name(), normalizer.version(), received)
+    }
+
+    /// An empty batch for records of the source `source` at definition
+    /// version `version`, received at `received` milliseconds since the Unix
+    /// epoch. For roles that read outcomes from a pipe, with no normalizer.
+    pub fn for_source(source: &str, version: u32, received: i64) -> Self {
         Self {
             received,
-            source: normalizer.name().to_owned(),
-            source_version: normalizer.version(),
+            source: source.to_owned(),
+            source_version: version,
             events: Vec::new(),
             dead_letters: Vec::new(),
         }
@@ -139,10 +141,10 @@ impl Batch {
         Ok(())
     }
 
-    /// Whether the batch is for records of `normalizer`'s source and
-    /// definition version.
-    pub(crate) fn is_for(&self, normalizer: &Normalizer) -> bool {
-        self.source == normalizer.name() && self.source_version == normalizer.version()
+    /// Whether the batch is for records of `source` at definition version
+    /// `version`.
+    pub(crate) fn is_for(&self, source: &str, version: u32) -> bool {
+        self.source == source && self.source_version == version
     }
 
     /// How many events the batch holds.
@@ -166,4 +168,13 @@ impl Batch {
 /// event still holds the value.
 fn narrow<T: TryFrom<u64> + Default>(value: u64) -> T {
     T::try_from(value).unwrap_or_default()
+}
+
+/// Milliseconds since the Unix epoch.
+pub(crate) fn now() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |elapsed| {
+            i64::try_from(elapsed.as_millis()).unwrap_or(i64::MAX)
+        })
 }
