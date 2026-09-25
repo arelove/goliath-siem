@@ -82,6 +82,25 @@ and dead letters to ClickHouse under versioned migrations
 ([ADR-0013](adr/0013-event-storage.md)), tested in CI against real servers.
 Transport, retention, and the other sources are next.
 
+## M2.5 - Event search
+
+A first slice of the M7 interface, pulled forward: stored events become
+something a person can see and use as soon as they exist.
+
+| Deliverable | Detail |
+| --- | --- |
+| Search API | The first Go service of the `api` role: time range, class, and filters on any OCSF path, compiled to parameterized ClickHouse queries, read-only |
+| Search view | The first TypeScript and React code of the `ui` role: a virtualized event table and an event detail with the full OCSF record |
+| Demo path | One command that normalizes a Sysmon recording, stores it, and opens the view |
+
+**Exit criterion:** a Sysmon event written to the source is visible in the
+search view within five seconds, and a search over 10 million stored events
+filtered by time, class, and one path returns in under one second.
+
+The view is built as the base of the M7 investigation view, not as a
+throwaway: its table, filters, and event detail are what M7 extends with
+entity pivots and the timeline.
+
 ## M3 - Benchmark rig
 
 Without this, nothing after it can be honestly measured.
