@@ -1,6 +1,6 @@
 # 0005. Languages and process boundaries
 
-- **Status:** Accepted
+- **Status:** Superseded in part by [ADR-0014](0014-one-language-for-services.md): services are Rust, playbooks declarative
 - **Date:** 2026-09-21
 
 ## Context

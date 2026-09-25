@@ -87,7 +87,7 @@ something a person can see and use as soon as they exist.
 
 | Deliverable | Detail |
 | --- | --- |
-| Search API | The first Go service of the `api` role: time range, class, and filters on any OCSF path, compiled to parameterized ClickHouse queries, read-only |
+| Search API | The first service of the `api` role, in Rust per [ADR-0014](adr/0014-one-language-for-services.md): time range, class, and filters on any OCSF path checked against the schema, compiled to parameterized ClickHouse queries, read-only |
 | Search view | The first TypeScript and React code of the `ui` role: a virtualized event table and an event detail with the full OCSF record |
 | Demo path | One command that normalizes a Sysmon recording, stores it, and opens the view |
 
@@ -146,7 +146,7 @@ fixtures in CI.
 | Deliverable | Detail |
 | --- | --- |
 | Case service | Cases, tasks, observables, state machine, audit with hash chaining |
-| Playbook runtime | Temporal workers, human-in-the-loop signals, action plugins |
+| Playbook runtime | Declarative playbooks with durable state in PostgreSQL, human-in-the-loop approvals, built-in, WASM, and sidecar actions; engine chosen by ADR under the single-binary constraint ([ADR-0014](adr/0014-one-language-for-services.md)) |
 | RBAC and tenancy | Row-level security, per-tenant quotas and backpressure |
 
 **Exit criterion:** an alert becomes a case, a playbook executes with an
