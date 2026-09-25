@@ -124,6 +124,7 @@ pub struct ConditionSource {
 }
 
 /// The detection block of a rule.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Detection {
     /// Searches by identifier.
@@ -140,6 +141,7 @@ pub struct Detection {
 }
 
 /// A parsed Sigma rule.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Rule {
     /// A short description of what the rule detects.

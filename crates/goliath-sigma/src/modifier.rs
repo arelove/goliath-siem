@@ -50,6 +50,7 @@ pub enum ModifierKind {
 }
 
 /// A Sigma field modifier.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Modifier {
     /// `contains` - the value appears anywhere in the field.

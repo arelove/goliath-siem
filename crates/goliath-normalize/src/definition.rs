@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use serde::Deserialize;
 
 /// A source definition as written.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SourceDefinition {
@@ -29,6 +30,7 @@ pub struct SourceDefinition {
 }
 
 /// How a byte stream splits into records.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Framing {
@@ -40,6 +42,7 @@ pub enum Framing {
 }
 
 /// How a record becomes a field map.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Decoding {
@@ -48,6 +51,7 @@ pub enum Decoding {
 }
 
 /// One kind of record, and how it maps to an OCSF class.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct KindDefinition {
@@ -78,6 +82,7 @@ pub struct ClassSpec {
 }
 
 /// Where an attribute's value comes from.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(untagged)]
 pub enum FieldSpec {
@@ -99,6 +104,7 @@ pub enum FieldSpec {
 }
 
 /// A conversion of a source value to an OCSF type.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Coercion {
@@ -112,6 +118,7 @@ pub enum Coercion {
 }
 
 /// A constant or a value to compare with, as YAML writes it.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(untagged)]
 pub enum Scalar {
