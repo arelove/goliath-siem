@@ -2,6 +2,7 @@
 
 use goliath_ocsf::schema::{self, Base};
 use goliath_rule::FieldPath;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 
 use crate::definition::{Coercion, Decoding, FieldSpec, Framing, SourceDefinition};
@@ -86,7 +87,8 @@ impl SourcePath {
 
 /// What became of one record.
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Outcome {
     /// The record became an OCSF event.
     Event(Normalized),
@@ -96,7 +98,7 @@ pub enum Outcome {
 
 /// An OCSF event, and anything that did not convert on the way.
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Normalized {
     /// Identifies the record the event came from, so that storage can drop
     /// a record delivered twice.
@@ -156,6 +158,41 @@ impl std::fmt::Display for EventId {
     }
 }
 
+impl std::str::FromStr for EventId {
+    type Err = String;
+
+    /// Parses the lowercase or uppercase hexadecimal [`Display`] writes.
+    ///
+    /// [`Display`]: std::fmt::Display
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let invalid = || format!("`{text}` is not 32 hexadecimal digits");
+        if text.len() != 32 {
+            return Err(invalid());
+        }
+        let mut id = [0; 16];
+        let (pairs, _) = text.as_bytes().as_chunks::<2>();
+        for (byte, pair) in id.iter_mut().zip(pairs) {
+            let pair = std::str::from_utf8(pair).map_err(|_| invalid())?;
+            *byte = u8::from_str_radix(pair, 16).map_err(|_| invalid())?;
+        }
+        Ok(Self(id))
+    }
+}
+
+/// As its hexadecimal text, so that it reads the same in JSON as in logs.
+impl Serialize for EventId {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
+    }
+}
+
+impl<'de> Deserialize<'de> for EventId {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        text.parse().map_err(serde::de::Error::custom)
+    }
+}
+
 impl std::fmt::Debug for EventId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "EventId({self})")
@@ -164,7 +201,7 @@ impl std::fmt::Debug for EventId {
 
 /// A value that did not convert.
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Issue {
     /// The OCSF attribute it was meant for.
     pub target: String,
@@ -179,7 +216,7 @@ pub struct Issue {
 /// The raw bytes are kept exactly, so the record can be processed again once
 /// the source definition is fixed. Nothing a source sends is dropped.
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeadLetter {
     /// The stage that failed.
     pub stage: Stage,
@@ -192,7 +229,8 @@ pub struct DeadLetter {
 
 /// A stage of normalization, in order.
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Stage {
     /// Splitting the stream into records.
     Framing,

@@ -48,10 +48,12 @@
 pub mod definition;
 pub mod error;
 pub mod normalizer;
+pub mod wire;
 
 pub use definition::SourceDefinition;
 pub use error::DefinitionError;
 pub use normalizer::{DeadLetter, EventId, Issue, Normalized, Normalizer, Outcome, Stage};
+pub use wire::{Envelope, WireError};
 
 /// The Sysmon source definition shipped with this crate.
 pub const SYSMON: &str = include_str!("../sources/sysmon.yaml");
