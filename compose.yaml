@@ -1,0 +1,66 @@
+# The whole platform on one machine:
+#
+#   cp .env.example .env      # then set CLICKHOUSE_PASSWORD
+#   docker compose up -d --build
+#
+# Drop Sysmon events, as `evtx_dump -o json` writes them, into
+# ./inbox/sysmon/ (write under a `.tmp` name, then rename), and query:
+#
+#   docker compose exec clickhouse clickhouse-client --user goliath --password "$CLICKHOUSE_PASSWORD" \
+#     --query "SELECT time, event.process.cmd_line FROM goliath.events WHERE class_uid = 1007"
+#
+# goliath runs as the unprivileged uid 65532. On Linux, let it write the
+# inbox, which it moves collected files out of:
+#
+#   mkdir -p inbox/sysmon && sudo chown -R 65532:65532 inbox
+#
+# Ports listen on 127.0.0.1 only. Images are pinned to versions CI tests.
+
+name: goliath
+
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8
+    environment:
+      CLICKHOUSE_USER: goliath
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD in .env, see .env.example}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes:
+      - clickhouse:/var/lib/clickhouse
+    ports:
+      - "127.0.0.1:8123:8123"
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    healthcheck:
+      # $$ reads the variable inside the container, not from compose.
+      test: ["CMD-SHELL", "clickhouse-client --user goliath --password \"$$CLICKHOUSE_PASSWORD\" --query 'SELECT 1'"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  goliath:
+    build: .
+    image: goliath:local
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    volumes:
+      - ./deploy/goliath.toml:/etc/goliath/goliath.toml:ro
+      - goliath:/var/lib/goliath/data
+      - ./inbox:/var/lib/goliath/inbox
+    secrets:
+      - clickhouse_password
+    environment:
+      RUST_LOG: info
+    restart: unless-stopped
+
+secrets:
+  # Mounted at /run/secrets/clickhouse_password, where deploy/goliath.toml
+  # reads it: the password is never in goliath's environment.
+  clickhouse_password:
+    environment: CLICKHOUSE_PASSWORD
+
+volumes:
+  clickhouse:
+  goliath:

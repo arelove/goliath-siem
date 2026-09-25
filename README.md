@@ -55,6 +55,27 @@ fixed workload. See [docs/benchmarks.md](docs/benchmarks.md).
 Not built yet: ingestion, storage, scheduled detection, response, and the
 interface. The order is in [docs/roadmap.md](docs/roadmap.md).
 
+## Run it
+
+The platform as it stands, Sysmon files in, OCSF events in ClickHouse out, in
+two containers:
+
+```text
+cp .env.example .env          # set CLICKHOUSE_PASSWORD
+docker compose up -d --build
+```
+
+Drop Sysmon events, as `evtx_dump -o json` writes them, into `inbox/sysmon/`,
+and query them by any OCSF path:
+
+```sql
+SELECT time, event.process.cmd_line FROM goliath.events WHERE class_uid = 1007
+```
+
+The password stays in `.env`, which git ignores, and reaches goliath as a
+mounted secret file, not an environment variable. `scripts/compose-smoke.sh`
+does all of this end to end, and runs in CI.
+
 ## Try it
 
 ```text
