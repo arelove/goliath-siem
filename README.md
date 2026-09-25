@@ -17,11 +17,13 @@ Other languages: [Русский](README_ru.md)
 
 ## What works today
 
-The first milestone is the detection engine, built to be useful on its own.
-A Sigma rule already goes from YAML to a match on an OCSF event:
+The first milestone is the detection engine, built to be useful on its own,
+and the second has started with normalization. A raw Sysmon event and a Sigma
+rule already meet in a match:
 
 | Step | Crate |
 | --- | --- |
+| Normalize raw Sysmon events to OCSF through a declarative source definition, dropping nothing | `goliath-normalize` |
 | Parse Sigma rules, treating the YAML as untrusted input | `goliath-sigma` |
 | Resolve Sigma fields to OCSF paths through versioned mappings | `goliath-rule` |
 | Evaluate thousands of rules against each event, sharing the work between them | `goliath-match` |
