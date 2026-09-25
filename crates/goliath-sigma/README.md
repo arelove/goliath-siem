@@ -31,4 +31,5 @@ depend on an error that names where and what, not just that something failed.
 
 ## License
 
-[Apache License 2.0](https://github.com/arelove/goliath-siem/blob/main/LICENSE).
+Copyright 2026 arelove. Licensed under the [Apache License 2.0](https://github.com/arelove/goliath-siem/blob/main/LICENSE);
+see [NOTICE](https://github.com/arelove/goliath-siem/blob/main/crates/goliath-sigma/NOTICE).

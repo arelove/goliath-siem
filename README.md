@@ -150,4 +150,7 @@ significant decision has an ADR in [docs/adr/](docs/adr/).
 
 ## License
 
-[Apache License 2.0](LICENSE).
+Copyright 2026 arelove. Development began on 2026-09-21.
+
+Licensed under the [Apache License 2.0](LICENSE); see [NOTICE](NOTICE)
+for attributions.

@@ -134,4 +134,7 @@ let matched: Vec<usize> = engine.matches(&ocsf_event);
 
 ## Лицензия
 
-[Apache License 2.0](LICENSE).
+Copyright 2026 arelove. Разработка начата 2026-09-21.
+
+Распространяется по [Apache License 2.0](LICENSE); атрибуции в
+[NOTICE](NOTICE).
