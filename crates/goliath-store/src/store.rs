@@ -1,5 +1,7 @@
 //! A connection to the event store.
 
+use std::num::NonZeroU16;
+
 use clickhouse::{Client, Row};
 use serde::{Deserialize, Serialize};
 
@@ -160,6 +162,60 @@ impl Store {
         Ok(done)
     }
 
+    /// Deletes what was received more than `days` days ago, events and dead
+    /// letters alike, or keeps everything if `days` is `None`.
+    ///
+    /// Age is counted from when the platform received a record, not from the
+    /// time the record claims: that is written by the source, and must not
+    /// let whoever writes the logs decide when evidence is deleted. Whole
+    /// days are deleted at once, as partitions, never row by row.
+    ///
+    /// Does nothing if the retention is already `days`. Changing it makes
+    /// ClickHouse read the receipt time of every stored part once.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError::ClickHouse`] if a request fails.
+    pub async fn set_retention(&self, days: Option<NonZeroU16>) -> Result<(), StoreError> {
+        if self.retention().await? == days {
+            return Ok(());
+        }
+        for table in ["events", "dead_letters"] {
+            let change = match days {
+                Some(days) => format!(
+                    "ALTER TABLE {table} MODIFY TTL toDateTime(received) + toIntervalDay({days})"
+                ),
+                None => format!("ALTER TABLE {table} REMOVE TTL"),
+            };
+            self.client.query(&change).execute().await?;
+        }
+        Ok(())
+    }
+
+    /// The retention in days, as [`set_retention`](Self::set_retention)
+    /// set it, or `None` if everything is kept.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError::ClickHouse`] if a request fails.
+    pub async fn retention(&self) -> Result<Option<NonZeroU16>, StoreError> {
+        let engines = self
+            .client
+            .query(
+                "SELECT engine_full FROM system.tables                  WHERE database = currentDatabase() AND name IN ('events', 'dead_letters')                  ORDER BY name",
+            )
+            .fetch_all::<String>()
+            .await?;
+        let days: Vec<Option<NonZeroU16>> =
+            engines.iter().map(|engine| days_kept(engine)).collect();
+        // The tables are changed one after the other; if a change stopped
+        // between them, they disagree, and neither answer is the retention.
+        Ok(match days.as_slice() {
+            [first, rest @ ..] if rest.iter().all(|days| days == first) => *first,
+            _ => None,
+        })
+    }
+
     /// Writes a batch: its events, then its dead letters.
     ///
     /// Writing the same batch again is safe: events are deduplicated by
@@ -186,5 +242,35 @@ impl Store {
             insert.end().await?;
         }
         Ok(())
+    }
+}
+
+/// The days in a table's TTL, as [`Store::set_retention`] writes it.
+fn days_kept(engine: &str) -> Option<NonZeroU16> {
+    let (_, rest) = engine.split_once("TTL toDateTime(received) + toIntervalDay(")?;
+    let (days, _) = rest.split_once(')')?;
+    days.parse().ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_back_the_retention_it_writes() {
+        let engine = "MergeTree PARTITION BY toDate(received) ORDER BY x                       TTL toDateTime(received) + toIntervalDay(30) SETTINGS ttl_only_drop_parts = 1";
+        assert_eq!(days_kept(engine), NonZeroU16::new(30));
+        assert_eq!(days_kept("MergeTree ORDER BY x"), None);
+    }
+
+    #[test]
+    fn database_names_are_plain_identifiers() {
+        assert!(Store::new("http://localhost:8123", "goliath_1").is_ok());
+        for name in ["", "1st", "a-b", "a;DROP", "a b"] {
+            assert!(matches!(
+                Store::new("http://localhost:8123", name),
+                Err(StoreError::DatabaseName(_))
+            ));
+        }
     }
 }
