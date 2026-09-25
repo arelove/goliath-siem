@@ -10,8 +10,10 @@ criterion that is measurable, so "done" is not a judgement call.
 
 ## Current milestone
 
-**M1 - Matching engine.** In progress. Rule parsing in `goliath-sigma` is
-done; field mapping and the match engine are next.
+**M2 - Ingestion path.** In progress. The matching engine of M1 works end to
+end against the whole SigmaHQ repository and is published; its 10-million-event
+corpus run is still open. Normalization and storage exist; transport and the
+roles that connect them are next.
 
 ## M0 - Foundations
 

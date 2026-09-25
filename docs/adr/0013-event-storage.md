@@ -90,8 +90,9 @@ changed, or a database migrated by a newer build, stops startup.
   measurements call for it.
 - ClickHouse 25.8 is the oldest supported server; CI tests against it and the
   newest release.
-- Retention is not yet set: it is deployment configuration, applied by the
-  binary as a TTL on `received`, and comes with the role that owns it.
+- Retention is deployment configuration, not schema: the store sets it as a
+  TTL on `received` for events and dead letters alike, deleting whole days as
+  partitions, and leaves it alone when it is already what was asked for.
 - The distributed topology needs `ON CLUSTER` and replicated engines; that is
   a separate migration path, decided when the topology is built.
 
