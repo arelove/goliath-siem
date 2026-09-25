@@ -67,6 +67,9 @@ which would break points 4 and 5 for a slow group. So the bound is kept by the
 sender: before each batch it measures how far the slowest reading group is
 behind, and waits while that exceeds the capacity. The reading groups are
 those subscribed in the same process and those the configuration names.
+A named group with no position yet is given the end of the topic when a
+sender opens it, so a reader in another process that starts after the sender
+receives what was sent, instead of starting after it as a new group would.
 Kafka's own retention is set well beyond the capacity, as a safety net only.
 
 One partition bounds a topic's throughput to what one broker can append,
