@@ -9,6 +9,24 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-25
+
+
+### Added
+
+- Parse Sigma condition expressions into a typed AST
+- Parse field modifiers
+- Parse detection values and wildcard patterns
+- Expose the hardened YAML loader
+
+
+### Fixed
+
+- Bound wildcard matching to linear backtracking
+- Keep the text of values as written
+- Keep underscore searches out of quantifiers as pySigma does
+- Accept modifiers on keywords, as in '|all'
+
 ### Added
 
 - Sigma condition expression language: tokenizer, recursive descent parser, and

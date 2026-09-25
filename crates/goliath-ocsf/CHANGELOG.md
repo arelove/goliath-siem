@@ -9,6 +9,18 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-25
+
+
+### Added
+
+- Add the OCSF event vocabulary and workspace foundation
+
+
+### Fixed
+
+- Keep the core category of extension classes
+
 ### Added
 
 - OCSF 1.5.0 base event types, with class-specific attributes preserved
