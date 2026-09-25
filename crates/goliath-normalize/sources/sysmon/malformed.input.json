@@ -1,0 +1,39 @@
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Sysmon",
+          "Guid": "5770385F-C22A-43E0-BF4C-06F5698FFBD9"
+        }
+      },
+      "EventID": 1,
+      "Version": 5,
+      "Level": 4,
+      "Task": 1,
+      "Opcode": 0,
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "yesterday"
+        }
+      },
+      "EventRecordID": 3001,
+      "Correlation": null,
+      "Channel": "Microsoft-Windows-Sysmon/Operational",
+      "Computer": "WS-FINANCE-07"
+    },
+    "EventData": {
+      "ProcessId": "not-a-pid",
+      "Image": "C:\\Windows\\System32\\notepad.exe",
+      "CommandLine": "notepad.exe",
+      "ParentProcessId": 4012
+    }
+  }
+}
+{
+  "Event": {
+    "System": {
+      "EventID": 1,

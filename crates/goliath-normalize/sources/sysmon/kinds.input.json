@@ -1,0 +1,229 @@
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Sysmon",
+          "Guid": "5770385F-C22A-43E0-BF4C-06F5698FFBD9"
+        }
+      },
+      "EventID": 1,
+      "Version": 5,
+      "Level": 4,
+      "Task": 1,
+      "Opcode": 0,
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-24T10:15:30.1234567Z"
+        }
+      },
+      "EventRecordID": 1001,
+      "Correlation": null,
+      "Channel": "Microsoft-Windows-Sysmon/Operational",
+      "Computer": "WS-FINANCE-07"
+    },
+    "EventData": {
+      "RuleName": "-",
+      "UtcTime": "2026-09-24 10:15:30.120",
+      "ProcessGuid": "4E2A1C3B-7F11-6512-0A00-000000000A00",
+      "ProcessId": 5120,
+      "Image": "C:\\Windows\\System32\\notepad.exe",
+      "FileVersion": "10.0.26100.1",
+      "Description": "Notepad",
+      "Product": "Microsoft® Windows® Operating System",
+      "Company": "Microsoft Corporation",
+      "OriginalFileName": "NOTEPAD.EXE",
+      "CommandLine": "\"C:\\Windows\\System32\\notepad.exe\" C:\\Users\\adam\\notes.txt",
+      "CurrentDirectory": "C:\\Users\\adam\\",
+      "User": "CORP\\adam",
+      "LogonGuid": "4E2A1C3B-AB9F-67AA-4C14-030000000000",
+      "LogonId": "0x3144c",
+      "TerminalSessionId": 1,
+      "IntegrityLevel": "Medium",
+      "Hashes": "SHA256=0000000000000000000000000000000000000000000000000000000000000001",
+      "ParentProcessGuid": "4E2A1C3B-EC48-694C-AA0C-000000000800",
+      "ParentProcessId": 4012,
+      "ParentImage": "C:\\Windows\\explorer.exe",
+      "ParentCommandLine": "C:\\Windows\\Explorer.EXE",
+      "ParentUser": "CORP\\adam"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Sysmon",
+          "Guid": "5770385F-C22A-43E0-BF4C-06F5698FFBD9"
+        }
+      },
+      "EventID": 3,
+      "Version": 5,
+      "Level": 4,
+      "Task": 1,
+      "Opcode": 0,
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-24T10:15:30.1234567Z"
+        }
+      },
+      "EventRecordID": 1002,
+      "Correlation": null,
+      "Channel": "Microsoft-Windows-Sysmon/Operational",
+      "Computer": "WS-FINANCE-07"
+    },
+    "EventData": {
+      "RuleName": "-",
+      "UtcTime": "2026-09-24 10:15:31.000",
+      "ProcessGuid": "4E2A1C3B-7F11-6512-0A00-000000000A00",
+      "ProcessId": 5120,
+      "Image": "C:\\Program Files\\Browser\\browser.exe",
+      "User": "CORP\\adam",
+      "Protocol": "tcp",
+      "Initiated": true,
+      "SourceIsIpv6": false,
+      "SourceIp": "10.20.30.40",
+      "SourceHostname": "WS-FINANCE-07.corp.example",
+      "SourcePort": 51544,
+      "SourcePortName": "-",
+      "DestinationIsIpv6": false,
+      "DestinationIp": "192.0.2.10",
+      "DestinationHostname": null,
+      "DestinationPort": 443,
+      "DestinationPortName": "https"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Sysmon",
+          "Guid": "5770385F-C22A-43E0-BF4C-06F5698FFBD9"
+        }
+      },
+      "EventID": 7,
+      "Version": 5,
+      "Level": 4,
+      "Task": 1,
+      "Opcode": 0,
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-24T10:15:30.1234567Z"
+        }
+      },
+      "EventRecordID": 1003,
+      "Correlation": null,
+      "Channel": "Microsoft-Windows-Sysmon/Operational",
+      "Computer": "WS-FINANCE-07"
+    },
+    "EventData": {
+      "RuleName": "-",
+      "UtcTime": "2026-09-24 10:15:32.000",
+      "ProcessGuid": "4E2A1C3B-7F11-6512-0A00-000000000A00",
+      "ProcessId": 5120,
+      "Image": "C:\\Windows\\System32\\notepad.exe",
+      "ImageLoaded": "C:\\Windows\\System32\\uxtheme.dll",
+      "FileVersion": "10.0.26100.1",
+      "Description": "Microsoft UxTheme Library",
+      "Product": "Microsoft® Windows® Operating System",
+      "Company": "Microsoft Corporation",
+      "OriginalFileName": "UxTheme.dll",
+      "Hashes": "SHA256=0000000000000000000000000000000000000000000000000000000000000002",
+      "Signed": "true",
+      "Signature": "Microsoft Windows",
+      "SignatureStatus": "Valid",
+      "User": "CORP\\adam"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Sysmon",
+          "Guid": "5770385F-C22A-43E0-BF4C-06F5698FFBD9"
+        }
+      },
+      "EventID": 11,
+      "Version": 5,
+      "Level": 4,
+      "Task": 1,
+      "Opcode": 0,
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-24T10:15:30.1234567Z"
+        }
+      },
+      "EventRecordID": 1004,
+      "Correlation": null,
+      "Channel": "Microsoft-Windows-Sysmon/Operational",
+      "Computer": "WS-FINANCE-07"
+    },
+    "EventData": {
+      "RuleName": "-",
+      "UtcTime": "2026-09-24 10:15:33.000",
+      "ProcessGuid": "4E2A1C3B-7F11-6512-0A00-000000000A00",
+      "ProcessId": 5120,
+      "Image": "C:\\Windows\\System32\\notepad.exe",
+      "TargetFilename": "C:\\Users\\adam\\notes.txt",
+      "CreationUtcTime": "2026-09-24 10:15:33.000",
+      "User": "CORP\\adam"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Sysmon",
+          "Guid": "5770385F-C22A-43E0-BF4C-06F5698FFBD9"
+        }
+      },
+      "EventID": 13,
+      "Version": 5,
+      "Level": 4,
+      "Task": 1,
+      "Opcode": 0,
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-24T10:15:30.1234567Z"
+        }
+      },
+      "EventRecordID": 1005,
+      "Correlation": null,
+      "Channel": "Microsoft-Windows-Sysmon/Operational",
+      "Computer": "WS-FINANCE-07"
+    },
+    "EventData": {
+      "RuleName": "-",
+      "EventType": "SetValue",
+      "UtcTime": "2026-09-24 10:15:34.000",
+      "ProcessGuid": "4E2A1C3B-7F11-6512-0A00-000000000A00",
+      "ProcessId": 5120,
+      "Image": "C:\\Windows\\System32\\notepad.exe",
+      "TargetObject": "HKU\\S-1-5-21-1-2-3-1001\\Software\\Microsoft\\Notepad\\iWindowPosX",
+      "Details": "DWORD (0x00000064)",
+      "User": "CORP\\adam"
+    }
+  }
+}

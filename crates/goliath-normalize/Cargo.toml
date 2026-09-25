@@ -1,0 +1,24 @@
+[package]
+name = "goliath-normalize"
+description = "Declarative source definitions that turn raw log records into OCSF events"
+keywords = ["ocsf", "siem", "security", "normalization", "sysmon"]
+categories = ["parser-implementations"]
+readme = "README.md"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+goliath-ocsf = { path = "../goliath-ocsf", version = "0.1.0" }
+goliath-rule = { path = "../goliath-rule", version = "0.1.0" }
+goliath-sigma = { path = "../goliath-sigma", version = "0.1.0" }
+jiff = { version = "0.2", default-features = false, features = ["std"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

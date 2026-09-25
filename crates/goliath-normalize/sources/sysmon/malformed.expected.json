@@ -1,0 +1,60 @@
+[
+  {
+    "event": {
+      "activity_id": 1,
+      "category_uid": 1,
+      "class_uid": 1007,
+      "device": {
+        "hostname": "WS-FINANCE-07",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "log_name": "Microsoft-Windows-Sysmon/Operational",
+        "product": {
+          "name": "Sysmon",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3001",
+        "version": "1.5.0"
+      },
+      "process": {
+        "cmd_line": "notepad.exe",
+        "file": {
+          "path": "C:\\Windows\\System32\\notepad.exe"
+        },
+        "parent_process": {
+          "pid": 4012
+        }
+      },
+      "severity_id": 1,
+      "type_uid": 100701,
+      "unmapped": {
+        "Event.System.TimeCreated.#attributes.SystemTime": "yesterday",
+        "ProcessId": "not-a-pid"
+      }
+    },
+    "issues": [
+      {
+        "reason": "`yesterday` is not an RFC 3339 time: failed to parse four digit integer as year: invalid digit, expected 0-9 but got y",
+        "source": "Event.System.TimeCreated.#attributes.SystemTime",
+        "target": "time"
+      },
+      {
+        "reason": "`not-a-pid` is not a whole number",
+        "source": "Event.EventData.ProcessId",
+        "target": "process.pid"
+      }
+    ],
+    "kind": "process_creation"
+  },
+  {
+    "dead_letter": {
+      "error": "EOF while parsing a value at line 40 column 0",
+      "raw": "{\n  \"Event\": {\n    \"System\": {\n      \"EventID\": 1,",
+      "stage": "framing"
+    }
+  }
+]
