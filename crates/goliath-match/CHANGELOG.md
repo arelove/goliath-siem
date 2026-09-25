@@ -11,6 +11,12 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [0.1.1] - 2026-09-25
 
+### Changed
+
+- No change of its own. Its public API takes `goliath-rule` types, and that
+  crate's 0.1.1 was a breaking release, so use 0.2.0, which depends on
+  `goliath-rule` 0.2.
+
 ## [0.1.0] - 2026-09-25
 
 

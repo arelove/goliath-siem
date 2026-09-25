@@ -11,6 +11,12 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [0.1.1] - 2026-09-25
 
+### Added
+
+- Breaking: source definitions are checked against the OCSF schema when they
+  load. This rejects definitions 0.1.0 accepted, so it should not have been a
+  patch release; use 0.2.0.
+
 ## [0.1.0] - 2026-09-25
 
 
