@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use goliath_normalize::{Envelope, Normalizer};
-use goliath_pipe::{DiskReceiver, DiskSender, Receiver, Sender};
+use goliath_pipe::{Receiver, Sender};
 use goliath_store::{Limits, Store, StoreError, Writer};
 use tokio::sync::watch;
 use tracing::{info, warn};
@@ -33,7 +33,7 @@ const MAX_FILE: u64 = 64 << 20;
 /// storage drops the duplicates by identity.
 pub(crate) async fn collect(
     inbox: PathBuf,
-    raw: DiskSender,
+    raw: impl Sender + Sync,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
     let done = inbox.join("done");
@@ -103,8 +103,8 @@ async fn move_into(path: &Path, directory: &Path) -> Result<(), RunError> {
 /// Normalizes the raw records of one source into the normalized topic.
 pub(crate) async fn normalize(
     normalizer: Normalizer,
-    mut raw: DiskReceiver,
-    outcomes: DiskSender,
+    mut raw: impl Receiver,
+    outcomes: impl Sender + Sync,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
     while !*stop.borrow_and_update() {
@@ -137,7 +137,7 @@ pub(crate) async fn normalize(
 pub(crate) async fn write(
     store: Store,
     limits: Limits,
-    mut outcomes: DiskReceiver,
+    mut outcomes: impl Receiver,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
     let mut writer = Writer::new(store, limits);

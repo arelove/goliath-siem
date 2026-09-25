@@ -3,8 +3,8 @@
 //! Written by an operator, and read strictly: an unknown key is an error, so
 //! that a misspelled setting is not silently replaced by its default.
 
-use std::collections::BTreeSet;
-use std::num::NonZeroU16;
+use std::collections::{BTreeMap, BTreeSet};
+use std::num::{NonZeroU16, NonZeroU64};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -19,8 +19,12 @@ use crate::RunError;
 pub struct Config {
     /// The roles this process runs.
     pub roles: BTreeSet<Role>,
-    /// Where durable topics and positions are kept.
-    pub data: PathBuf,
+    /// Where durable topics and positions are kept, unless they are in
+    /// Kafka.
+    pub data: Option<PathBuf>,
+    /// Kafka, to keep topics in instead of the data directory, so that roles
+    /// can run in separate processes.
+    pub kafka: Option<KafkaConfig>,
     /// The sources to collect and normalize.
     #[serde(default)]
     pub sources: Vec<SourceConfig>,
@@ -50,8 +54,36 @@ pub struct SourceConfig {
     /// The source definition: the name of a built-in one, such as `sysmon`,
     /// or the path of a YAML file.
     pub definition: String,
-    /// A directory the collector takes files from.
-    pub inbox: PathBuf,
+    /// A directory the collector takes files from; needed by the collector
+    /// only.
+    pub inbox: Option<PathBuf>,
+}
+
+/// Kafka, or a service with its API such as Redpanda.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KafkaConfig {
+    /// The bootstrap servers, such as `redpanda:9092`.
+    pub brokers: String,
+    /// Put before every topic and group name, so that deployments can share
+    /// a cluster.
+    #[serde(default = "default_prefix")]
+    pub prefix: String,
+    /// Replicas of each topic created; 3 unless the cluster has fewer
+    /// brokers.
+    #[serde(default = "default_replication")]
+    pub replication: i32,
+    /// Records a topic holds for its slowest reader before senders wait.
+    pub capacity: Option<NonZeroU64>,
+    /// The environment variable holding the SASL password.
+    pub password_env: Option<String>,
+    /// A file holding the SASL password, as secrets are mounted. Preferred
+    /// over `password_env`.
+    pub password_file: Option<PathBuf>,
+    /// Further librdkafka settings, such as `security.protocol`,
+    /// `sasl.mechanism`, and `sasl.username`; never the password.
+    #[serde(default)]
+    pub client: BTreeMap<String, String>,
 }
 
 /// The event store.
@@ -105,6 +137,14 @@ impl WriterConfig {
     }
 }
 
+fn default_prefix() -> String {
+    "goliath-".to_owned()
+}
+
+fn default_replication() -> i32 {
+    3
+}
+
 fn default_max_rows() -> usize {
     50_000
 }
@@ -127,16 +167,24 @@ impl Config {
         let mut config: Self = toml::from_str(&text)
             .map_err(|error| RunError::Config(format!("{}: {error}", path.display())))?;
         let base = path.parent().unwrap_or(Path::new("."));
-        config.data = base.join(&config.data);
-        if let Some(file) = config
-            .store
-            .as_mut()
-            .and_then(|store| store.password_file.as_mut())
-        {
+        let files = [
+            config.data.as_mut(),
+            config
+                .store
+                .as_mut()
+                .and_then(|store| store.password_file.as_mut()),
+            config
+                .kafka
+                .as_mut()
+                .and_then(|kafka| kafka.password_file.as_mut()),
+        ];
+        for file in files.into_iter().flatten() {
             *file = base.join(&*file);
         }
         for source in &mut config.sources {
-            source.inbox = base.join(&source.inbox);
+            if let Some(inbox) = &mut source.inbox {
+                *inbox = base.join(&*inbox);
+            }
             if !is_builtin(&source.definition) {
                 source.definition = base.join(&source.definition).to_string_lossy().into_owned();
             }
@@ -161,6 +209,21 @@ impl Config {
                     normalizer.name()
                 )));
             }
+            if self.roles.contains(&Role::Collector) && source.inbox.is_none() {
+                return Err(RunError::Config(format!(
+                    "source `{}` needs an inbox for the collector",
+                    normalizer.name()
+                )));
+            }
+        }
+        match &self.kafka {
+            None if self.data.is_none() => {
+                return Err(RunError::Config(
+                    "set `data` for topics on disk, or a [kafka] section".to_owned(),
+                ));
+            }
+            None => {}
+            Some(kafka) => kafka.check()?,
         }
         if self.roles.contains(&Role::Writer) && self.store.is_none() {
             return Err(RunError::Config(
@@ -193,17 +256,64 @@ impl StoreConfig {
     /// Returns [`RunError::Config`] if the file cannot be read or the
     /// variable is not set.
     pub fn password(&self) -> Result<String, RunError> {
-        if let Some(path) = &self.password_file {
-            let text = std::fs::read_to_string(path)
-                .map_err(|error| RunError::Config(format!("{}: {error}", path.display())))?;
-            return Ok(text.trim().to_owned());
+        Ok(secret(self.password_env.as_ref(), self.password_file.as_ref())?.unwrap_or_default())
+    }
+}
+
+impl KafkaConfig {
+    fn check(&self) -> Result<(), RunError> {
+        if cfg!(not(feature = "kafka")) {
+            return Err(RunError::Config(
+                "this goliath was built without Kafka; build it with `--features kafka`".to_owned(),
+            ));
         }
-        match &self.password_env {
-            Some(variable) => std::env::var(variable).map_err(|_| {
-                RunError::Config(format!("environment variable {variable} is not set"))
-            }),
-            None => Ok(String::new()),
+        if self.password_env.is_some() && self.password_file.is_some() {
+            return Err(RunError::Config(
+                "[kafka] takes password_env or password_file, not both".to_owned(),
+            ));
         }
+        for key in ["bootstrap.servers", "sasl.password"] {
+            if self.client.contains_key(key) {
+                return Err(RunError::Config(format!(
+                    "set `{key}` through `brokers` or `password_file`, not [kafka.client]"
+                )));
+            }
+        }
+        if self.replication < 1 {
+            return Err(RunError::Config(
+                "[kafka] replication must be at least 1".to_owned(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// The client settings, with the SASL password added if one is named.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RunError::Config`] if the password cannot be read.
+    pub fn client(&self) -> Result<BTreeMap<String, String>, RunError> {
+        let mut client = self.client.clone();
+        if let Some(password) = secret(self.password_env.as_ref(), self.password_file.as_ref())? {
+            client.insert("sasl.password".to_owned(), password);
+        }
+        Ok(client)
+    }
+}
+
+/// A secret from a file, without surrounding whitespace, or from an
+/// environment variable, if either is named.
+fn secret(variable: Option<&String>, file: Option<&PathBuf>) -> Result<Option<String>, RunError> {
+    if let Some(path) = file {
+        let text = std::fs::read_to_string(path)
+            .map_err(|error| RunError::Config(format!("{}: {error}", path.display())))?;
+        return Ok(Some(text.trim().to_owned()));
+    }
+    match variable {
+        Some(variable) => std::env::var(variable)
+            .map(Some)
+            .map_err(|_| RunError::Config(format!("environment variable {variable} is not set"))),
+        None => Ok(None),
     }
 }
 
@@ -277,6 +387,43 @@ inbox = \"other\"
         assert!(parse(&twice).is_err());
         let no_store = MINIMAL.split("[store]").next().unwrap().to_owned();
         assert!(parse(&no_store).is_err());
+        let no_inbox = MINIMAL.replace("inbox = \"inbox/sysmon\"", "");
+        assert!(parse(&no_inbox).is_err());
+        let no_topics = MINIMAL.replace("data = \"data\"", "");
+        assert!(parse(&no_topics).is_err());
+    }
+
+    const NORMALIZER: &str = r#"
+roles = ["normalizer"]
+
+[[sources]]
+definition = "sysmon"
+
+[kafka]
+brokers = "redpanda:9092"
+"#;
+
+    #[cfg(feature = "kafka")]
+    #[test]
+    fn a_role_alone_needs_kafka_and_nothing_it_does_not_use() {
+        let config = parse(NORMALIZER).unwrap();
+        let kafka = config.kafka.unwrap();
+        assert_eq!(kafka.prefix, "goliath-");
+        assert_eq!(kafka.replication, 3);
+        assert!(config.data.is_none());
+        assert!(config.sources[0].inbox.is_none());
+
+        let password_in_file = format!("{NORMALIZER}[kafka.client]\n\"sasl.password\" = \"x\"\n");
+        assert!(parse(&password_in_file).is_err());
+        let no_replicas = format!("{NORMALIZER}replication = 0\n");
+        assert!(parse(&no_replicas).is_err());
+    }
+
+    #[cfg(not(feature = "kafka"))]
+    #[test]
+    fn kafka_is_refused_by_a_build_without_it() {
+        let error = parse(NORMALIZER).unwrap_err().to_string();
+        assert!(error.contains("--features kafka"), "{error}");
     }
 
     #[test]

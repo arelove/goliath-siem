@@ -59,6 +59,31 @@ async fn eventually(client: &Client, query: &str, expected: u64) {
     }
 }
 
+/// The server's URL, or `None` if the test should be skipped.
+fn clickhouse_url() -> Option<String> {
+    let url = env::var("GOLIATH_CLICKHOUSE_URL").ok();
+    if url.is_none() {
+        assert!(
+            env::var_os("GOLIATH_REQUIRE_CLICKHOUSE").is_none(),
+            "GOLIATH_CLICKHOUSE_URL is not set"
+        );
+        eprintln!("GOLIATH_CLICKHOUSE_URL is not set; skipping");
+    }
+    url
+}
+
+fn clickhouse_user() -> String {
+    env::var("GOLIATH_CLICKHOUSE_USER").unwrap_or_else(|_| "default".to_owned())
+}
+
+fn connect(url: &str) -> Client {
+    Client::default()
+        .with_url(url)
+        .with_user(clickhouse_user())
+        .with_password(env::var("GOLIATH_CLICKHOUSE_PASSWORD").unwrap_or_default())
+        .with_setting("network_compression_method", "lz4")
+}
+
 /// Runs the configured roles until the returned sender is used.
 fn start(
     config: Config,
@@ -75,15 +100,10 @@ fn start(
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_dropped_file_reaches_clickhouse_once() {
-    let Ok(url) = env::var("GOLIATH_CLICKHOUSE_URL") else {
-        assert!(
-            env::var_os("GOLIATH_REQUIRE_CLICKHOUSE").is_none(),
-            "GOLIATH_CLICKHOUSE_URL is not set"
-        );
-        eprintln!("GOLIATH_CLICKHOUSE_URL is not set; skipping");
+    let Some(url) = clickhouse_url() else {
         return;
     };
-    let user = env::var("GOLIATH_CLICKHOUSE_USER").unwrap_or_else(|_| "default".to_owned());
+    let user = clickhouse_user();
     let database = format!("goliath_test_e2e_{}", std::process::id());
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("goliath.toml");
@@ -112,12 +132,7 @@ max_delay_ms = 100
         ),
     )
     .unwrap();
-    let client = Client::default()
-        .with_url(&url)
-        .with_user(&user)
-        .with_password(env::var("GOLIATH_CLICKHOUSE_PASSWORD").unwrap_or_default())
-        .with_database(&database)
-        .with_setting("network_compression_method", "lz4");
+    let client = connect(&url).with_database(&database);
     let inbox = directory.path().join("inbox/sysmon");
     let (events, dead) = expected(KINDS);
     let (more_events, more_dead) = expected(MALFORMED);
@@ -155,11 +170,119 @@ max_delay_ms = 100
     stop.send(()).unwrap();
     running.await.unwrap().unwrap();
 
-    Client::default()
-        .with_url(&url)
-        .with_user(&user)
-        .with_password(env::var("GOLIATH_CLICKHOUSE_PASSWORD").unwrap_or_default())
-        .with_setting("network_compression_method", "lz4")
+    connect(&url)
+        .query(&format!("DROP DATABASE IF EXISTS {database}"))
+        .execute()
+        .await
+        .unwrap();
+}
+
+/// The same pipeline with each role in a process of its own, meeting through
+/// Kafka. The collector runs and sends first; the normalizer and writer
+/// start later and still receive everything.
+///
+/// Built with `--features kafka`; needs `GOLIATH_KAFKA_BROKERS` as well as
+/// the ClickHouse settings above.
+#[cfg(feature = "kafka")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn roles_in_separate_processes_meet_through_kafka() {
+    let Some(url) = clickhouse_url() else {
+        return;
+    };
+    let brokers = env::var("GOLIATH_KAFKA_BROKERS")
+        .expect("set GOLIATH_KAFKA_BROKERS to run the Kafka tests");
+    let user = clickhouse_user();
+    let run = format!(
+        "{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis()
+    );
+    let database = format!("goliath_test_kafka_{}", run.replace('-', "_"));
+    let kafka = format!(
+        r#"
+[kafka]
+brokers = "{brokers}"
+prefix = "goliath-test-{run}-"
+replication = 1
+"#
+    );
+    let directory = tempfile::tempdir().unwrap();
+    let config = |name: &str, text: String| {
+        let path = directory.path().join(name);
+        std::fs::write(&path, text).unwrap();
+        Config::load(&path).unwrap()
+    };
+    let collector = config(
+        "collector.toml",
+        format!(
+            r#"
+roles = ["collector"]
+
+[[sources]]
+definition = "sysmon"
+inbox = "inbox/sysmon"
+{kafka}"#
+        ),
+    );
+    let normalizer = config(
+        "normalizer.toml",
+        format!(
+            r#"
+roles = ["normalizer"]
+
+[[sources]]
+definition = "sysmon"
+{kafka}"#
+        ),
+    );
+    let writer = config(
+        "writer.toml",
+        format!(
+            r#"
+roles = ["writer"]
+
+[store]
+url = "{url}"
+database = "{database}"
+user = "{user}"
+password_env = "GOLIATH_CLICKHOUSE_PASSWORD"
+
+[writer]
+max_rows = 1000
+max_delay_ms = 100
+{kafka}"#
+        ),
+    );
+    let client = connect(&url).with_database(&database);
+    let inbox = directory.path().join("inbox/sysmon");
+    let (events, dead) = expected(KINDS);
+
+    let (stop_collector, collecting) = start(collector);
+    drop_file(&inbox, "001-kinds.json", KINDS);
+    let collected = inbox.join("done/001-kinds.json");
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while !collected.exists() {
+        assert!(Instant::now() < deadline, "the collector took nothing");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+
+    let (stop_normalizer, normalizing) = start(normalizer);
+    let (stop_writer, writing) = start(writer);
+    eventually(&client, "SELECT count() FROM events", events).await;
+    eventually(&client, "SELECT count() FROM dead_letters", dead).await;
+    for (stop, running) in [
+        (stop_collector, collecting),
+        (stop_normalizer, normalizing),
+        (stop_writer, writing),
+    ] {
+        stop.send(()).unwrap();
+        running.await.unwrap().unwrap();
+    }
+
+    client
         .query(&format!("DROP DATABASE IF EXISTS {database}"))
         .execute()
         .await
