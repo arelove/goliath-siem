@@ -18,11 +18,17 @@
 //! The format is ours, so unknown keys are errors rather than ignored: a typo
 //! in a mapping file would otherwise drop a field silently, and every rule
 //! using it would fail to load for a reason nobody could see.
+//!
+//! For the same reason, an entry with a `class_uid` is checked against the
+//! OCSF schema: every path must be an attribute of that class, and every
+//! class condition a value the attribute can hold. A misspelled path would
+//! otherwise load, and every rule reading it would never fire.
 
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::fmt;
 
+use goliath_ocsf::schema::{self, Attribute, Base, Class};
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::error::MappingError;
@@ -127,6 +133,92 @@ impl fmt::Display for LogSourceSelector {
     }
 }
 
+impl SourceMapping {
+    /// Checks the entry against its class in the OCSF schema. An entry
+    /// without a `class_uid` has no class to check against.
+    fn check_schema(&self, index: usize) -> Result<(), MappingError> {
+        let class_uid = self.class.iter().find_map(|(path, value)| match value {
+            ClassValue::Integer(uid) if path.as_str() == "class_uid" => Some(*uid),
+            _ => None,
+        });
+        let Some(class_uid) = class_uid else {
+            return Ok(());
+        };
+        let class = u32::try_from(class_uid)
+            .ok()
+            .and_then(schema::class)
+            .ok_or(MappingError::UnknownClass {
+                index,
+                class_uid,
+                version: goliath_ocsf::SCHEMA_VERSION,
+            })?;
+        for (path, value) in &self.class {
+            let Some(attribute) = attribute(index, class, path)? else {
+                continue;
+            };
+            let fits = match value {
+                ClassValue::Integer(_) => matches!(attribute.base(), Base::Integer | Base::Long),
+                ClassValue::String(_) => attribute.base() == Base::String,
+            };
+            if !fits || attribute.is_array() {
+                return Err(MappingError::Type {
+                    index,
+                    path: path.as_str().to_owned(),
+                    holds: holds(attribute),
+                    value: match value {
+                        ClassValue::Integer(value) => value.to_string(),
+                        ClassValue::String(value) => format!("{value:?}"),
+                    },
+                });
+            }
+            if let ClassValue::Integer(value) = value
+                && !attribute.enum_values().is_empty()
+                && !attribute.enum_values().contains(value)
+            {
+                return Err(MappingError::UnknownValue {
+                    index,
+                    path: path.as_str().to_owned(),
+                    value: *value,
+                });
+            }
+        }
+        for path in self.fields.values().flatten() {
+            if let Some(attribute) = attribute(index, class, path)?
+                && attribute.base() == Base::Object
+            {
+                return Err(MappingError::Type {
+                    index,
+                    path: path.as_str().to_owned(),
+                    holds: holds(attribute),
+                    value: "a rule's value".to_owned(),
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
+/// The attribute `path` names in `class`, or `None` where it continues into
+/// a free-form attribute such as `unmapped`, whose members are not typed.
+fn attribute(
+    index: usize,
+    class: &Class,
+    path: &FieldPath,
+) -> Result<Option<&'static Attribute>, MappingError> {
+    let found = class
+        .resolve(path.as_str())
+        .map_err(|source| MappingError::Attribute { index, source })?;
+    Ok((!found.free_form).then_some(found.attribute))
+}
+
+fn holds(attribute: &Attribute) -> String {
+    match (attribute.is_array(), attribute.base()) {
+        (true, _) => format!("an array of `{}`", attribute.type_name()),
+        (false, Base::Object) => format!("an object `{}`", attribute.type_name()),
+        (false, _) => format!("`{}`", attribute.type_name()),
+    }
+}
+
 /// A value an event attribute must have for a mapping to apply.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -143,8 +235,9 @@ impl MappingSet {
     /// # Errors
     ///
     /// Returns [`MappingError`] if the YAML is malformed or unsafe, if an entry
-    /// selects nothing or maps a field to no path, or if two entries have the
-    /// same selector.
+    /// selects nothing or maps a field to no path, if two entries have the
+    /// same selector, or if an entry with a `class_uid` names a class, path,
+    /// or value the OCSF schema does not have.
     pub fn from_yaml(source: &str) -> Result<Self, MappingError> {
         let set: Self = goliath_sigma::yaml::from_str(source)?;
         set.check()?;
@@ -168,6 +261,7 @@ impl MappingSet {
             {
                 return Err(MappingError::DuplicateSelector { earlier, index });
             }
+            entry.check_schema(index)?;
         }
         Ok(())
     }
@@ -376,5 +470,54 @@ mappings:
             MappingSet::from_yaml(source),
             Err(MappingError::Yaml(_))
         ));
+    }
+
+    fn schema_error(replace: &str, with: &str) -> String {
+        assert_eq!(SET.matches(replace).count(), 1, "{replace}");
+        MappingSet::from_yaml(&SET.replace(replace, with))
+            .expect_err("the schema rejects it")
+            .to_string()
+    }
+
+    #[test]
+    fn checks_entries_against_the_ocsf_schema() {
+        assert_eq!(
+            schema_error(
+                "CommandLine: process.cmd_line",
+                "CommandLine: process.cmdline"
+            ),
+            "mapping 1: `process.cmdline`: object `process` has no attribute `cmdline`"
+        );
+        assert_eq!(
+            schema_error("class_uid: 1007", "class_uid: 1999"),
+            "mapping 1: OCSF 1.5.0 has no class 1999"
+        );
+        assert_eq!(
+            schema_error("activity_id: 1,", "activity_id: 42,"),
+            "mapping 1: 42 is not a defined value of `activity_id`"
+        );
+        assert_eq!(
+            schema_error("device.os.type_id: 100", "device.os.type_id: windows"),
+            "mapping 1: `device.os.type_id` holds `integer_t`, which cannot equal \"windows\""
+        );
+        assert_eq!(
+            schema_error("CommandLine: process.cmd_line", "CommandLine: process.file"),
+            "mapping 1: `process.file` holds an object `file`, which cannot equal a rule's value"
+        );
+    }
+
+    #[test]
+    fn schema_checks_allow_arrays_free_form_paths_and_classless_entries() {
+        // Rules search arrays, and `unmapped` members are not typed.
+        let set = SET.replace(
+            "CommandLine: process.cmd_line",
+            "CommandLine: process.cmd_line
+      Technique: attacks.technique.uid
+      Hashes: unmapped.Hashes",
+        );
+        MappingSet::from_yaml(&set).expect("arrays and unmapped are fine");
+        // The first entry has no class, so its paths are not checked.
+        let set = SET.replace("User: actor.user.name", "User: anything.at.all");
+        MappingSet::from_yaml(&set).expect("no class to check against");
     }
 }

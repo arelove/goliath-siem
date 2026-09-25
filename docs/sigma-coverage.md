@@ -99,10 +99,11 @@ What this does and does not show:
   evaluation agree with SigmaHQ on real attack telemetry.
 - It does not show on its own that the two chose the right OCSF attributes.
   The source definition and the mapping set are written by the same project,
-  so an attribute chosen wrongly in both would go unnoticed. The source
-  definition's fixtures check that its events satisfy the OCSF invariants,
-  but not yet that every attribute exists in the schema with the type
-  written; that needs the schema itself, which is the next step there.
+  so an attribute chosen wrongly in both would go unnoticed. What is checked
+  is that both use the schema correctly: each loads only if every path is an
+  attribute of its OCSF 1.5.0 class, and every constant or conversion fits
+  the attribute's type. That rules out a misspelled or invented attribute,
+  though not a real one chosen for the wrong meaning.
 
 Each event is also evaluated against every other loaded rule. 152 rules fire on
 at least one other rule's attack. That is expected, since attacks share steps,

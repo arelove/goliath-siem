@@ -48,11 +48,12 @@
 //! ```
 
 // Tests assert on outcomes; a failed assertion should abort the test.
-#![cfg_attr(test, allow(clippy::expect_used, clippy::panic))]
+#![cfg_attr(test, allow(clippy::expect_used, clippy::panic, clippy::unwrap_used))]
 
 pub mod error;
 pub mod event;
 pub mod observable;
+pub mod schema;
 pub mod severity;
 
 pub use error::ValidationError;
@@ -60,5 +61,6 @@ pub use event::{Event, Metadata, Product, SourceDefinition, Timestamp};
 pub use observable::{Observable, ObservableType};
 pub use severity::Severity;
 
-/// The OCSF schema version this crate targets.
-pub const SCHEMA_VERSION: &str = "1.5.0";
+/// The OCSF schema version this crate targets: the one its
+/// [schema tables](schema) were generated from.
+pub const SCHEMA_VERSION: &str = schema::VERSION;

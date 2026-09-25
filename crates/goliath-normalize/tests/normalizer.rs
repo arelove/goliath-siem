@@ -204,3 +204,83 @@ fn malformed_definitions_are_rejected() {
         DefinitionError::Yaml(_)
     ));
 }
+
+#[test]
+fn classes_and_activities_must_exist_in_the_schema() {
+    assert_eq!(
+        error(&MINIMAL.replace("class_uid: 3002", "class_uid: 3999")).to_string(),
+        "kind `login`: OCSF 1.5.0 has no class 3999"
+    );
+    assert_eq!(
+        error(&MINIMAL.replace("activity_id: 1", "activity_id: 77")).to_string(),
+        "kind `login`: class `authentication` has no activity 77"
+    );
+}
+
+#[test]
+fn targets_must_be_attributes_of_the_class() {
+    assert_eq!(
+        error(&MINIMAL.replace("user.name: who", "user.nmae: who")).to_string(),
+        "kind `login`: `user.nmae`: object `user` has no attribute `nmae`"
+    );
+    // Common fields are checked against every kind's class.
+    assert_eq!(
+        error(&MINIMAL.replace("metadata.product.name", "metadata.produce.name")).to_string(),
+        "kind `login`: `metadata.produce.name`: object `metadata` has no attribute `produce`"
+    );
+    assert_eq!(
+        error(&MINIMAL.replace("user.name: who", "attacks.technique.uid: who")).to_string(),
+        "kind `login`: `attacks.technique.uid` is inside an array, which a field cannot write into"
+    );
+}
+
+#[test]
+fn fields_must_write_what_their_attribute_holds() {
+    let cases = [
+        (
+            "user.name: { value: 5 }",
+            "`user.name` holds `username_t`, but the field writes an integer",
+        ),
+        (
+            "user.name: { from: who, as: timestamp }",
+            "`user.name` holds `username_t`, but the field writes a timestamp",
+        ),
+        (
+            "user: { value: adam }",
+            "`user` holds an object `user`, but the field writes text",
+        ),
+        (
+            "metadata.labels: { value: test }",
+            "`metadata.labels` holds an array of `string_t`, but the field writes text",
+        ),
+        ("time: { from: who, as: integer }", ""),
+        (
+            "user.name: { value: true }",
+            "`user.name` holds `username_t`, but the field writes a boolean",
+        ),
+    ];
+    for (field, message) in cases {
+        let definition = MINIMAL.replace("user.name: who", field);
+        if message.is_empty() {
+            Normalizer::from_yaml(&definition).expect("an integer is a valid timestamp");
+        } else {
+            assert_eq!(
+                error(&definition).to_string(),
+                format!("kind `login`: {message}")
+            );
+        }
+    }
+    // A copy carries whatever the source holds, so it fits anything.
+    Normalizer::from_yaml(&MINIMAL.replace("user.name: who", "user: who")).expect("a copy fits");
+}
+
+#[test]
+fn enumerated_constants_must_be_defined_values() {
+    let definition = MINIMAL.replace("user.name: who", "severity_id: { value: 42 }");
+    assert_eq!(
+        error(&definition).to_string(),
+        "kind `login`: 42 is not a defined value of `severity_id`"
+    );
+    let definition = MINIMAL.replace("user.name: who", "severity_id: { value: 99 }");
+    Normalizer::from_yaml(&definition).expect("99 is Other");
+}
