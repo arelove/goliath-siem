@@ -5,6 +5,12 @@
 //! reaches this form: `CommandLine|base64offset|contains` has become three
 //! wildcard patterns over `process.cmd_line`. An execution path only has to
 //! answer the questions in [`Test`].
+//!
+//! The enumerations here are deliberately not `#[non_exhaustive]`. Every
+//! execution path must answer every question, so a new kind of test has to
+//! stop an evaluator from compiling until it handles it, rather than fall into
+//! a catch-all arm that answers `false` and misses a detection. Adding one is
+//! a breaking change, and is released as one.
 
 use std::collections::BTreeMap;
 use std::fmt;

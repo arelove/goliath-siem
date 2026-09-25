@@ -12,6 +12,35 @@
 //!
 //! Definitions shipped with this crate live in `sources/`, each with fixtures
 //! of raw records and the events they must produce.
+//!
+//! # Example
+//!
+//! ```
+//! use goliath_normalize::{Normalizer, Outcome, SYSMON};
+//!
+//! let sysmon = Normalizer::from_yaml(SYSMON)?;
+//! let raw = br##"{"Event": {
+//!     "System": {
+//!         "Provider": { "#attributes": { "Name": "Microsoft-Windows-Sysmon" } },
+//!         "EventID": 1,
+//!         "TimeCreated": { "#attributes": { "SystemTime": "2026-09-24T10:15:30.1234567Z" } },
+//!         "Computer": "WS-07"
+//!     },
+//!     "EventData": { "Image": "C:\\Windows\\notepad.exe", "ProcessId": "42", "RuleName": "-" }
+//! }}"##;
+//!
+//! sysmon.normalize(raw, |outcome| match outcome {
+//!     Outcome::Event(normalized) => {
+//!         assert_eq!(normalized.event["class_uid"], 1007);
+//!         assert_eq!(normalized.event["process"]["pid"], 42);
+//!         assert_eq!(normalized.event["time"], 1_790_244_930_123_i64);
+//!         // Nothing is dropped: fields the definition does not map are kept.
+//!         assert_eq!(normalized.event["unmapped"]["RuleName"], "-");
+//!     }
+//!     other => panic!("{other:?}"),
+//! });
+//! # Ok::<(), goliath_normalize::DefinitionError>(())
+//! ```
 
 // Tests assert on outcomes; a failed assertion should abort the test.
 #![cfg_attr(test, allow(clippy::expect_used, clippy::panic, clippy::unwrap_used))]
