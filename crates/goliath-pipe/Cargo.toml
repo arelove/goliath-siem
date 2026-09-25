@@ -1,0 +1,24 @@
+[package]
+name = "goliath-pipe"
+description = "Transport between the roles of the Goliath security platform: ordered topics, consumer groups, at-least-once delivery"
+keywords = ["siem", "security", "queue", "pipeline"]
+categories = ["asynchronous"]
+readme = "README.md"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+# Not published until the disk log and Kafka implementations share the contract.
+publish = false
+
+[dependencies]
+thiserror.workspace = true
+tokio = { version = "1", default-features = false, features = ["sync", "time"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+
+[lints]
+workspace = true

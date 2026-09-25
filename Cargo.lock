@@ -428,6 +428,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "goliath-pipe"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "goliath-rule"
 version = "0.2.0"
 dependencies = [
