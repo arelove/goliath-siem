@@ -36,6 +36,7 @@
         "ProcessId": "not-a-pid"
       }
     },
+    "id": "6996e0083623f782a5914033c0c7ed07",
     "issues": [
       {
         "reason": "`yesterday` is not an RFC 3339 time: failed to parse four digit integer as year: invalid digit, expected 0-9 but got y",

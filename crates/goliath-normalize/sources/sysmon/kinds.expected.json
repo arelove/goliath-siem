@@ -65,6 +65,7 @@
         "UtcTime": "2026-09-24 10:15:30.120"
       }
     },
+    "id": "7637f36857b0f35d4fdc9a844af102b2",
     "issues": [],
     "kind": "process_creation"
   },
@@ -126,6 +127,7 @@
         "UtcTime": "2026-09-24 10:15:31.000"
       }
     },
+    "id": "ae36d854026ad65198c761593a48b11b",
     "issues": [],
     "kind": "network_connection"
   },
@@ -186,6 +188,7 @@
         "UtcTime": "2026-09-24 10:15:32.000"
       }
     },
+    "id": "2a72d0704c26b2aad835d1514f4587e5",
     "issues": [],
     "kind": "image_load"
   },
@@ -234,6 +237,7 @@
         "UtcTime": "2026-09-24 10:15:33.000"
       }
     },
+    "id": "c42c48d375ebd002da5226a018ea25e8",
     "issues": [],
     "kind": "file_create"
   },
@@ -283,6 +287,7 @@
         "UtcTime": "2026-09-24 10:15:34.000"
       }
     },
+    "id": "5f6bc1bd4ec7f5ad23b7a549c4e7048a",
     "issues": [],
     "kind": "registry_set"
   }

@@ -51,7 +51,7 @@ pub mod normalizer;
 
 pub use definition::SourceDefinition;
 pub use error::DefinitionError;
-pub use normalizer::{DeadLetter, Issue, Normalized, Normalizer, Outcome, Stage};
+pub use normalizer::{DeadLetter, EventId, Issue, Normalized, Normalizer, Outcome, Stage};
 
 /// The Sysmon source definition shipped with this crate.
 pub const SYSMON: &str = include_str!("../sources/sysmon.yaml");

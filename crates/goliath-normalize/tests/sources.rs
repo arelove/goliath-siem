@@ -20,6 +20,7 @@ use serde_json::{Value, json};
 fn render(outcome: &Outcome) -> Value {
     match outcome {
         Outcome::Event(normalized) => json!({
+            "id": normalized.id.to_string(),
             "kind": normalized.kind,
             "event": normalized.event,
             "issues": normalized
