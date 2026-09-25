@@ -112,7 +112,12 @@ impl Store {
         self.client.query(LEDGER).execute().await?;
         let applied = self
             .client
-            .query("SELECT version, any(name) AS name, any(checksum) AS checksum FROM schema_migrations GROUP BY version ORDER BY version")
+            // Every record, not one per version: two processes migrating at
+            // once may record a version twice, and each record is checked,
+            // so that a changed one cannot hide behind an unchanged one.
+            .query(
+                "SELECT version, name, checksum FROM schema_migrations ORDER BY version, checksum",
+            )
             .fetch_all::<Applied>()
             .await?;
 
