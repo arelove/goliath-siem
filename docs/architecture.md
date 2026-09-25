@@ -95,7 +95,7 @@ the dominant barrier to adoption for open-source systems of this class.
 | `goliath-enrich` | Rust | crates.io | inside `detector` |
 | `goliath-intel` | Rust | crates.io | inside `detector` |
 | `goliath-attack` | Rust | crates.io | inside `api` |
-| `goliath-pipe` | Rust | crates.io | shared transport |
+| `goliath-pipe` | Rust | - | shared transport |
 | `goliath-normalize` | Rust | crates.io | `normalizer` |
 | `goliath-store` | Rust | - | `writer` |
 | `control-plane` | Rust | - | `api` |

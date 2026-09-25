@@ -44,6 +44,12 @@ name = "goliath-store"
 publish = false
 release = false
 
+# Not published until the disk log and Kafka share its contract.
+[[package]]
+name = "goliath-pipe"
+publish = false
+release = false
+
 # Workloads and benchmarks; never released.
 [[package]]
 name = "goliath-bench"
