@@ -9,6 +9,13 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-25
+
+
+### Fixed
+
+- Breaking: Move to goliath-rule 0.2, whose rules the engine takes
+
 ## [0.1.1] - 2026-09-25
 
 ### Changed

@@ -4,7 +4,7 @@ description = "Declarative source definitions that turn raw log records into OCS
 keywords = ["ocsf", "siem", "security", "normalization", "sysmon"]
 categories = ["parser-implementations"]
 readme = "README.md"
-version = "0.1.1"
+version = "0.1.2"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -13,9 +13,9 @@ authors.workspace = true
 
 [dependencies]
 blake3 = "1"
-goliath-ocsf = { path = "../goliath-ocsf", version = "0.1.1" }
-goliath-rule = { path = "../goliath-rule", version = "0.1.1" }
-goliath-sigma = { path = "../goliath-sigma", version = "0.1.1" }
+goliath-ocsf = { path = "../goliath-ocsf", version = "0.1.2" }
+goliath-rule = { path = "../goliath-rule", version = "0.2.0" }
+goliath-sigma = { path = "../goliath-sigma", version = "0.1.2" }
 jiff = { version = "0.2", default-features = false, features = ["std"] }
 serde.workspace = true
 serde_json.workspace = true

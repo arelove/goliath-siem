@@ -4,7 +4,7 @@ description = "Evaluation of resolved detection rules against OCSF events"
 keywords = ["sigma", "ocsf", "security", "siem", "detection"]
 categories = ["algorithms"]
 readme = "README.md"
-version = "0.1.1"
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -12,8 +12,8 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
-goliath-rule = { path = "../goliath-rule", version = "0.1.1" }
-goliath-sigma = { path = "../goliath-sigma", version = "0.1.1" }
+goliath-rule = { path = "../goliath-rule", version = "0.2.0" }
+goliath-sigma = { path = "../goliath-sigma", version = "0.1.2" }
 aho-corasick = "1"
 regex = "1"
 regex-syntax = "0.8"

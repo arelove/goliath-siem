@@ -9,6 +9,13 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-25
+
+
+### Fixed
+
+- Breaking: Release the OCSF schema checks on mappings as the breaking change they are
+
 ## [0.1.1] - 2026-09-25
 
 ### Added
