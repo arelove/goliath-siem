@@ -9,6 +9,14 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-09-26
+
+
+### Added
+
+- Read Linux audit logs, one record per event
+- A Linux auditd definition, executions and logins
+
 ## [0.2.2] - 2026-09-26
 
 
