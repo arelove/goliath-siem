@@ -127,6 +127,17 @@ pub enum DefinitionError {
         value: i64,
     },
 
+    /// A translation table is empty, or its values are not all of one type.
+    #[error("kind `{kind}`: the translation for `{target}` {reason}")]
+    Translation {
+        /// The kind the field belongs to, or `common`.
+        kind: String,
+        /// The target as written.
+        target: String,
+        /// What is wrong with the table.
+        reason: &'static str,
+    },
+
     /// A target lies inside an array, so there is no one place to write it.
     #[error("kind `{kind}`: `{target}` is inside an array, which a field cannot write into")]
     WithinArray {
