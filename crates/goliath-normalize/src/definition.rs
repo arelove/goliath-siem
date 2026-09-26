@@ -39,6 +39,10 @@ pub enum Framing {
     /// JSON values one after another, separated by any whitespace, as
     /// `evtx_dump` writes them.
     JsonValues,
+    /// Linux audit lines, grouped into one record per event by their
+    /// `msg=audit(time:serial)`, whether or not they are adjacent. Needs
+    /// `auditd` decoding.
+    AuditEvents,
 }
 
 /// How a record becomes a field map.
@@ -48,6 +52,9 @@ pub enum Framing {
 pub enum Decoding {
     /// A JSON object.
     Json,
+    /// Linux audit records, `key=value` fields per line, as one object with
+    /// each record under its type, such as `SYSCALL.exe` or `PATH.0.name`.
+    Auditd,
 }
 
 /// One kind of record, and how it maps to an OCSF class.
@@ -129,6 +136,9 @@ pub enum Coercion {
     /// An RFC 3339 time, such as `2025-12-25T14:30:27.369114Z`, as the
     /// milliseconds since the Unix epoch OCSF stores.
     Timestamp,
+    /// Seconds since the Unix epoch, with a fraction if any, such as
+    /// auditd's `1727251200.123`, as milliseconds.
+    UnixSeconds,
 }
 
 /// A constant or a value to compare with, as YAML writes it.

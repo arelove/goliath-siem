@@ -286,6 +286,99 @@ fn enumerated_constants_must_be_defined_values() {
 }
 
 #[test]
+fn seconds_since_the_epoch_become_milliseconds() {
+    let definition = MINIMAL.replace("user.name: who", "time: { from: at, as: unix-seconds }");
+    let time = |at: &str| match one(&definition, &format!(r#"{{"type": "login", "at": {at}}}"#)) {
+        Outcome::Event(normalized) => (normalized.event.get("time").cloned(), normalized.issues),
+        other => panic!("{other:?}"),
+    };
+    assert_eq!(
+        time(r#""1727251200.123""#).0,
+        Some(json!(1_727_251_200_123_i64))
+    );
+    assert_eq!(
+        time(r#""1727251200.1""#).0,
+        Some(json!(1_727_251_200_100_i64))
+    );
+    assert_eq!(
+        time(r#""1727251200.123456789""#).0,
+        Some(json!(1_727_251_200_123_i64))
+    );
+    assert_eq!(time("1727251200").0, Some(json!(1_727_251_200_000_i64)));
+    for bad in [r#""-1.5""#, r#""soon""#, r#""1.2.3""#, r#"".5""#] {
+        let (found, issues) = time(bad);
+        assert!(found.is_none(), "{bad}");
+        assert_eq!(issues.len(), 1, "{bad}");
+    }
+}
+
+#[test]
+fn framing_and_decoding_must_fit_together() {
+    let audit_json = MINIMAL.replace("framing: lines", "framing: audit-events");
+    assert_eq!(
+        error(&audit_json).to_string(),
+        "framing `audit-events` cannot be used with decoding `json`"
+    );
+    let values_auditd = MINIMAL
+        .replace("framing: lines", "framing: json-values")
+        .replace("decoding: json", "decoding: auditd");
+    assert_eq!(
+        error(&values_auditd).to_string(),
+        "framing `json-values` cannot be used with decoding `auditd`"
+    );
+}
+
+#[test]
+fn audit_lines_are_normalized_by_event() {
+    let definition = MINIMAL
+        .replace("framing: lines", "framing: audit-events")
+        .replace("decoding: json", "decoding: auditd")
+        .replace(
+            "when: { type: login }",
+            "when: { USER_LOGIN.msg.res: success }",
+        )
+        .replace("user.name: who", "user.name: USER_LOGIN.msg.acct")
+        .replace(
+            "src_endpoint.port: { from: port, as: integer }",
+            "time: { from: time, as: unix-seconds }",
+        )
+        .replace("unmapped: [extra]", "unmapped: [USER_LOGIN]");
+    let log = "type=USER_LOGIN msg=audit(1727251300.000:88): pid=4410 uid=0 msg='op=login acct=\"alice\" res=success'\n\
+               garbage\n\
+               type=USER_LOGIN msg=audit(1727251301.000:89): pid=4411 uid=0 msg='op=login acct=\"eve\" res=failed'\n";
+    let all = outcomes(&definition, log);
+    assert_eq!(all.len(), 3);
+    let Outcome::Event(alice) = &all[0] else {
+        panic!("{:?}", all[0]);
+    };
+    assert_eq!(alice.event["user"]["name"], "alice");
+    assert_eq!(alice.event["time"], 1_727_251_300_000_i64);
+    assert_eq!(alice.event["unmapped"]["pid"], "4410");
+    let Outcome::DeadLetter(garbage) = &all[1] else {
+        panic!("{:?}", all[1]);
+    };
+    assert_eq!(garbage.stage, Stage::Framing);
+    assert_eq!(garbage.raw, b"garbage");
+    // No kind accepts a failed login here; its bytes are kept.
+    assert!(matches!(&all[2], Outcome::DeadLetter(dead) if dead.stage == Stage::Mapping));
+}
+
+#[test]
+fn a_name_two_unmapped_objects_share_keeps_both_values() {
+    let definition = MINIMAL.replace("unmapped: [extra]", "unmapped: [extra, more]");
+    let Outcome::Event(normalized) = one(
+        &definition,
+        r#"{"type": "login", "extra": {"a0": "id", "tty": "1"}, "more": {"a0": "55d5"}}"#,
+    ) else {
+        panic!("not an event");
+    };
+    assert_eq!(
+        normalized.event["unmapped"],
+        json!({ "a0": "id", "tty": "1", "more.a0": "55d5" })
+    );
+}
+
+#[test]
 fn members_with_dots_in_their_names_are_found() {
     let definition = MINIMAL.replace("user.name: who", "user.name: extra.user.name");
     let Outcome::Event(normalized) = one(

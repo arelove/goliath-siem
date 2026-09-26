@@ -45,6 +45,7 @@
 // Tests assert on outcomes; a failed assertion should abort the test.
 #![cfg_attr(test, allow(clippy::expect_used, clippy::panic, clippy::unwrap_used))]
 
+mod auditd;
 pub mod definition;
 pub mod error;
 pub mod normalizer;
