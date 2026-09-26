@@ -596,11 +596,16 @@ dependencies = [
 name = "goliath-bench"
 version = "0.0.0"
 dependencies = [
+ "clickhouse",
  "goliath-match",
+ "goliath-normalize",
  "goliath-rule",
+ "goliath-search",
  "goliath-sigma",
+ "goliath-store",
  "gungraun",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
