@@ -1,0 +1,4 @@
+{"time":"2026-09-25T09:00:00Z","category":"SignInLogs","tenantId":"72f988bf-86f1-41af-91ab-2d7cd011db47","resultType":"0","properties":{"id":"9c5b6a7f-0000-4000-8000-000000000001","userPrincipalName":"carol@contoso.com","authenticationRequirement":"passwordlessAuthentication","riskLevelDuringSignIn":"hidden"}}
+{"time":"not a time","category":"SignInLogs","tenantId":"72f988bf-86f1-41af-91ab-2d7cd011db47","resultType":"0","properties":{"userPrincipalName":"carol@contoso.com"}}
+{"time":"2026-09-25T09:01:00Z","category":"AuditLogs","tenantId":"72f988bf-86f1-41af-91ab-2d7cd011db47","operationName":"Add member to role","properties":{"id":"Directory_0001"}}
+{"records":[{"time":"2026-09-25T09:02:00Z","category":"SignInLogs"}]}

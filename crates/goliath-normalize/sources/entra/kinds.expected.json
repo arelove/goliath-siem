@@ -1,0 +1,337 @@
+[
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "app_name": "Office 365 Exchange Online",
+        "app_uid": "00000002-0000-0ff1-ce00-000000000000"
+      },
+      "category_uid": 3,
+      "class_uid": 3002,
+      "cloud": {
+        "account": {
+          "uid": "72f988bf-86f1-41af-91ab-2d7cd011db47"
+        },
+        "provider": "Azure"
+      },
+      "device": {
+        "is_compliant": true,
+        "is_managed": true,
+        "name": "LT-ALICE",
+        "os": {
+          "name": "Windows10"
+        },
+        "uid": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f"
+      },
+      "http_request": {
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+      },
+      "is_mfa": true,
+      "metadata": {
+        "correlation_uid": "b3c1d6e2-8f4a-4c2e-9d11-0f6a7e5b4c3d",
+        "log_name": "SignInLogs",
+        "product": {
+          "name": "Microsoft Entra ID",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "5e1f2d3c-4b5a-4968-8776-a5b4c3d2e1f0",
+        "version": "1.5.0"
+      },
+      "risk_level": "none",
+      "risk_level_id": 0,
+      "service": {
+        "name": "Office 365 Exchange Online",
+        "uid": "00000002-0000-0ff1-ce00-000000000000"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "203.0.113.24",
+        "location": {
+          "city": "Paris",
+          "country": "FR",
+          "lat": 48.8566,
+          "long": 2.3522,
+          "region": "Paris"
+        }
+      },
+      "status_code": "0",
+      "status_id": 1,
+      "time": 1790324071123,
+      "type_uid": 300201,
+      "unmapped": {
+        "appliedConditionalAccessPolicies": [
+          {
+            "displayName": "Require MFA for all users",
+            "enforcedGrantControls": [
+              "Mfa"
+            ],
+            "id": "1a2b3c4d-0000-4000-8000-000000000001",
+            "result": "success"
+          }
+        ],
+        "clientAppUsed": "Browser",
+        "conditionalAccessStatus": "success",
+        "createdDateTime": "2026-09-25T08:14:31.1234567+00:00",
+        "deviceDetail": {
+          "browser": "Chrome 128.0.0",
+          "deviceId": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+          "displayName": "LT-ALICE",
+          "isCompliant": true,
+          "isManaged": true,
+          "operatingSystem": "Windows10",
+          "trustType": "Azure AD joined"
+        },
+        "isInteractive": true,
+        "location": {
+          "city": "Paris",
+          "countryOrRegion": "FR",
+          "geoCoordinates": {
+            "latitude": 48.8566,
+            "longitude": 2.3522
+          },
+          "state": "Paris"
+        },
+        "riskState": "none",
+        "status": {
+          "errorCode": 0
+        },
+        "tokenIssuerType": "AzureAD"
+      },
+      "user": {
+        "display_name": "Alice Martin",
+        "name": "alice@contoso.com",
+        "uid": "0b9c8d7e-6f5a-4b3c-2d1e-0f9e8d7c6b5a"
+      }
+    },
+    "id": "3c1b9edf00b7ade6e82bbcc3bcb37dc1",
+    "issues": [],
+    "kind": "user"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "app_name": "Azure Active Directory PowerShell",
+        "app_uid": "1b730954-1685-4b74-9bfd-dac224a7b894"
+      },
+      "category_uid": 3,
+      "class_uid": 3002,
+      "cloud": {
+        "account": {
+          "uid": "72f988bf-86f1-41af-91ab-2d7cd011db47"
+        },
+        "provider": "Azure"
+      },
+      "device": {
+        "os": {
+          "name": ""
+        },
+        "uid": ""
+      },
+      "http_request": {
+        "user_agent": "python-requests/2.32.3"
+      },
+      "is_mfa": false,
+      "metadata": {
+        "correlation_uid": "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f70",
+        "log_name": "SignInLogs",
+        "product": {
+          "name": "Microsoft Entra ID",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "6f2e3d4c-5b6a-4a79-9887-b6c5d4e3f201",
+        "version": "1.5.0"
+      },
+      "risk_level": "high",
+      "risk_level_id": 3,
+      "service": {
+        "name": "Windows Azure Active Directory",
+        "uid": "00000002-0000-0000-c000-000000000000"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "198.51.100.77",
+        "location": {
+          "city": "Moscow",
+          "country": "RU",
+          "lat": 55.7558,
+          "long": 37.6173,
+          "region": "Moscow"
+        }
+      },
+      "status_code": "50126",
+      "status_detail": "Error validating credentials due to invalid username or password.",
+      "status_id": 2,
+      "time": 1790324102500,
+      "type_uid": 300201,
+      "unmapped": {
+        "appliedConditionalAccessPolicies": [],
+        "clientAppUsed": "Mobile Apps and Desktop clients",
+        "conditionalAccessStatus": "notApplied",
+        "createdDateTime": "2026-09-25T08:15:02.5+00:00",
+        "deviceDetail": {
+          "browser": "",
+          "deviceId": "",
+          "operatingSystem": ""
+        },
+        "isInteractive": true,
+        "location": {
+          "city": "Moscow",
+          "countryOrRegion": "RU",
+          "geoCoordinates": {
+            "latitude": 55.7558,
+            "longitude": 37.6173
+          },
+          "state": "Moscow"
+        },
+        "riskEventTypes_v2": [
+          "passwordSpray"
+        ],
+        "riskState": "atRisk",
+        "status": {
+          "errorCode": 50126,
+          "failureReason": "Error validating credentials due to invalid username or password."
+        },
+        "tokenIssuerType": "AzureAD"
+      },
+      "user": {
+        "display_name": "Bob Chen",
+        "name": "bob@contoso.com",
+        "uid": "1c0d9e8f-7a6b-4c5d-3e2f-1a0b9c8d7e6f"
+      }
+    },
+    "id": "35591fec4a08d9edba072eb9c1652e9a",
+    "issues": [],
+    "kind": "user"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "app_name": "Microsoft Office",
+        "app_uid": "d3590ed6-52b3-4102-aeff-aad2292ab01c"
+      },
+      "category_uid": 3,
+      "class_uid": 3002,
+      "cloud": {
+        "account": {
+          "uid": "72f988bf-86f1-41af-91ab-2d7cd011db47"
+        },
+        "provider": "Azure"
+      },
+      "http_request": {
+        "user_agent": "Microsoft Office/16.0"
+      },
+      "is_mfa": false,
+      "metadata": {
+        "correlation_uid": "e5f6a7b8-c9d0-4e1f-8a2b-3c4d5e6f7a81",
+        "log_name": "NonInteractiveUserSignInLogs",
+        "product": {
+          "name": "Microsoft Entra ID",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "7a3f4e5d-6c7b-4b8a-a998-c7d6e5f4a312",
+        "version": "1.5.0"
+      },
+      "risk_level": "none",
+      "risk_level_id": 0,
+      "service": {
+        "name": "Microsoft Graph",
+        "uid": "00000003-0000-0000-c000-000000000000"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "203.0.113.24",
+        "location": {
+          "city": "Paris",
+          "country": "FR"
+        }
+      },
+      "status_code": "0",
+      "status_id": 1,
+      "time": 1790324411000,
+      "type_uid": 300201,
+      "unmapped": {
+        "isInteractive": false,
+        "location": {
+          "city": "Paris",
+          "countryOrRegion": "FR"
+        },
+        "status": {
+          "errorCode": 0
+        }
+      },
+      "user": {
+        "display_name": "Alice Martin",
+        "name": "alice@contoso.com",
+        "uid": "0b9c8d7e-6f5a-4b3c-2d1e-0f9e8d7c6b5a"
+      }
+    },
+    "id": "dd5d07bded1a741657c4dee082f8a6ca",
+    "issues": [],
+    "kind": "non_interactive"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "app_name": "ci-deployer",
+        "app_uid": "9e8d7c6b-5a4f-4e3d-2c1b-0a9f8e7d6c5b"
+      },
+      "category_uid": 3,
+      "class_uid": 3002,
+      "cloud": {
+        "account": {
+          "uid": "72f988bf-86f1-41af-91ab-2d7cd011db47"
+        },
+        "provider": "Azure"
+      },
+      "metadata": {
+        "correlation_uid": "f6a7b8c9-d0e1-4f2a-9b3c-4d5e6f7a8b92",
+        "log_name": "ServicePrincipalSignInLogs",
+        "product": {
+          "name": "Microsoft Entra ID",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "8b4a5f6e-7d8c-4c9b-b0a9-d8e7f6a5b423",
+        "version": "1.5.0"
+      },
+      "service": {
+        "name": "Azure Key Vault",
+        "uid": "cfa8b339-82a2-471a-a3c9-0fc0be7a4093"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "20.190.128.5",
+        "location": {
+          "city": "Ashburn",
+          "country": "US",
+          "region": "Virginia"
+        }
+      },
+      "status_code": "0",
+      "status_id": 1,
+      "time": 1790325045000,
+      "type_uid": 300201,
+      "unmapped": {
+        "clientCredentialType": "clientSecret",
+        "location": {
+          "city": "Ashburn",
+          "countryOrRegion": "US",
+          "state": "Virginia"
+        },
+        "servicePrincipalCredentialKeyId": "4f3e2d1c-0b9a-4876-9543-210fedcba987",
+        "status": {
+          "errorCode": 0
+        }
+      },
+      "user": {
+        "name": "ci-deployer",
+        "uid": "2d1e0f9a-8b7c-4d6e-5f4a-3b2c1d0e9f8a"
+      }
+    },
+    "id": "524695198303ef1546924ba5c7acda85",
+    "issues": [],
+    "kind": "service_principal"
+  }
+]
