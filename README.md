@@ -56,16 +56,19 @@ Not built yet: detection on the stored stream, response, and the interface. The 
 
 ## Run it
 
-The platform as it stands, Sysmon files in, OCSF events in ClickHouse out, in
-two containers:
+The platform as it stands, Sysmon files in, OCSF events in ClickHouse out, and
+a search interface over them, in two containers:
 
 ```text
-cp .env.example .env          # set CLICKHOUSE_PASSWORD
+cp .env.example .env          # set CLICKHOUSE_PASSWORD and API_TOKEN
 docker compose up -d --build
 ```
 
 Drop Sysmon events, as `evtx_dump -o json` writes them, into `inbox/sysmon/`,
-and query them by any OCSF path:
+and search them at <http://127.0.0.1:8080> with the token: by time, class,
+and any OCSF attribute, with every event open in full. The same searches are
+an HTTP API ([ADR-0016](docs/adr/0016-event-search.md)), and ClickHouse
+answers SQL directly:
 
 ```sql
 SELECT time, event.process.cmd_line FROM goliath.events WHERE class_uid = 1007
@@ -78,8 +81,8 @@ them, as roles on separate hosts would meet through Kafka:
 docker compose -f compose.distributed.yaml up -d --build
 ```
 
-The password stays in `.env`, which git ignores, and reaches goliath as a
-mounted secret file, not an environment variable. `scripts/compose-smoke.sh`
+The password and the token stay in `.env`, which git ignores, and reach
+goliath as mounted secret files, not environment variables. `scripts/compose-smoke.sh`
 does all of this end to end for either stack, and CI runs both.
 
 ## Try it
