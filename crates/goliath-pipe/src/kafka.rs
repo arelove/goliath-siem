@@ -219,9 +219,7 @@ impl KafkaTopic {
         blocking(move || {
             for consumer in lookups {
                 if committed(&consumer, &name)?.is_none() {
-                    let (_, end) = consumer
-                        .fetch_watermarks(&name, 0, REQUEST)
-                        .map_err(kafka)?;
+                    let (_, end) = retry(|| consumer.fetch_watermarks(&name, 0, REQUEST))?;
                     commit(&consumer, &name, u64::try_from(end).unwrap_or(0))?;
                 }
             }
@@ -264,9 +262,7 @@ impl KafkaTopic {
                 } else {
                     // A new group: it starts at the end, and says so at once,
                     // so that it resumes there after a restart.
-                    let (_, end) = consumer
-                        .fetch_watermarks(&name, 0, REQUEST)
-                        .map_err(kafka)?;
+                    let (_, end) = retry(|| consumer.fetch_watermarks(&name, 0, REQUEST))?;
                     let end = u64::try_from(end).unwrap_or(0);
                     commit(&consumer, &name, end)?;
                     end
@@ -346,10 +342,7 @@ impl KafkaSender {
         let producer = self.shared.producer.clone();
         blocking(move || {
             use rdkafka::producer::Producer;
-            let (_, end) = producer
-                .client()
-                .fetch_watermarks(&name, 0, REQUEST)
-                .map_err(kafka)?;
+            let (_, end) = retry(|| producer.client().fetch_watermarks(&name, 0, REQUEST))?;
             let end = u64::try_from(end).unwrap_or(0);
             let mut behind = 0;
             for consumer in lookups {
@@ -496,7 +489,7 @@ impl Receiver for KafkaReceiver {
 fn committed(consumer: &BaseConsumer, topic: &str) -> Result<Option<u64>, PipeError> {
     let mut wanted = TopicPartitionList::new();
     wanted.add_partition(topic, 0);
-    let found = consumer.committed_offsets(wanted, REQUEST).map_err(kafka)?;
+    let found = retry(|| consumer.committed_offsets(wanted.clone(), REQUEST))?;
     Ok(found
         .find_partition(topic, 0)
         .and_then(|partition| match partition.offset() {
@@ -511,7 +504,39 @@ fn commit(consumer: &BaseConsumer, topic: &str, position: u64) -> Result<(), Pip
     positions
         .add_partition_offset(topic, 0, Offset::Offset(signed(position)))
         .map_err(kafka)?;
-    consumer.commit(&positions, CommitMode::Sync).map_err(kafka)
+    retry(|| consumer.commit(&positions, CommitMode::Sync))
+}
+
+/// Makes a request to the brokers again while they answer with an error that
+/// passes by itself, such as a group coordinator that is still loading or has
+/// moved to another broker, for up to [`REQUEST`]. Called on a blocking
+/// thread.
+fn retry<T>(mut request: impl FnMut() -> Result<T, KafkaError>) -> Result<T, PipeError> {
+    let deadline = std::time::Instant::now() + REQUEST;
+    loop {
+        match request() {
+            Ok(value) => return Ok(value),
+            Err(error) if passes(&error) && std::time::Instant::now() < deadline => {
+                std::thread::sleep(RECHECK * 5);
+            }
+            Err(error) => return Err(kafka(error)),
+        }
+    }
+}
+
+/// Whether an error is one Kafka clients are expected to retry.
+fn passes(error: &KafkaError) -> bool {
+    matches!(
+        error.rdkafka_error_code(),
+        Some(
+            RDKafkaErrorCode::NotCoordinator
+                | RDKafkaErrorCode::CoordinatorLoadInProgress
+                | RDKafkaErrorCode::CoordinatorNotAvailable
+                | RDKafkaErrorCode::NotLeaderForPartition
+                | RDKafkaErrorCode::LeaderNotAvailable
+                | RDKafkaErrorCode::RequestTimedOut
+        )
+    )
 }
 
 fn signed(offset: u64) -> i64 {
