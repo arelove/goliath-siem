@@ -286,6 +286,29 @@ fn enumerated_constants_must_be_defined_values() {
 }
 
 #[test]
+fn members_with_dots_in_their_names_are_found() {
+    let definition = MINIMAL.replace("user.name: who", "user.name: extra.user.name");
+    let Outcome::Event(normalized) = one(
+        &definition,
+        r#"{"type": "login", "extra": {"user.name": "adam", "proc.pid": 7}}"#,
+    ) else {
+        panic!("not an event");
+    };
+    assert_eq!(normalized.event["user"]["name"], "adam");
+    // The member it read is not kept twice; the rest are kept by name.
+    assert_eq!(normalized.event["unmapped"], json!({ "proc.pid": 7 }));
+
+    // A member named by the segment alone comes first.
+    let Outcome::Event(normalized) = one(
+        &definition,
+        r#"{"type": "login", "extra": {"user": {"name": "eve"}, "user.name": "adam"}}"#,
+    ) else {
+        panic!("not an event");
+    };
+    assert_eq!(normalized.event["user"]["name"], "eve");
+}
+
+#[test]
 fn a_translation_turns_source_words_into_ocsf_values() {
     let definition = MINIMAL.replace(
         "user.name: who",

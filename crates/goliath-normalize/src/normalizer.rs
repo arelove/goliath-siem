@@ -56,6 +56,11 @@ enum Source {
 
 /// A dotted path into a decoded record. Unlike an OCSF path, it names exactly
 /// one value: records are read, not searched.
+///
+/// A member whose own name holds dots, as Falco's `proc.cmdline` does, is
+/// named by writing it out: `output_fields.proc.cmdline`. At each object a
+/// member named by the next segment alone is tried first, then by the next
+/// two joined with a dot, and so on.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct SourcePath {
     text: String,
@@ -75,21 +80,41 @@ impl SourcePath {
     }
 
     fn lookup<'a>(&self, record: &'a Value) -> Option<&'a Value> {
-        self.segments
-            .iter()
-            .try_fold(record, |value, segment| value.get(segment.as_str()))
+        find(record, &self.segments)
+    }
+
+    /// The name, within the object at `object`, of the member this path
+    /// names, if it is one.
+    fn member_of(&self, object: &Self) -> Option<String> {
+        (self.segments.len() > object.segments.len() && self.segments.starts_with(&object.segments))
+            .then(|| self.segments[object.segments.len()..].join("."))
     }
 
     /// Whether this path names the member `key` of the object at `object`.
     fn is_member(&self, object: &Self, key: &str) -> bool {
-        self.segments.len() == object.segments.len() + 1
-            && self.segments.starts_with(&object.segments)
-            && self.segments.last().is_some_and(|last| last == key)
+        self.member_of(object).is_some_and(|member| member == key)
     }
+}
 
-    fn last(&self) -> &str {
-        self.segments.last().map_or("", String::as_str)
+fn find<'a>(value: &'a Value, segments: &[String]) -> Option<&'a Value> {
+    if segments.is_empty() {
+        return Some(value);
     }
+    let object = value.as_object()?;
+    let mut name = String::new();
+    for (index, segment) in segments.iter().enumerate() {
+        if index > 0 {
+            name.push('.');
+        }
+        name.push_str(segment);
+        if let Some(found) = object
+            .get(&name)
+            .and_then(|member| find(member, &segments[index + 1..]))
+        {
+            return Some(found);
+        }
+    }
+    None
 }
 
 /// What became of one record.
@@ -443,12 +468,12 @@ impl Normalizer {
                     // Kept by the name the `unmapped` lists would give it, or
                     // by its whole path where they give none, so that it
                     // cannot take another member's name.
-                    let listed = kind
+                    let name = kind
                         .unmapped
                         .iter()
-                        .any(|object| path.is_member(object, path.last()));
-                    let name = if listed { path.last() } else { &path.text };
-                    unmapped.insert(name.to_owned(), found.clone());
+                        .find_map(|object| path.member_of(object))
+                        .unwrap_or_else(|| path.text.clone());
+                    unmapped.insert(name, found.clone());
                 }
             }
         }
