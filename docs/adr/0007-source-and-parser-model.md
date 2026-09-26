@@ -4,7 +4,8 @@
 - **Date:** 2026-09-21
 - **Amended:** 2026-09-25, conversion failures no longer dead-letter the
   record; fixtures run under `cargo test`; definitions are checked against
-  the OCSF schema when they load
+  the OCSF schema when they load. 2026-09-26, framing may assemble one
+  record from several lines, as Linux audit events need
 
 ## Context
 
@@ -35,7 +36,11 @@ flowchart LR
 ## Stages
 
 **Framing** splits a byte stream into records: newline-delimited, length-prefixed,
-multiline with a start pattern, or a container format such as EVTX.
+multiline with a start pattern, or a container format such as EVTX. A record
+may also be assembled from lines that are not adjacent: Linux audit writes
+one event as several lines sharing an event identifier, and framing gathers
+them, so that mapping sees the event whole. A line that names no event is a
+framing dead letter.
 
 **Decoding** turns a record into a field map. Built-in decoders cover JSON,
 key-value, CSV, regex with named captures, grok patterns, syslog RFC 3164 and
@@ -46,7 +51,10 @@ WASM decoder.
 source-specific knowledge lives, and it is the part operators most often edit.
 
 **Coercion** normalizes types: timestamp formats and time zones, IP parsing,
-enum translation to OCSF values, unit conversion.
+enum translation to OCSF values, unit conversion. Translation tables are
+checked against the attribute's enumeration when the definition loads, and a
+value a table does not list is kept and reported like any other value that
+does not convert, unless the table names what such values become.
 
 ## Data is never dropped
 

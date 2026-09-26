@@ -14,8 +14,10 @@ criterion that is measurable, so "done" is not a judgement call.
 end against the whole SigmaHQ repository and is published; its 10-million-event
 corpus run is still open. Sysmon events flow into ClickHouse with every role in
 one process, over topics on disk, and with each role in its own container,
-over Redpanda; CI runs both. Falco alerts and Entra ID sign-ins normalize
-too; Linux auditd is next.
+over Redpanda; CI runs both, which meets the exit criterion. All four source
+definitions ship: Sysmon, Falco, Entra ID sign-ins, and Linux auditd. Two
+deliverables remain: skip indexes, which M2.5 adds with the queries that need
+them, and the S3 transport.
 
 ## M0 - Foundations
 
@@ -85,8 +87,10 @@ and dead letters to ClickHouse under versioned migrations
 with retention counted from receipt. `goliath-pipe` carries records between
 roles in memory or in a durable disk log ([ADR-0015](adr/0015-pipe-semantics.md)),
 and the `goliath` binary runs collector, normalizer, and writer in one process:
-the single-process half of the exit criterion is met, and tested end to end in
-CI. The distributed half needs the Kafka pipe; the other sources come after.
+both halves of the exit criterion are met: with every role in one process over
+the disk log, and with each role in its own container over Kafka, both tested
+end to end in CI. Definitions ship for all four sources. Not built yet: skip
+indexes and the S3 transport.
 
 ## M2.5 - Event search
 
