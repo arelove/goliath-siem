@@ -4,6 +4,7 @@
 //! that a misspelled setting is not silently replaced by its default.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::net::SocketAddr;
 use std::num::{NonZeroU16, NonZeroU64};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -33,6 +34,9 @@ pub struct Config {
     /// How the writer batches.
     #[serde(default)]
     pub writer: WriterConfig,
+    /// Where and how the API listens.
+    #[serde(default)]
+    pub api: ApiConfig,
 }
 
 /// A role, as named in the configuration.
@@ -45,6 +49,67 @@ pub enum Role {
     Normalizer,
     /// Writes outcomes to the event store.
     Writer,
+    /// Serves searches over the stored events, and the interface.
+    Api,
+}
+
+/// The API: where it listens, who may use it, and what a search may ask.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ApiConfig {
+    /// The address to listen on; `127.0.0.1:8080` by default.
+    #[serde(default = "default_listen")]
+    pub listen: SocketAddr,
+    /// A file holding the bearer token every API request must carry. Needed
+    /// unless the API listens on a loopback address only.
+    pub token_file: Option<PathBuf>,
+    /// A directory holding the built interface, served at `/`.
+    pub ui: Option<PathBuf>,
+    /// The longest time range a search may cover, in days.
+    #[serde(default = "default_max_span_days")]
+    pub max_span_days: NonZeroU16,
+}
+
+impl Default for ApiConfig {
+    fn default() -> Self {
+        Self {
+            listen: default_listen(),
+            token_file: None,
+            ui: None,
+            max_span_days: default_max_span_days(),
+        }
+    }
+}
+
+fn default_listen() -> SocketAddr {
+    SocketAddr::from(([127, 0, 0, 1], 8080))
+}
+
+fn default_max_span_days() -> NonZeroU16 {
+    NonZeroU16::new(31).unwrap_or(NonZeroU16::MIN)
+}
+
+/// The shortest token accepted: 32 bytes, as `openssl rand -hex 16` writes.
+const MIN_TOKEN: usize = 32;
+
+impl ApiConfig {
+    /// The bearer token, if one is configured.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RunError::Config`] if the file cannot be read, or holds
+    /// fewer than 32 bytes.
+    pub fn token(&self) -> Result<Option<String>, RunError> {
+        let Some(token) = secret(None, self.token_file.as_ref())? else {
+            return Ok(None);
+        };
+        if token.len() < MIN_TOKEN {
+            return Err(RunError::Config(format!(
+                "the API token must be at least {MIN_TOKEN} bytes; generate one with `openssl rand -hex 32`"
+            )));
+        }
+        Ok(Some(token))
+    }
 }
 
 /// One source.
@@ -169,6 +234,8 @@ impl Config {
         let base = path.parent().unwrap_or(Path::new("."));
         let files = [
             config.data.as_mut(),
+            config.api.token_file.as_mut(),
+            config.api.ui.as_mut(),
             config
                 .store
                 .as_mut()
@@ -191,6 +258,13 @@ impl Config {
         }
         config.check()?;
         Ok(config)
+    }
+
+    /// Whether this process runs a role that moves records through topics.
+    pub fn has_pipeline(&self) -> bool {
+        self.roles
+            .iter()
+            .any(|role| matches!(role, Role::Collector | Role::Normalizer | Role::Writer))
     }
 
     /// Checks what the types cannot: that every source loads, that names do
@@ -217,7 +291,7 @@ impl Config {
             }
         }
         match &self.kafka {
-            None if self.data.is_none() => {
+            None if self.data.is_none() && self.has_pipeline() => {
                 return Err(RunError::Config(
                     "set `data` for topics on disk, or a [kafka] section".to_owned(),
                 ));
@@ -225,10 +299,21 @@ impl Config {
             None => {}
             Some(kafka) => kafka.check()?,
         }
-        if self.roles.contains(&Role::Writer) && self.store.is_none() {
+        if (self.roles.contains(&Role::Writer) || self.roles.contains(&Role::Api))
+            && self.store.is_none()
+        {
             return Err(RunError::Config(
-                "the writer role needs a [store] section".to_owned(),
+                "the writer and api roles need a [store] section".to_owned(),
             ));
+        }
+        if self.roles.contains(&Role::Api)
+            && !self.api.listen.ip().is_loopback()
+            && self.api.token_file.is_none()
+        {
+            return Err(RunError::Config(format!(
+                "the API listens on {}, beyond this host, so [api] needs a token_file",
+                self.api.listen
+            )));
         }
         if let Some(store) = &self.store
             && store.password_env.is_some()
@@ -417,6 +502,41 @@ brokers = "redpanda:9092"
         assert!(parse(&password_in_file).is_err());
         let no_replicas = format!("{NORMALIZER}replication = 0\n");
         assert!(parse(&no_replicas).is_err());
+    }
+
+    const API: &str = r#"
+roles = ["api"]
+
+[store]
+url = "http://localhost:8123"
+database = "goliath"
+"#;
+
+    #[test]
+    fn the_api_alone_needs_a_store_and_no_topics() {
+        let config = parse(API).unwrap();
+        assert!(!config.has_pipeline());
+        assert!(config.api.listen.ip().is_loopback());
+        assert_eq!(config.api.max_span_days.get(), 31);
+        assert!(parse("roles = [\"api\"]").is_err());
+    }
+
+    #[test]
+    fn an_api_beyond_this_host_needs_a_long_token() {
+        let open = format!("{API}\n[api]\nlisten = \"0.0.0.0:8080\"\n");
+        let error = parse(&open).unwrap_err().to_string();
+        assert!(error.contains("needs a token_file"), "{error}");
+
+        let directory = std::env::temp_dir().join(format!("goliath-api-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let file = directory.join("token");
+        let with_token = format!("{open}token_file = {file:?}\n");
+        std::fs::write(&file, "short\n").unwrap();
+        let config = parse(&with_token).unwrap();
+        assert!(config.api.token().is_err());
+        std::fs::write(&file, format!("{}\n", "a".repeat(64))).unwrap();
+        assert_eq!(config.api.token().unwrap(), Some("a".repeat(64)));
+        std::fs::remove_dir_all(directory).unwrap();
     }
 
     #[cfg(not(feature = "kafka"))]

@@ -15,6 +15,7 @@ use std::time::{Duration, Instant};
 use clickhouse::Client;
 use goliath::Config;
 use goliath_normalize::{Normalizer, Outcome, SYSMON};
+use serde_json::Value;
 
 const KINDS: &str = include_str!("../../goliath-normalize/sources/sysmon/kinds.input.json");
 const MALFORMED: &str = include_str!("../../goliath-normalize/sources/sysmon/malformed.input.json");
@@ -170,6 +171,105 @@ max_delay_ms = 100
     stop.send(()).unwrap();
     running.await.unwrap().unwrap();
 
+    connect(&url)
+        .query(&format!("DROP DATABASE IF EXISTS {database}"))
+        .execute()
+        .await
+        .unwrap();
+}
+
+/// Sends one HTTP/1.1 request to the API and returns the status and the JSON
+/// body.
+async fn http(port: u16, method: &str, path: &str, token: &str, body: &str) -> (u16, Value) {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+        .await
+        .unwrap();
+    let request = format!(
+        "{method} {path} HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer {token}\r\n\
+         Content-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    stream.write_all(request.as_bytes()).await.unwrap();
+    let mut response = String::new();
+    stream.read_to_string(&mut response).await.unwrap();
+    let status = response[9..12].parse().unwrap();
+    let body = response.split_once("\r\n\r\n").map_or("", |(_, body)| body);
+    (status, serde_json::from_str(body).unwrap_or(Value::Null))
+}
+
+/// The pipeline and the API in one process: a Sysmon file dropped into the
+/// inbox is found by a search over HTTP, and fetched again by where it is.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_api_finds_what_the_pipeline_stored() {
+    let Some(url) = clickhouse_url() else {
+        return;
+    };
+    let user = clickhouse_user();
+    let database = format!("goliath_test_api_{}", std::process::id());
+    let directory = tempfile::tempdir().unwrap();
+    let token = "0123456789abcdef".repeat(4);
+    std::fs::write(directory.path().join("token"), &token).unwrap();
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let path = directory.path().join("goliath.toml");
+    std::fs::write(
+        &path,
+        format!(
+            r#"
+roles = ["collector", "normalizer", "writer", "api"]
+data = "data"
+
+[[sources]]
+definition = "sysmon"
+inbox = "inbox/sysmon"
+
+[store]
+url = "{url}"
+database = "{database}"
+user = "{user}"
+password_env = "GOLIATH_CLICKHOUSE_PASSWORD"
+
+[writer]
+max_rows = 1000
+max_delay_ms = 100
+
+[api]
+listen = "127.0.0.1:{port}"
+token_file = "token"
+"#
+        ),
+    )
+    .unwrap();
+    let client = connect(&url).with_database(&database);
+    let (events, _) = expected(KINDS);
+
+    let (stop, running) = start(Config::load(&path).unwrap());
+    drop_file(&directory.path().join("inbox/sysmon"), "001.json", KINDS);
+    eventually(&client, "SELECT count() FROM events", events).await;
+
+    let search = r#"{"from": "2026-09-24T00:00:00Z", "to": "2026-09-25T00:00:00Z",
+        "classes": [1007], "filters": [{"path": "process.cmd_line", "op": "exists"}]}"#;
+    let (status, _) = http(port, "POST", "/api/v1/search", "wrong", search).await;
+    assert_eq!(status, 401);
+    let (status, page) = http(port, "POST", "/api/v1/search", &token, search).await;
+    assert_eq!(status, 200, "{page}");
+    let found = page["events"].as_array().unwrap();
+    assert!(!found.is_empty(), "{page}");
+    assert!(found.iter().all(|event| event["class_uid"] == 1007));
+
+    let at = found[0]["at"].as_str().unwrap();
+    let (status, event) = http(port, "GET", &format!("/api/v1/events/{at}"), &token, "").await;
+    assert_eq!(status, 200, "{event}");
+    assert_eq!(event["source"], "sysmon");
+    assert_eq!(event["event"], found[0]["event"]);
+
+    stop.send(()).unwrap();
+    running.await.unwrap().unwrap();
     connect(&url)
         .query(&format!("DROP DATABASE IF EXISTS {database}"))
         .execute()
