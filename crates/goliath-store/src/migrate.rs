@@ -42,6 +42,16 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "dead_letters",
         sql: include_str!("../migrations/0002_dead_letters.sql"),
     },
+    Migration {
+        version: 3,
+        name: "events_time_index",
+        sql: include_str!("../migrations/0003_events_time_index.sql"),
+    },
+    Migration {
+        version: 4,
+        name: "events_time_index_built",
+        sql: include_str!("../migrations/0004_events_time_index_built.sql"),
+    },
 ];
 
 /// Where applied migrations are recorded. Created before any migration runs,
@@ -87,7 +97,10 @@ mod tests {
                 migration.name
             );
             assert!(
-                statement.starts_with("CREATE TABLE IF NOT EXISTS "),
+                ["CREATE TABLE IF NOT EXISTS ", "ALTER TABLE "]
+                    .iter()
+                    .any(|start| statement.starts_with(start))
+                    && (!statement.contains(" ADD ") || statement.contains(" IF NOT EXISTS ")),
                 "{} is not repeatable",
                 migration.name
             );

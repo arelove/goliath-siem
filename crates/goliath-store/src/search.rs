@@ -248,6 +248,11 @@ fn with_limits(query: clickhouse::query::Query, limits: SearchLimits) -> clickho
         .with_setting("readonly", "2")
         .with_setting("max_execution_time", limits.max_seconds.to_string())
         .with_setting("max_rows_to_read", limits.max_rows_read.to_string())
+        // FINAL would otherwise widen what the time index selected to every
+        // granule whose key range overlaps it, most of the table. It need
+        // not: copies of an event share its time, which is in the key, so
+        // the index selects every copy of whatever it selects.
+        .with_setting("use_skip_indexes_if_final_exact_mode", "0")
         .with_setting("output_format_json_quote_64bit_integers", "0")
 }
 
