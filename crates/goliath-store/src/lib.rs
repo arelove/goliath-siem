@@ -13,11 +13,13 @@
 mod batch;
 mod error;
 mod migrate;
+mod search;
 mod store;
 mod writer;
 
 pub use batch::Batch;
 pub use error::StoreError;
 pub use migrate::{MIGRATIONS, Migration};
+pub use search::{Found, Page, SearchLimits, Stored};
 pub use store::Store;
 pub use writer::{Limits, Writer};

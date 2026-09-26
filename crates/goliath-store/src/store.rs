@@ -93,6 +93,11 @@ impl Store {
         &self.database
     }
 
+    /// The client connected to the store's database.
+    pub(crate) fn client(&self) -> &Client {
+        &self.client
+    }
+
     /// Creates the database if needed, and applies the migrations it lacks,
     /// in order. Returns the versions applied.
     ///
