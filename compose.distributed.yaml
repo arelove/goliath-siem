@@ -1,0 +1,91 @@
+# The platform with each role in a container of its own, meeting through
+# Redpanda, as roles on several hosts would meet through Kafka:
+#
+#   cp .env.example .env      # then set CLICKHOUSE_PASSWORD
+#   docker compose -f compose.distributed.yaml up -d --build
+#
+# The inbox, the query, and the ownership note are as in compose.yaml. Run
+# one stack or the other: both publish ClickHouse on 127.0.0.1:8123.
+#
+# Redpanda runs as one node in development mode. In production, point
+# `brokers` in deploy/distributed/*.toml at a real cluster, and raise
+# `replication` to 3.
+
+name: goliath-distributed
+
+services:
+  clickhouse:
+    extends:
+      file: compose.yaml
+      service: clickhouse
+
+  redpanda:
+    image: redpandadata/redpanda:v26.2.3
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092
+    volumes:
+      - redpanda:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health", "--exit-when-healthy", "--watch=false"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # The one service that builds the image; the other roles run it too.
+  collector:
+    build: .
+    image: goliath:local
+    command: ["run", "--config", "/etc/goliath/collector.toml"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    volumes:
+      - ./deploy/distributed/collector.toml:/etc/goliath/collector.toml:ro
+      - ./inbox:/var/lib/goliath/inbox
+    environment:
+      RUST_LOG: info
+    restart: unless-stopped
+
+  normalizer:
+    image: goliath:local
+    pull_policy: never
+    command: ["run", "--config", "/etc/goliath/normalizer.toml"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    volumes:
+      - ./deploy/distributed/normalizer.toml:/etc/goliath/normalizer.toml:ro
+    environment:
+      RUST_LOG: info
+    restart: unless-stopped
+
+  writer:
+    image: goliath:local
+    pull_policy: never
+    command: ["run", "--config", "/etc/goliath/writer.toml"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    volumes:
+      - ./deploy/distributed/writer.toml:/etc/goliath/writer.toml:ro
+    secrets:
+      - clickhouse_password
+    environment:
+      RUST_LOG: info
+    restart: unless-stopped
+
+secrets:
+  clickhouse_password:
+    environment: CLICKHOUSE_PASSWORD
+
+volumes:
+  clickhouse:
+  redpanda:

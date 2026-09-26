@@ -1,0 +1,14 @@
+# The normalizer alone, as compose.distributed.yaml runs it: raw records from
+# Redpanda become OCSF outcomes, back into Redpanda for the writer.
+#
+# Run one normalizer per deployment: a second would read the same records
+# again, not share them.
+
+roles = ["normalizer"]
+
+[[sources]]
+definition = "sysmon"
+
+[kafka]
+brokers = "redpanda:9092"
+replication = 1
