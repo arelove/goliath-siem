@@ -1,7 +1,19 @@
-# The goliath binary, as a small image that runs as an unprivileged user.
+# The goliath binary and its interface, as a small image that runs as an
+# unprivileged user.
 #
 #   docker build -t goliath .
 #
+# Interface stage: installed exactly as locked, and built to static files.
+FROM node:24-slim AS ui
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+WORKDIR /ui
+COPY ui/package.json ui/pnpm-lock.yaml ./
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
+COPY ui/ ./
+RUN pnpm build
+
 # Build stage: the toolchain, what librdkafka's configure script needs for
 # the Kafka feature, and cargo caches kept between builds by BuildKit.
 FROM rust:1.98-slim-bookworm AS build
@@ -22,6 +34,7 @@ RUN mkdir -p /state/var/lib/goliath/data /state/var/lib/goliath/inbox
 FROM gcr.io/distroless/cc-debian12:nonroot
 COPY --from=build /goliath /usr/local/bin/goliath
 COPY --from=build --chown=65532:65532 /state/var/lib/goliath /var/lib/goliath
+COPY --from=ui /ui/dist /usr/share/goliath/ui
 # Topics, positions, and inboxes; a volume in compose.
 WORKDIR /var/lib/goliath
 USER nonroot

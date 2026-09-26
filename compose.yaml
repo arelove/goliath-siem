@@ -1,10 +1,11 @@
 # The whole platform on one machine:
 #
-#   cp .env.example .env      # then set CLICKHOUSE_PASSWORD
+#   cp .env.example .env      # then set CLICKHOUSE_PASSWORD and API_TOKEN
 #   docker compose up -d --build
 #
 # Drop Sysmon events, as `evtx_dump -o json` writes them, into
-# ./inbox/sysmon/ (write under a `.tmp` name, then rename), and query:
+# ./inbox/sysmon/ (write under a `.tmp` name, then rename), and search them
+# at http://127.0.0.1:8080 with API_TOKEN, or query ClickHouse directly:
 #
 #   docker compose exec clickhouse clickhouse-client --user goliath --password "$CLICKHOUSE_PASSWORD" \
 #     --query "SELECT time, event.process.cmd_line FROM goliath.events WHERE class_uid = 1007"
@@ -49,8 +50,11 @@ services:
       - ./deploy/goliath.toml:/etc/goliath/goliath.toml:ro
       - goliath:/var/lib/goliath/data
       - ./inbox:/var/lib/goliath/inbox
+    ports:
+      - "127.0.0.1:8080:8080"
     secrets:
       - clickhouse_password
+      - api_token
     environment:
       RUST_LOG: info
     restart: unless-stopped
@@ -60,6 +64,9 @@ secrets:
   # reads it: the password is never in goliath's environment.
   clickhouse_password:
     environment: CLICKHOUSE_PASSWORD
+  # The API token, read by goliath from /run/secrets/api_token.
+  api_token:
+    environment: API_TOKEN
 
 volumes:
   clickhouse:

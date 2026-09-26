@@ -4,7 +4,8 @@
 #   cp .env.example .env      # then set CLICKHOUSE_PASSWORD
 #   docker compose -f compose.distributed.yaml up -d --build
 #
-# The inbox, the query, and the ownership note are as in compose.yaml. Run
+# The inbox, the interface, the query, and the ownership note are as in
+# compose.yaml; the interface is served by the `api` container. Run
 # one stack or the other: both publish ClickHouse on 127.0.0.1:8123.
 #
 # Redpanda runs as one node in development mode. In production, point
@@ -82,9 +83,29 @@ services:
       RUST_LOG: info
     restart: unless-stopped
 
+  api:
+    image: goliath:local
+    pull_policy: never
+    command: ["run", "--config", "/etc/goliath/api.toml"]
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    volumes:
+      - ./deploy/distributed/api.toml:/etc/goliath/api.toml:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+    secrets:
+      - clickhouse_password
+      - api_token
+    environment:
+      RUST_LOG: info
+    restart: unless-stopped
+
 secrets:
   clickhouse_password:
     environment: CLICKHOUSE_PASSWORD
+  api_token:
+    environment: API_TOKEN
 
 volumes:
   clickhouse:
