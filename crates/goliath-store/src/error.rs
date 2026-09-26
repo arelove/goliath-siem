@@ -37,6 +37,10 @@ pub enum StoreError {
         build: u32,
     },
 
+    /// A stored event that does not read back as JSON.
+    #[error("a stored event is not JSON: {0}")]
+    Stored(String),
+
     /// A kind of normalization outcome this crate does not know where to
     /// store.
     #[error("no storage for outcome {0}")]

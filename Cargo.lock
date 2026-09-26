@@ -636,6 +636,7 @@ dependencies = [
  "blake3",
  "clickhouse",
  "goliath-normalize",
+ "goliath-search",
  "serde",
  "serde_bytes",
  "serde_json",
