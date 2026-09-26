@@ -10,14 +10,14 @@ criterion that is measurable, so "done" is not a judgement call.
 
 ## Current milestone
 
-**M2 - Ingestion path.** In progress. The matching engine of M1 works end to
-end against the whole SigmaHQ repository and is published; its 10-million-event
-corpus run is still open. Sysmon events flow into ClickHouse with every role in
-one process, over topics on disk, and with each role in its own container,
-over Redpanda; CI runs both, which meets the exit criterion. All four source
-definitions ship: Sysmon, Falco, Entra ID sign-ins, and Linux auditd. Two
-deliverables remain: skip indexes, which M2.5 adds with the queries that need
-them, and the S3 transport.
+**M2.5 - Event search.** In progress. M2 met its exit criterion: Sysmon,
+Falco, Entra ID, and Linux auditd events flow into ClickHouse with every role in
+one process and with each role in its own container, both tested in CI; skip
+indexes and the S3 transport remain. Search is designed in
+[ADR-0016](adr/0016-event-search.md): a typed structure checked against the
+OCSF schema and compiled to parameterized SQL, served by the `api` role with
+the interface on the same origin. The matching engine's 10-million-event
+corpus run from M1 is still open.
 
 ## M0 - Foundations
 

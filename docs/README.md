@@ -30,8 +30,9 @@ orchestration, and incident handling in one system.
 | [0011](adr/0011-untrusted-yaml.md) | Parse rule YAML as untrusted input | Accepted |
 | [0012](adr/0012-sigma-field-mapping.md) | Sigma fields resolve to OCSF paths at load time | Accepted |
 | [0013](adr/0013-event-storage.md) | Event storage layout | Accepted |
-| [0015](adr/0015-pipe-semantics.md) | Pipe semantics: ordered topics, consumer groups, at least once, bounded | Accepted |
 | [0014](adr/0014-one-language-for-services.md) | Rust for every platform service | Accepted |
+| [0015](adr/0015-pipe-semantics.md) | Pipe semantics: ordered topics, consumer groups, at least once, bounded | Accepted |
+| [0016](adr/0016-event-search.md) | Event search: a typed structure compiled to parameterized SQL | Accepted |
 
 ## Writing an ADR
 
