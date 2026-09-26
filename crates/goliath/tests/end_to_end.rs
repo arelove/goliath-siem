@@ -266,7 +266,8 @@ max_delay_ms = 100
     let deadline = Instant::now() + Duration::from_secs(30);
     while !collected.exists() {
         if collecting.is_finished() {
-            panic!("the collector stopped: {:?}", collecting.await);
+            let ended = collecting.await;
+            panic!("the collector stopped: {ended:?}");
         }
         assert!(Instant::now() < deadline, "the collector took nothing");
         tokio::time::sleep(Duration::from_millis(50)).await;
