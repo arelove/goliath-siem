@@ -1,0 +1,13 @@
+type=SYSCALL msg=audit(1727251200.123:4521): arch=c000003e syscall=59 success=yes exit=0 a0=55d5c1a2b3c0 a1=55d5c1a2b4e0 a2=55d5c1a2b5f0 a3=0 items=2 ppid=1200 pid=1234 auid=1000 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=3 comm="curl" exe="/usr/bin/curl" subj=unconfined key="exec"
+type=EXECVE msg=audit(1727251200.123:4521): argc=4 a0="curl" a1="-o" a2="/tmp/x" a3=687474703A2F2F3139382E35312E3130302E372F7820262620736820
+type=CWD msg=audit(1727251200.123:4521): cwd="/root"
+type=PATH msg=audit(1727251200.123:4521): item=0 name="/usr/bin/curl" inode=1311 dev=08:01 mode=0100755 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0
+type=PATH msg=audit(1727251200.123:4521): item=1 name="/lib64/ld-linux-x86-64.so.2" inode=2045 dev=08:01 mode=0100755 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0
+type=PROCTITLE msg=audit(1727251200.123:4521): proctitle=6375726C002D6F002F746D702F7800687474703A2F2F3139382E35312E3130302E372F7820262620736820
+type=EOE msg=audit(1727251200.123:4521): 
+node=build-7 type=SYSCALL msg=audit(1727251260.500:77): arch=c00000b7 syscall=221 success=yes exit=0 a0=ffffd1e0 a1=ffffd200 a2=ffffd220 a3=0 items=2 ppid=880 pid=912 auid=1001 uid=1001 gid=1001 euid=1001 suid=1001 fsuid=1001 egid=1001 sgid=1001 fsgid=1001 tty=(none) ses=5 comm="id" exe="/usr/bin/id" subj=unconfined key=(null)ARCH=aarch64 SYSCALL=execve AUID="bob" UID="bob" GID="bob" EUID="bob" SUID="bob" FSUID="bob" EGID="bob" SGID="bob" FSGID="bob"
+node=build-7 type=EXECVE msg=audit(1727251260.500:77): argc=1 a0="id"
+node=build-7 type=CWD msg=audit(1727251260.500:77): cwd="/home/bob"
+node=build-7 type=PROCTITLE msg=audit(1727251260.500:77): proctitle="id"
+type=USER_LOGIN msg=audit(1727251300.412:912): pid=4410 uid=0 auid=1000 ses=12 subj=unconfined msg='op=login id=1000 exe="/usr/sbin/sshd" hostname=203.0.113.9 addr=203.0.113.9 terminal=/dev/pts/1 res=success'UID="root" AUID="alice" ID="alice"
+type=USER_LOGIN msg=audit(1727251311.090:925): pid=4502 uid=0 auid=4294967295 ses=4294967295 subj=unconfined msg='op=login acct="admin" exe="/usr/sbin/sshd" hostname=? addr=198.51.100.7 terminal=sshd res=failed'

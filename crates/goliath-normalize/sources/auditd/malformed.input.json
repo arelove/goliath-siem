@@ -1,0 +1,7 @@
+type=SYSCALL msg=audit(1727251400.000:1001): arch=c000003e syscall=59 success=no exit=-2 a0=1 a1=2 a2=3 a3=0 items=1 ppid=1 pid=notapid auid=0 uid=0 comm="bash" exe="/usr/bin/bash" key=(null)
+type=CWD msg=audit(1727251400.000:1001): cwd="/"
+type=CONFIG_CHANGE msg=audit(1727251401.000:1002): auid=1000 ses=3 op=add_rule key="exec" list=4 res=1
+type=SERVICE_START msg=audit(1727251402.000:1003): pid=1 uid=0 msg='unit=sshd comm="systemd" exe="/usr/lib/systemd/systemd" res=success'
+Sep 25 08:00:00 web-1 sshd[4410]: Accepted publickey for alice
+type=SERVICE_START msg=audit(1727251402.000:1003): pid=1 uid=0
+type=USER_LOGIN msg=audit(soon:1004): pid=1 uid=0 msg='op=login acct="root" exe="/bin/login" res=success'
