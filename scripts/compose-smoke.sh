@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# Brings the compose stack up, drops a Sysmon file into the inbox, and waits
+# Brings a compose stack up, drops a Sysmon file into the inbox, and waits
 # for its events in ClickHouse. Used by CI; runs the same on a laptop.
 #
-#   scripts/compose-smoke.sh
+#   scripts/compose-smoke.sh                           # every role in one container
+#   scripts/compose-smoke.sh compose.distributed.yaml  # a container per role
 #
 # Creates .env with a random password if there is none, and leaves the stack
 # running on success so it can be inspected; `docker compose down -v` removes
 # it with its data.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+export COMPOSE_FILE="${1:-compose.yaml}"
 
 if [[ ! -f .env ]]; then
     printf 'CLICKHOUSE_PASSWORD=%s\n' "$(openssl rand -hex 16)" > .env
@@ -21,9 +23,9 @@ source .env
 mkdir -p inbox/sysmon
 chmod -R a+rwX inbox
 # Build once, then start: two builds at once would share cargo's caches.
-docker compose build goliath
+docker compose build
 docker compose up -d --wait clickhouse
-docker compose up -d goliath
+docker compose up -d
 
 sample=crates/goliath-normalize/sources/sysmon/kinds.input.json
 cp "$sample" inbox/sysmon/smoke.json.tmp
@@ -45,5 +47,5 @@ for _ in $(seq 1 60); do
 done
 
 echo "no events after 60 seconds" >&2
-docker compose logs goliath >&2
+docker compose logs >&2
 exit 1
