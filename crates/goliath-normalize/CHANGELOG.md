@@ -9,6 +9,16 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-09-26
+
+
+### Added
+
+- Translate source values to OCSF values through a table
+- Source paths reach members whose names hold dots
+- A Falco source definition, alerts as OCSF detection findings
+- An Entra ID sign-in definition, as OCSF authentication
+
 ## [0.2.1] - 2026-09-25
 
 
