@@ -20,6 +20,10 @@ use std::fmt::Write as _;
 use goliath_rule::{MappingSet, ResolvedRule, sigma};
 use serde_json::{Value, json};
 
+mod sysmon;
+
+pub use sysmon::{Fleet, rfc3339};
+
 const SIGMA_WINDOWS: &str = goliath_rule::SIGMA_WINDOWS;
 
 /// Rules and the events to evaluate them against.
@@ -59,6 +63,7 @@ pub fn process_creation(rules: usize, events: usize, seed: u64) -> Workload {
 
 /// A small deterministic generator, so a workload is the same on every run
 /// and every platform.
+#[derive(Debug)]
 struct Random(u64);
 
 impl Random {
