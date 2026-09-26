@@ -51,7 +51,7 @@ pub enum Role {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SourceConfig {
-    /// The source definition: the name of a built-in one, `sysmon`, `falco`, or `entra`,
+    /// The source definition: the name of a built-in one, `sysmon`, `falco`, `entra`, or `auditd`,
     /// or the path of a YAML file.
     pub definition: String,
     /// A directory the collector takes files from; needed by the collector
