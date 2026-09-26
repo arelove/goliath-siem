@@ -51,7 +51,7 @@ pub enum Role {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SourceConfig {
-    /// The source definition: the name of a built-in one, such as `sysmon`,
+    /// The source definition: the name of a built-in one, `sysmon` or `falco`,
     /// or the path of a YAML file.
     pub definition: String,
     /// A directory the collector takes files from; needed by the collector
@@ -324,10 +324,10 @@ impl SourceConfig {
     ///
     /// Returns [`RunError::Config`] if it cannot be read or does not load.
     pub fn normalizer(&self) -> Result<Normalizer, RunError> {
-        let text = match self.definition.as_str() {
-            "sysmon" => goliath_normalize::SYSMON.to_owned(),
-            path => std::fs::read_to_string(path)
-                .map_err(|error| RunError::Config(format!("{path}: {error}")))?,
+        let text = match goliath_normalize::builtin(&self.definition) {
+            Some(text) => text.to_owned(),
+            None => std::fs::read_to_string(&self.definition)
+                .map_err(|error| RunError::Config(format!("{}: {error}", self.definition)))?,
         };
         Normalizer::from_yaml(&text).map_err(|error| {
             RunError::Config(format!("source definition `{}`: {error}", self.definition))
@@ -336,7 +336,7 @@ impl SourceConfig {
 }
 
 fn is_builtin(definition: &str) -> bool {
-    definition == "sysmon"
+    goliath_normalize::builtin(definition).is_some()
 }
 
 #[cfg(test)]
