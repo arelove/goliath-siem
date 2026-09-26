@@ -1,0 +1,140 @@
+[
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "user": {
+          "uid": "0"
+        }
+      },
+      "category_uid": 1,
+      "class_uid": 1007,
+      "device": {
+        "os": {
+          "name": "Linux",
+          "type_id": 200
+        }
+      },
+      "metadata": {
+        "product": {
+          "name": "auditd",
+          "vendor_name": "Linux Audit"
+        },
+        "sequence": 1001,
+        "version": "1.5.0"
+      },
+      "process": {
+        "file": {
+          "path": "/usr/bin/bash"
+        },
+        "name": "bash",
+        "parent_process": {
+          "pid": 1
+        },
+        "user": {
+          "uid": "0"
+        },
+        "working_directory": "/"
+      },
+      "severity_id": 1,
+      "status_id": 2,
+      "time": 1727251400000,
+      "type_uid": 100701,
+      "unmapped": {
+        "a0": "1",
+        "a1": "2",
+        "a2": "3",
+        "a3": "0",
+        "arch": "c000003e",
+        "exit": "-2",
+        "items": "1",
+        "key": "(null)",
+        "pid": "notapid",
+        "syscall": "59"
+      }
+    },
+    "id": "6bfe54aa97cd0a7f659171e946257c82",
+    "issues": [
+      {
+        "reason": "`notapid` is not a whole number",
+        "source": "SYSCALL.pid",
+        "target": "process.pid"
+      }
+    ],
+    "kind": "execve_x86_64"
+  },
+  {
+    "dead_letter": {
+      "error": "no kind of source `auditd` accepts the record",
+      "raw": "type=CONFIG_CHANGE msg=audit(1727251401.000:1002): auid=1000 ses=3 op=add_rule key=\"exec\" list=4 res=1",
+      "stage": "mapping"
+    }
+  },
+  {
+    "dead_letter": {
+      "error": "no kind of source `auditd` accepts the record",
+      "raw": "type=SERVICE_START msg=audit(1727251402.000:1003): pid=1 uid=0 msg='unit=sshd comm=\"systemd\" exe=\"/usr/lib/systemd/systemd\" res=success'\ntype=SERVICE_START msg=audit(1727251402.000:1003): pid=1 uid=0",
+      "stage": "mapping"
+    }
+  },
+  {
+    "dead_letter": {
+      "error": "the line names no audit event",
+      "raw": "Sep 25 08:00:00 web-1 sshd[4410]: Accepted publickey for alice",
+      "stage": "framing"
+    }
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "category_uid": 3,
+      "class_uid": 3002,
+      "device": {
+        "os": {
+          "name": "Linux",
+          "type_id": 200
+        }
+      },
+      "logon_process": {
+        "file": {
+          "path": "/bin/login"
+        },
+        "pid": 1
+      },
+      "metadata": {
+        "product": {
+          "name": "auditd",
+          "vendor_name": "Linux Audit"
+        },
+        "sequence": 1004,
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "success",
+      "status_id": 1,
+      "type_uid": 300201,
+      "unmapped": {
+        "msg": {
+          "acct": "root",
+          "exe": "/bin/login",
+          "op": "login",
+          "res": "success"
+        },
+        "time": "soon",
+        "uid": "0"
+      },
+      "user": {
+        "name": "root"
+      }
+    },
+    "id": "96b5376b88f0cda7957a33508e639239",
+    "issues": [
+      {
+        "reason": "`soon` is not a count of seconds since 1970",
+        "source": "time",
+        "target": "time"
+      }
+    ],
+    "kind": "login_success"
+  }
+]

@@ -45,6 +45,7 @@
 // Tests assert on outcomes; a failed assertion should abort the test.
 #![cfg_attr(test, allow(clippy::expect_used, clippy::panic, clippy::unwrap_used))]
 
+mod auditd;
 pub mod definition;
 pub mod error;
 pub mod normalizer;
@@ -64,8 +65,16 @@ pub const FALCO: &str = include_str!("../sources/falco.yaml");
 /// The Microsoft Entra ID sign-in log definition shipped with this crate.
 pub const ENTRA: &str = include_str!("../sources/entra.yaml");
 
+/// The Linux audit log definition shipped with this crate.
+pub const AUDITD: &str = include_str!("../sources/auditd.yaml");
+
 /// Every definition shipped with this crate, by name.
-pub const BUILTIN: &[(&str, &str)] = &[("entra", ENTRA), ("falco", FALCO), ("sysmon", SYSMON)];
+pub const BUILTIN: &[(&str, &str)] = &[
+    ("auditd", AUDITD),
+    ("entra", ENTRA),
+    ("falco", FALCO),
+    ("sysmon", SYSMON),
+];
 
 /// The shipped definition named `name`, if there is one.
 pub fn builtin(name: &str) -> Option<&'static str> {

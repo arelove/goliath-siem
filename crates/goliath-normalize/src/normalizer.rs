@@ -7,6 +7,7 @@ use goliath_rule::FieldPath;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 
+use crate::auditd;
 use crate::definition::{Coercion, Decoding, FieldSpec, Framing, SourceDefinition};
 use crate::error::DefinitionError;
 
@@ -20,6 +21,7 @@ pub struct Normalizer {
     name: String,
     version: u32,
     framing: Framing,
+    decoding: Decoding,
     kinds: Vec<Kind>,
 }
 
@@ -352,15 +354,29 @@ impl Normalizer {
                 unmapped,
             });
         }
-        // Only JSON exists so far; the match makes a new decoding a compile
-        // error here rather than a silent fallback.
-        match definition.decoding {
-            Decoding::Json => {}
+        let fits = match definition.framing {
+            Framing::Lines => true,
+            Framing::JsonValues => definition.decoding == Decoding::Json,
+            Framing::AuditEvents => definition.decoding == Decoding::Auditd,
+        };
+        if !fits {
+            return Err(DefinitionError::Decoding {
+                framing: match definition.framing {
+                    Framing::Lines => "lines",
+                    Framing::JsonValues => "json-values",
+                    Framing::AuditEvents => "audit-events",
+                },
+                decoding: match definition.decoding {
+                    Decoding::Json => "json",
+                    Decoding::Auditd => "auditd",
+                },
+            });
         }
         Ok(Self {
             name: definition.name.clone(),
             version: definition.version,
             framing: definition.framing,
+            decoding: definition.decoding,
             kinds,
         })
     }
@@ -385,9 +401,18 @@ impl Normalizer {
                     if line.iter().all(u8::is_ascii_whitespace) {
                         continue;
                     }
-                    out(match serde_json::from_slice::<Value>(line) {
-                        Ok(record) => self.record(&record, line),
-                        Err(error) => dead(Stage::Decoding, error.to_string(), line),
+                    out(self.decoded(line));
+                }
+            }
+            Framing::AuditEvents => {
+                for event in auditd::events(bytes) {
+                    out(match event {
+                        Ok(raw) => self.decoded(&raw),
+                        Err(line) => dead(
+                            Stage::Framing,
+                            "the line names no audit event".to_owned(),
+                            line,
+                        ),
                     });
                 }
             }
@@ -414,6 +439,20 @@ impl Normalizer {
                     }
                 }
             }
+        }
+    }
+
+    /// Decodes and normalizes one framed record.
+    fn decoded(&self, raw: &[u8]) -> Outcome {
+        let record = match self.decoding {
+            Decoding::Json => {
+                serde_json::from_slice::<Value>(raw).map_err(|error| error.to_string())
+            }
+            Decoding::Auditd => auditd::decode(raw),
+        };
+        match record {
+            Ok(record) => self.record(&record, raw),
+            Err(error) => dead(Stage::Decoding, error, raw),
         }
     }
 
@@ -485,9 +524,14 @@ impl Normalizer {
                 if member.is_null() || consumed.iter().any(|path| path.is_member(object, key)) {
                     continue;
                 }
-                unmapped
-                    .entry(key.clone())
-                    .or_insert_with(|| member.clone());
+                // A name an earlier object already gave is qualified with
+                // this object's path, so that neither value is lost.
+                let name = if unmapped.contains_key(key) {
+                    format!("{}.{key}", object.text)
+                } else {
+                    key.clone()
+                };
+                unmapped.entry(name).or_insert_with(|| member.clone());
             }
         }
         if !unmapped.is_empty() {
@@ -745,7 +789,7 @@ impl Source {
             } => Some(match coercion {
                 Coercion::String => Writes::Text,
                 Coercion::Integer => Writes::Integer,
-                Coercion::Timestamp => Writes::Timestamp,
+                Coercion::Timestamp | Coercion::UnixSeconds => Writes::Timestamp,
             }),
         }
     }
@@ -822,11 +866,32 @@ fn coerce(value: &Value, coercion: Option<Coercion>) -> Result<Value, String> {
             .parse::<jiff::Timestamp>()
             .map(|time| Value::from(time.as_millisecond()))
             .map_err(|error| format!("`{text}` is not an RFC 3339 time: {error}")),
+        (Coercion::UnixSeconds, Value::String(text)) => unix_seconds(text),
+        (Coercion::UnixSeconds, Value::Number(number)) => unix_seconds(&number.to_string()),
         (coercion, other) => Err(format!(
             "cannot convert {} to {coercion:?}",
             describe(other)
         )),
     }
+}
+
+/// Seconds since the epoch, such as `1727251200.123`, as milliseconds.
+fn unix_seconds(text: &str) -> Result<Value, String> {
+    let invalid = || format!("`{text}` is not a count of seconds since 1970");
+    let (whole, fraction) = text.split_once('.').unwrap_or((text, ""));
+    let digits = |part: &str| part.bytes().all(|byte| byte.is_ascii_digit());
+    if whole.is_empty() || !digits(whole) || !digits(fraction) {
+        return Err(invalid());
+    }
+    let seconds: i64 = whole.parse().map_err(|_| invalid())?;
+    let millis: i64 = format!("{:0<3}", &fraction[..fraction.len().min(3)])
+        .parse()
+        .map_err(|_| invalid())?;
+    seconds
+        .checked_mul(1000)
+        .and_then(|milliseconds| milliseconds.checked_add(millis))
+        .map(Value::from)
+        .ok_or_else(invalid)
 }
 
 fn describe(value: &Value) -> &'static str {

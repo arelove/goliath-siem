@@ -65,6 +65,15 @@ pub enum DefinitionError {
         kind: String,
     },
 
+    /// The framing and the decoding cannot be used together.
+    #[error("framing `{framing}` cannot be used with decoding `{decoding}`")]
+    Decoding {
+        /// The framing as written.
+        framing: &'static str,
+        /// The decoding as written.
+        decoding: &'static str,
+    },
+
     /// The definition has no kinds, so every record would be rejected.
     #[error("the definition has no kinds")]
     NoKinds,

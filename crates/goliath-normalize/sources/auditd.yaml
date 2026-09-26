@@ -1,0 +1,87 @@
+# Linux audit events, as auditd writes them to /var/log/audit/audit.log, in
+# its raw or enriched format. The lines of one event are gathered into one
+# record, each under its type: `SYSCALL.exe`, `EXECVE.a0`, `CWD.cwd`,
+# `PATH.0.name`, `PROCTITLE.proctitle`, `USER_LOGIN.msg.acct`.
+#
+# Kinds cover program execution and logins. System call numbers depend on
+# the architecture, so execution has a kind for each supported one. Other
+# events, such as CONFIG_CHANGE or USER_AUTH, go to the dead letters with
+# their bytes until a kind is added for them.
+#
+# The command line is the process title, which the kernel cuts at 128 bytes;
+# every argument is kept whole under `unmapped` as `a0`, `a1`, ..., where
+# Sigma's auditd rules look for them. `SYSCALL`'s own `a0` to `a3`, raw
+# register values, are kept as `SYSCALL.a0` and so on.
+
+name: auditd
+version: 1
+framing: audit-events
+decoding: auditd
+
+common:
+  time: { from: time, as: unix-seconds }
+  severity_id: { value: 1 }
+  metadata.version: { value: "1.5.0" }
+  metadata.product.name: { value: auditd }
+  metadata.product.vendor_name: { value: Linux Audit }
+  metadata.sequence: { from: serial, as: integer }
+  device.hostname: node
+  device.os.type_id: { value: 200 }
+  device.os.name: { value: Linux }
+
+kinds:
+  - name: execve_x86_64
+    when:
+      SYSCALL.arch: c000003e
+      SYSCALL.syscall: "59"
+    # Process Activity: Launch.
+    class: { class_uid: 1007, activity_id: 1 }
+    fields: &execve
+      status_id: { from: SYSCALL.success, map: { "yes": 1, "no": 2 } }
+      process.pid: { from: SYSCALL.pid, as: integer }
+      process.name: SYSCALL.comm
+      process.file.path: SYSCALL.exe
+      process.cmd_line: PROCTITLE.proctitle
+      process.working_directory: CWD.cwd
+      process.user.uid: SYSCALL.uid
+      process.user.name: SYSCALL.UID
+      process.session.uid: SYSCALL.ses
+      process.parent_process.pid: { from: SYSCALL.ppid, as: integer }
+      # The login user, which stays the same through su and sudo.
+      actor.user.uid: SYSCALL.auid
+      actor.user.name: SYSCALL.AUID
+    unmapped: &execve_unmapped [EXECVE, SYSCALL]
+
+  - name: execve_aarch64
+    when:
+      SYSCALL.arch: c00000b7
+      SYSCALL.syscall: "221"
+    # Process Activity: Launch.
+    class: { class_uid: 1007, activity_id: 1 }
+    fields: *execve
+    unmapped: *execve_unmapped
+
+  - name: login_success
+    when:
+      USER_LOGIN.msg.res: success
+    # Authentication: Logon.
+    class: { class_uid: 3002, activity_id: 1 }
+    fields: &login
+      user.name: USER_LOGIN.msg.acct
+      user.uid: USER_LOGIN.msg.id
+      src_endpoint.ip: USER_LOGIN.msg.addr
+      src_endpoint.hostname: USER_LOGIN.msg.hostname
+      logon_process.file.path: USER_LOGIN.msg.exe
+      logon_process.pid: { from: USER_LOGIN.pid, as: integer }
+      session.uid: USER_LOGIN.ses
+      status: USER_LOGIN.msg.res
+      status_id: { from: USER_LOGIN.msg.res, map: { success: 1, failed: 2 } }
+    unmapped: &login_unmapped [USER_LOGIN]
+
+  - name: login_failure
+    when:
+      USER_LOGIN.msg.res: failed
+    # Authentication: Logon.
+    class: { class_uid: 3002, activity_id: 1 }
+    fields: *login
+    unmapped: *login_unmapped

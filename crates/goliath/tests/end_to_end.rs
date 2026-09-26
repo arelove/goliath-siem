@@ -265,6 +265,10 @@ max_delay_ms = 100
     let collected = inbox.join("done/001-kinds.json");
     let deadline = Instant::now() + Duration::from_secs(30);
     while !collected.exists() {
+        if collecting.is_finished() {
+            let ended = collecting.await;
+            panic!("the collector stopped: {ended:?}");
+        }
         assert!(Instant::now() < deadline, "the collector took nothing");
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
