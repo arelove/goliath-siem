@@ -102,3 +102,37 @@ async fn a_topic_with_several_partitions_is_refused() {
         .unwrap_err();
     assert!(error.to_string().contains("exactly one"), "{error}");
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_reader_elsewhere_that_starts_late_receives_what_was_sent() {
+    use std::time::Duration;
+
+    use goliath_pipe::{Receiver, Sender};
+
+    let name = unique("goliath-test-late");
+    let group = format!("{name}-normalizer");
+    let mut options = KafkaOptions::new(brokers());
+    options.readers.insert(group.clone());
+    let collector = KafkaTopic::open(&name, options).await.unwrap();
+    collector
+        .sender()
+        .send(vec![b"one".to_vec(), b"two".to_vec()])
+        .await
+        .unwrap();
+
+    // The reader's own process opens the topic only now.
+    let normalizer = KafkaTopic::open(&name, KafkaOptions::new(brokers()))
+        .await
+        .unwrap();
+    let mut receiver = normalizer.subscribe(&group).await.unwrap();
+    let mut payloads = Vec::new();
+    while payloads.len() < 2 {
+        let batch = receiver.receive(10, Duration::from_secs(5)).await.unwrap();
+        assert!(
+            !batch.is_empty(),
+            "records sent before the reader started were skipped"
+        );
+        payloads.extend(batch.into_iter().map(|delivery| delivery.payload));
+    }
+    assert_eq!(payloads, [b"one".to_vec(), b"two".to_vec()]);
+}

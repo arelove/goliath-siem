@@ -16,7 +16,10 @@
 //!
 //! The groups a sender waits for are those subscribed through the same
 //! [`KafkaTopic`], and those named in [`KafkaOptions::readers`], for readers
-//! in other processes.
+//! in other processes. A reader named there that has no position yet gets
+//! one when the topic is opened: the end of the topic at that moment. So a
+//! reader that starts after a sender has sent still receives what was sent,
+//! rather than starting after it as a new group otherwise would.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::num::NonZeroU64;
@@ -112,7 +115,8 @@ impl std::fmt::Debug for KafkaTopic {
 
 impl KafkaTopic {
     /// Opens the topic `name`, creating it with one partition if it does not
-    /// exist.
+    /// exist, and gives each group in [`KafkaOptions::readers`] that has no
+    /// position the end of the topic as its position.
     ///
     /// # Errors
     ///
@@ -145,28 +149,46 @@ impl KafkaTopic {
             .set("linger.ms", "5")
             .create()
             .map_err(kafka)?;
-        let partitions = blocking({
-            let producer = producer.clone();
-            let name = name.to_owned();
-            move || {
-                use rdkafka::producer::Producer;
-                let metadata = producer
-                    .client()
-                    .fetch_metadata(Some(&name), REQUEST)
-                    .map_err(kafka)?;
-                Ok(metadata
-                    .topics()
-                    .first()
-                    .map_or(0, |topic| topic.partitions().len()))
+        // A topic just created has no leader for a moment, and every request
+        // to it fails until it has one.
+        let deadline = Instant::now() + REQUEST;
+        loop {
+            let found = blocking({
+                let producer = producer.clone();
+                let name = name.to_owned();
+                move || {
+                    use rdkafka::producer::Producer;
+                    let metadata = producer
+                        .client()
+                        .fetch_metadata(Some(&name), REQUEST)
+                        .map_err(kafka)?;
+                    Ok(metadata.topics().first().map(|topic| {
+                        let led = topic.error().is_none()
+                            && topic.partitions().iter().all(|partition| {
+                                partition.error().is_none() && partition.leader() >= 0
+                            });
+                        (topic.partitions().len(), led)
+                    }))
+                }
+            })
+            .await;
+            match found {
+                Ok(Some((partitions, _))) if partitions > 1 => {
+                    return Err(PipeError::Io(format!(
+                        "topic {name} has {partitions} partitions; the pipe needs exactly one for its order"
+                    )));
+                }
+                Ok(Some((1, true))) => break,
+                Err(error) if Instant::now() >= deadline => return Err(error),
+                _ if Instant::now() >= deadline => {
+                    return Err(PipeError::Io(format!(
+                        "topic {name} has no leader after {REQUEST:?}"
+                    )));
+                }
+                _ => tokio::time::sleep(RECHECK * 5).await,
             }
-        })
-        .await?;
-        if partitions != 1 {
-            return Err(PipeError::Io(format!(
-                "topic {name} has {partitions} partitions; the pipe needs exactly one for its order"
-            )));
         }
-        Ok(Self {
+        let topic = Self {
             shared: Arc::new(Shared {
                 name: name.to_owned(),
                 options,
@@ -174,7 +196,38 @@ impl KafkaTopic {
                 local: Mutex::new(BTreeSet::new()),
                 lookups: Mutex::new(BTreeMap::new()),
             }),
+        };
+        topic.place_readers().await?;
+        Ok(topic)
+    }
+
+    /// Commits the end of the topic for each reader elsewhere that has no
+    /// position yet.
+    async fn place_readers(&self) -> Result<(), PipeError> {
+        let sender = self.sender();
+        let lookups: Vec<Arc<BaseConsumer>> = self
+            .shared
+            .options
+            .readers
+            .iter()
+            .map(|group| sender.lookup(group))
+            .collect::<Result<_, _>>()?;
+        if lookups.is_empty() {
+            return Ok(());
+        }
+        let name = self.shared.name.clone();
+        blocking(move || {
+            for consumer in lookups {
+                if committed(&consumer, &name)?.is_none() {
+                    let (_, end) = consumer
+                        .fetch_watermarks(&name, 0, REQUEST)
+                        .map_err(kafka)?;
+                    commit(&consumer, &name, u64::try_from(end).unwrap_or(0))?;
+                }
+            }
+            Ok(())
         })
+        .await
     }
 
     /// A sender to this topic.
