@@ -1,0 +1,281 @@
+:root {
+  --bg: #0f1216;
+  --panel: #161a20;
+  --line: #262c35;
+  --text: #d8dee6;
+  --muted: #8a94a3;
+  --accent: #5aa9ff;
+  --selected: #1d2a3a;
+  --error: #ff6b6b;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+  color-scheme: dark;
+  font:
+    13px / 1.4 system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --line: #dde1e6;
+    --text: #1b1f24;
+    --muted: #5d6673;
+    --accent: #0a64d8;
+    --selected: #e3eefc;
+    --error: #c62828;
+    color-scheme: light;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+input,
+select,
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+button {
+  cursor: pointer;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+button.quiet {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--text);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app.locked {
+  align-items: center;
+  justify-content: center;
+}
+
+.top {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.top h1 {
+  font-size: 15px;
+  margin: 5px 0 0;
+  letter-spacing: 0.04em;
+}
+
+.search {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.search .line,
+.filter {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter .path {
+  width: 320px;
+  font-family: var(--mono);
+}
+
+.filter .value {
+  flex: 1;
+  min-width: 200px;
+  font-family: var(--mono);
+}
+
+.time {
+  width: 230px;
+  font-family: var(--mono);
+}
+
+.body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 0;
+}
+
+.body.split {
+  grid-template-columns: 1fr minmax(360px, 40%);
+}
+
+.results {
+  overflow: auto;
+  min-height: 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 190px 150px 150px 150px 1fr;
+  gap: 10px;
+  width: 100%;
+  padding: 0 14px;
+  align-items: center;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row:hover {
+  background: var(--panel);
+}
+
+.row.selected {
+  background: var(--selected);
+}
+
+.row.head {
+  position: sticky;
+  z-index: 1;
+  height: 30px;
+  background: var(--bg);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+.note {
+  color: var(--muted);
+  padding: 10px 14px;
+  margin: 0;
+}
+
+.error {
+  color: var(--error);
+}
+
+.banner {
+  margin: 0;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.detail {
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  overflow: auto;
+  padding: 10px 14px;
+  min-height: 0;
+}
+
+.detail header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail h2 {
+  font-size: 14px;
+  margin: 0;
+}
+
+.detail h3 {
+  font-size: 12px;
+  margin: 8px 0 4px;
+}
+
+.meta {
+  color: var(--muted);
+}
+
+.issues {
+  border: 1px solid var(--error);
+  border-radius: 4px;
+  padding: 0 10px 6px;
+  margin-bottom: 8px;
+}
+
+.tree {
+  list-style: none;
+  margin: 0;
+  padding-left: 14px;
+  font-family: var(--mono);
+}
+
+.detail > .tree {
+  padding-left: 0;
+}
+
+.key {
+  color: var(--muted);
+  margin-right: 8px;
+}
+
+.leaf .add {
+  padding: 0 6px;
+  margin-left: 6px;
+  visibility: hidden;
+}
+
+li:hover > .leaf .add {
+  visibility: visible;
+}
+
+.token {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 360px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.token h2 {
+  margin: 0;
+  font-size: 15px;
+}

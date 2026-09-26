@@ -1,5 +1,7 @@
 # Only sources go into the build context.
 target/
+ui/node_modules/
+ui/dist/
 .git/
 data/
 inbox/

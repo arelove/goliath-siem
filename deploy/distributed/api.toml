@@ -1,0 +1,15 @@
+# The API alone, as compose.distributed.yaml runs it: searches over what the
+# writer stored, and the interface. It needs no topics.
+
+roles = ["api"]
+
+[store]
+url = "http://clickhouse:8123"
+database = "goliath"
+user = "goliath"
+password_file = "/run/secrets/clickhouse_password"
+
+[api]
+listen = "0.0.0.0:8080"
+token_file = "/run/secrets/api_token"
+ui = "/usr/share/goliath/ui"

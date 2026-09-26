@@ -2,7 +2,7 @@
 # container: /var/lib/goliath is a volume, and the inbox is bound to ./inbox
 # on the host.
 
-roles = ["collector", "normalizer", "writer"]
+roles = ["collector", "normalizer", "writer", "api"]
 data = "/var/lib/goliath/data"
 
 [[sources]]
@@ -20,3 +20,10 @@ retention_days = 30
 [writer]
 max_rows = 50000
 max_delay_ms = 1000
+
+# Reachable from outside the container, so it takes a token; compose
+# publishes it on 127.0.0.1:8080 only.
+[api]
+listen = "0.0.0.0:8080"
+token_file = "/run/secrets/api_token"
+ui = "/usr/share/goliath/ui"

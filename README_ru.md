@@ -59,15 +59,18 @@
 ## Запустить
 
 Платформа в текущем виде: файлы Sysmon на входе, события OCSF в ClickHouse на
-выходе, в двух контейнерах:
+выходе и интерфейс поиска по ним, в двух контейнерах:
 
 ```text
-cp .env.example .env          # задайте CLICKHOUSE_PASSWORD
+cp .env.example .env          # задайте CLICKHOUSE_PASSWORD и API_TOKEN
 docker compose up -d --build
 ```
 
-Положите события Sysmon в формате `evtx_dump -o json` в `inbox/sysmon/` и
-запрашивайте их по любому пути OCSF:
+Положите события Sysmon в формате `evtx_dump -o json` в `inbox/sysmon/` и ищите
+их на <http://127.0.0.1:8080> с токеном: по времени, классу и любому атрибуту
+OCSF, открывая каждое событие целиком. Те же поиски доступны как HTTP API
+([ADR-0016](docs/adr/0016-event-search.md)), а ClickHouse отвечает и на SQL
+напрямую:
 
 ```sql
 SELECT time, event.process.cmd_line FROM goliath.events WHERE class_uid = 1007
@@ -80,8 +83,8 @@ SELECT time, event.process.cmd_line FROM goliath.events WHERE class_uid = 1007
 docker compose -f compose.distributed.yaml up -d --build
 ```
 
-Пароль хранится в `.env`, который git игнорирует, и попадает в goliath как
-смонтированный файл секрета, а не переменная окружения. `scripts/compose-smoke.sh`
+Пароль и токен хранятся в `.env`, который git игнорирует, и попадают в goliath
+как смонтированные файлы секретов, а не переменные окружения. `scripts/compose-smoke.sh`
 проделывает всё это целиком для любого из двух стеков, и CI запускает оба.
 
 ## Попробовать

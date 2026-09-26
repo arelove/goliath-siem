@@ -124,6 +124,27 @@ jobs:
       - if: always()
         run: docker compose down --volumes
 
+  ui:
+    # The interface: installed exactly as locked, then lint, types, tests,
+    # and the production build.
+    name: ui
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v7
+      - run: corepack enable
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm test
+      - run: pnpm build
+
   lint:
     name: lint
     runs-on: ubuntu-latest
