@@ -1,0 +1,278 @@
+[
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "process": {
+          "cmd_line": "sh -c bash",
+          "container": {
+            "image": {
+              "name": "docker.io/library/nginx",
+              "tag": "1.27"
+            },
+            "name": "nginx",
+            "uid": "3ad7b26ded6d"
+          },
+          "file": {
+            "path": "/bin/sh"
+          },
+          "name": "sh",
+          "parent_process": {
+            "name": "runc",
+            "pid": 41810
+          },
+          "pid": 41822
+        },
+        "user": {
+          "name": "root",
+          "uid": "0"
+        }
+      },
+      "category_uid": 2,
+      "class_uid": 2004,
+      "device": {
+        "hostname": "worker-1"
+      },
+      "finding_info": {
+        "analytic": {
+          "name": "Terminal shell in container",
+          "type_id": 1
+        },
+        "title": "Terminal shell in container",
+        "types": [
+          "T1059",
+          "container",
+          "maturity_stable",
+          "mitre_execution",
+          "shell"
+        ],
+        "uid": "4b7a4c30-9c0f-4a3c-8f1e-6a9d2d6e5b11"
+      },
+      "is_alert": true,
+      "message": "10:20:05.408091526: Notice A shell was spawned in a container with an attached terminal (evt_type=execve user=root user_uid=0 user_loginuid=-1 process=sh proc_exepath=/bin/sh parent=runc command=sh -c bash terminal=34816 exe_flags=EXE_WRITABLE container_id=3ad7b26ded6d container_name=nginx container_image_repository=docker.io/library/nginx container_image_tag=1.27 k8s_pod_name=nginx-7c5ddbdf54-x2kqz k8s_ns_name=default)",
+      "metadata": {
+        "log_name": "syscall",
+        "product": {
+          "name": "Falco",
+          "vendor_name": "The Falco Project"
+        },
+        "uid": "4b7a4c30-9c0f-4a3c-8f1e-6a9d2d6e5b11",
+        "version": "1.5.0"
+      },
+      "severity": "Notice",
+      "severity_id": 2,
+      "time": 1790331605408,
+      "type_uid": 200401,
+      "unmapped": {
+        "evt.arg.flags": "EXE_WRITABLE",
+        "evt.time": 1790331605408091526,
+        "evt.type": "execve",
+        "k8s.ns.name": "default",
+        "k8s.pod.name": "nginx-7c5ddbdf54-x2kqz",
+        "proc.tty": 34816,
+        "user.loginuid": -1
+      }
+    },
+    "id": "1811ef447ffb505cb91696ce4f23d47d",
+    "issues": [],
+    "kind": "syscall"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "process": {
+          "cmd_line": "cat /etc/shadow",
+          "container": {
+            "name": "host",
+            "uid": "host"
+          },
+          "file": {
+            "path": "/usr/bin/cat"
+          },
+          "name": "cat",
+          "parent_process": {
+            "name": "sh",
+            "pid": 90207
+          },
+          "pid": 90211,
+          "working_directory": "/var/www/"
+        },
+        "user": {
+          "name": "www-data",
+          "uid": "33"
+        }
+      },
+      "category_uid": 2,
+      "class_uid": 2004,
+      "device": {
+        "hostname": "web-3"
+      },
+      "finding_info": {
+        "analytic": {
+          "name": "Read sensitive file untrusted",
+          "type_id": 1
+        },
+        "title": "Read sensitive file untrusted",
+        "types": [
+          "T1555",
+          "filesystem",
+          "host",
+          "maturity_stable",
+          "mitre_credential_access"
+        ],
+        "uid": "a0f3e2d1-5b6c-4d7e-9f80-1a2b3c4d5e6f"
+      },
+      "is_alert": true,
+      "message": "10:21:44.120334817: Warning Sensitive file opened for reading by non-trusted program (file=/etc/shadow gparent=bash ggparent=sshd evt_type=openat user=www-data user_uid=33 user_loginuid=-1 process=cat proc_exepath=/usr/bin/cat parent=sh command=cat /etc/shadow terminal=0 container_id=host container_name=host)",
+      "metadata": {
+        "log_name": "syscall",
+        "product": {
+          "name": "Falco",
+          "vendor_name": "The Falco Project"
+        },
+        "uid": "a0f3e2d1-5b6c-4d7e-9f80-1a2b3c4d5e6f",
+        "version": "1.5.0"
+      },
+      "severity": "Warning",
+      "severity_id": 3,
+      "time": 1790331704120,
+      "type_uid": 200401,
+      "unmapped": {
+        "evt.time": 1790331704120334817,
+        "evt.type": "openat",
+        "fd.name": "/etc/shadow",
+        "proc.aname[2]": "bash",
+        "proc.aname[3]": "sshd",
+        "proc.tty": 0,
+        "user.loginuid": -1
+      }
+    },
+    "id": "e424632faea0402cca05fa4c6d6d1a0d",
+    "issues": [],
+    "kind": "syscall"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "process": {
+          "cmd_line": "/tmp/x -c 10.0.0.9",
+          "container": {
+            "name": "api",
+            "uid": "9f2e1a7c44b0"
+          },
+          "file": {
+            "path": "/tmp/x"
+          },
+          "name": "x",
+          "parent_process": {
+            "name": "bash",
+            "pid": 55101
+          },
+          "pid": 55120
+        },
+        "user": {
+          "name": "root",
+          "uid": "0"
+        }
+      },
+      "category_uid": 2,
+      "class_uid": 2004,
+      "device": {
+        "hostname": "worker-2"
+      },
+      "finding_info": {
+        "analytic": {
+          "name": "Drop and execute new binary in container",
+          "type_id": 1
+        },
+        "title": "Drop and execute new binary in container",
+        "types": [
+          "T1610",
+          "container",
+          "maturity_stable",
+          "mitre_persistence",
+          "process"
+        ]
+      },
+      "is_alert": true,
+      "message": "10:23:02.771100934: Critical Executing binary not part of base image (proc_exe=/tmp/x proc_sname=bash gparent=containerd-shim evt_type=execve user=root user_uid=0 process=x proc_exepath=/tmp/x parent=bash command=/tmp/x -c 10.0.0.9 container_id=9f2e1a7c44b0 container_name=api)",
+      "metadata": {
+        "log_name": "syscall",
+        "product": {
+          "name": "Falco",
+          "vendor_name": "The Falco Project"
+        },
+        "version": "1.5.0"
+      },
+      "severity": "Critical",
+      "severity_id": 5,
+      "time": 1790331782771,
+      "type_uid": 200401,
+      "unmapped": {
+        "evt.time": 1790331782771100934,
+        "evt.type": "execve",
+        "proc.exe": "/tmp/x",
+        "proc.sname": "bash"
+      }
+    },
+    "id": "b16200d68b6631927f50eb6840da64a1",
+    "issues": [],
+    "kind": "syscall"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "user": {
+          "name": "system:serviceaccount:ci:deployer"
+        }
+      },
+      "category_uid": 2,
+      "class_uid": 2004,
+      "device": {
+        "hostname": "falco-k8saudit-0"
+      },
+      "finding_info": {
+        "analytic": {
+          "name": "Attach/Exec Pod",
+          "type_id": 1
+        },
+        "title": "Attach/Exec Pod",
+        "types": [
+          "T1609",
+          "k8s",
+          "maturity_stable",
+          "mitre_execution"
+        ],
+        "uid": "7e1d9c3b-2a4f-4e5d-8b6a-0c1d2e3f4a5b"
+      },
+      "is_alert": true,
+      "message": "10:25:10.000000000: Notice Attach/Exec to pod (user=system:serviceaccount:ci:deployer pod=payments-5d8f7 resource=pods ns=prod action=exec command=/bin/sh)",
+      "metadata": {
+        "log_name": "k8s_audit",
+        "product": {
+          "name": "Falco",
+          "vendor_name": "The Falco Project"
+        },
+        "uid": "7e1d9c3b-2a4f-4e5d-8b6a-0c1d2e3f4a5b",
+        "version": "1.5.0"
+      },
+      "severity": "Notice",
+      "severity_id": 2,
+      "time": 1790331910000,
+      "type_uid": 200401,
+      "unmapped": {
+        "ka.target.name": "payments-5d8f7",
+        "ka.target.namespace": "prod",
+        "ka.target.resource": "pods",
+        "ka.target.subresource": "exec",
+        "ka.uri.param[command]": "/bin/sh"
+      }
+    },
+    "id": "19973fc863b4ad14723a4d9968341f61",
+    "issues": [],
+    "kind": "k8s_audit"
+  }
+]

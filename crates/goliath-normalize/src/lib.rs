@@ -57,3 +57,17 @@ pub use wire::{Envelope, WireError};
 
 /// The Sysmon source definition shipped with this crate.
 pub const SYSMON: &str = include_str!("../sources/sysmon.yaml");
+
+/// The Falco source definition shipped with this crate.
+pub const FALCO: &str = include_str!("../sources/falco.yaml");
+
+/// Every definition shipped with this crate, by name.
+pub const BUILTIN: &[(&str, &str)] = &[("falco", FALCO), ("sysmon", SYSMON)];
+
+/// The shipped definition named `name`, if there is one.
+pub fn builtin(name: &str) -> Option<&'static str> {
+    BUILTIN
+        .iter()
+        .find(|(builtin, _)| *builtin == name)
+        .map(|(_, text)| *text)
+}

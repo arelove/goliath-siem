@@ -1,5 +1,7 @@
 //! Source definitions compiled for use, and records through them.
 
+use std::collections::BTreeMap;
+
 use goliath_ocsf::schema::{self, Base};
 use goliath_rule::FieldPath;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -45,10 +47,20 @@ enum Source {
         path: SourcePath,
         coercion: Option<Coercion>,
     },
+    Translate {
+        path: SourcePath,
+        map: BTreeMap<String, Value>,
+        otherwise: Option<Value>,
+    },
 }
 
 /// A dotted path into a decoded record. Unlike an OCSF path, it names exactly
 /// one value: records are read, not searched.
+///
+/// A member whose own name holds dots, as Falco's `proc.cmdline` does, is
+/// named by writing it out: `output_fields.proc.cmdline`. At each object a
+/// member named by the next segment alone is tried first, then by the next
+/// two joined with a dot, and so on.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct SourcePath {
     text: String,
@@ -68,21 +80,41 @@ impl SourcePath {
     }
 
     fn lookup<'a>(&self, record: &'a Value) -> Option<&'a Value> {
-        self.segments
-            .iter()
-            .try_fold(record, |value, segment| value.get(segment.as_str()))
+        find(record, &self.segments)
+    }
+
+    /// The name, within the object at `object`, of the member this path
+    /// names, if it is one.
+    fn member_of(&self, object: &Self) -> Option<String> {
+        (self.segments.len() > object.segments.len() && self.segments.starts_with(&object.segments))
+            .then(|| self.segments[object.segments.len()..].join("."))
     }
 
     /// Whether this path names the member `key` of the object at `object`.
     fn is_member(&self, object: &Self, key: &str) -> bool {
-        self.segments.len() == object.segments.len() + 1
-            && self.segments.starts_with(&object.segments)
-            && self.segments.last().is_some_and(|last| last == key)
+        self.member_of(object).is_some_and(|member| member == key)
     }
+}
 
-    fn last(&self) -> &str {
-        self.segments.last().map_or("", String::as_str)
+fn find<'a>(value: &'a Value, segments: &[String]) -> Option<&'a Value> {
+    if segments.is_empty() {
+        return Some(value);
     }
+    let object = value.as_object()?;
+    let mut name = String::new();
+    for (index, segment) in segments.iter().enumerate() {
+        if index > 0 {
+            name.push('.');
+        }
+        name.push_str(segment);
+        if let Some(found) = object
+            .get(&name)
+            .and_then(|member| find(member, &segments[index + 1..]))
+        {
+            return Some(found);
+        }
+    }
+    None
 }
 
 /// What became of one record.
@@ -414,32 +446,34 @@ impl Normalizer {
             event.insert((*name).to_owned(), value.clone());
         }
         for field in &kind.fields {
-            match &field.source {
-                Source::Constant(value) => set(&mut event, field.target.segments(), value.clone()),
-                Source::Path { path, coercion } => {
-                    let Some(found) = path.lookup(record).filter(|value| !value.is_null()) else {
-                        continue;
-                    };
-                    consumed.push(path);
-                    match coerce(found, *coercion) {
-                        Ok(value) => set(&mut event, field.target.segments(), value),
-                        Err(reason) => {
-                            issues.push(Issue {
-                                target: field.target.as_str().to_owned(),
-                                source: path.text.clone(),
-                                reason,
-                            });
-                            // Kept by the name the `unmapped` lists would give
-                            // it, or by its whole path where they give none,
-                            // so that it cannot take another member's name.
-                            let listed = kind
-                                .unmapped
-                                .iter()
-                                .any(|object| path.is_member(object, path.last()));
-                            let name = if listed { path.last() } else { &path.text };
-                            unmapped.insert(name.to_owned(), found.clone());
-                        }
-                    }
+            let path = match &field.source {
+                Source::Constant(value) => {
+                    set(&mut event, field.target.segments(), value.clone());
+                    continue;
+                }
+                Source::Path { path, .. } | Source::Translate { path, .. } => path,
+            };
+            let Some(found) = path.lookup(record).filter(|value| !value.is_null()) else {
+                continue;
+            };
+            consumed.push(path);
+            match field.source.convert(found) {
+                Ok(value) => set(&mut event, field.target.segments(), value),
+                Err(reason) => {
+                    issues.push(Issue {
+                        target: field.target.as_str().to_owned(),
+                        source: path.text.clone(),
+                        reason,
+                    });
+                    // Kept by the name the `unmapped` lists would give it, or
+                    // by its whole path where they give none, so that it
+                    // cannot take another member's name.
+                    let name = kind
+                        .unmapped
+                        .iter()
+                        .find_map(|object| path.member_of(object))
+                        .unwrap_or_else(|| path.text.clone());
+                    unmapped.insert(name, found.clone());
                 }
             }
         }
@@ -530,6 +564,30 @@ fn compile_fields(
                     path: source_path(kind, from)?,
                     coercion: Some(*coercion),
                 },
+                FieldSpec::Translated {
+                    from,
+                    map,
+                    otherwise,
+                } => {
+                    let invalid = |reason| DefinitionError::Translation {
+                        kind: kind.to_owned(),
+                        target: target.clone(),
+                        reason,
+                    };
+                    let mut values = map.values().chain(otherwise).map(Value::from);
+                    let first = values.next().ok_or_else(|| invalid("is empty"))?;
+                    if values.any(|value| Writes::of(&value) != Writes::of(&first)) {
+                        return Err(invalid("mixes values of different types"));
+                    }
+                    Source::Translate {
+                        path: source_path(kind, from)?,
+                        map: map
+                            .iter()
+                            .map(|(key, value)| (key.clone(), Value::from(value)))
+                            .collect(),
+                        otherwise: otherwise.as_ref().map(Value::from),
+                    }
+                }
                 FieldSpec::Value { value } => Source::Constant(Value::from(value)),
             };
             Ok(Field {
@@ -627,11 +685,12 @@ fn check_schema(
             });
         }
         let values = attribute.enum_values();
-        if let Source::Constant(Value::Number(number)) = &field.source
-            && let Some(value) = number.as_i64()
-            && !values.is_empty()
-            && !values.contains(&value)
-        {
+        let unknown = field
+            .source
+            .constants()
+            .filter_map(Value::as_i64)
+            .find(|value| !values.is_empty() && !values.contains(value));
+        if let Some(value) = unknown {
             return Err(DefinitionError::UnknownValue {
                 kind: kind.to_owned(),
                 target: target.to_owned(),
@@ -643,7 +702,7 @@ fn check_schema(
 }
 
 /// What a field writes, where that is known before any record is read.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Writes {
     Boolean,
     Integer,
@@ -652,6 +711,16 @@ enum Writes {
 }
 
 impl Writes {
+    /// What writing `value` writes; nothing known for a list or an object.
+    fn of(value: &Value) -> Option<Self> {
+        match value {
+            Value::Bool(_) => Some(Self::Boolean),
+            Value::Number(_) => Some(Self::Integer),
+            Value::String(_) => Some(Self::Text),
+            _ => None,
+        }
+    }
+
     fn describe(self) -> &'static str {
         match self {
             Self::Boolean => "a boolean",
@@ -665,10 +734,11 @@ impl Writes {
 impl Source {
     fn writes(&self) -> Option<Writes> {
         match self {
-            Self::Constant(Value::Bool(_)) => Some(Writes::Boolean),
-            Self::Constant(Value::Number(_)) => Some(Writes::Integer),
-            Self::Constant(Value::String(_)) => Some(Writes::Text),
-            Self::Constant(_) | Self::Path { coercion: None, .. } => None,
+            Self::Constant(value) => Writes::of(value),
+            // Every value of a table has the same type, checked when it is
+            // compiled.
+            Self::Translate { map, .. } => map.values().next().and_then(Writes::of),
+            Self::Path { coercion: None, .. } => None,
             Self::Path {
                 coercion: Some(coercion),
                 ..
@@ -677,6 +747,37 @@ impl Source {
                 Coercion::Integer => Writes::Integer,
                 Coercion::Timestamp => Writes::Timestamp,
             }),
+        }
+    }
+}
+
+impl Source {
+    /// Every value this source can write that is fixed by the definition.
+    fn constants(&self) -> impl Iterator<Item = &Value> {
+        let (map, extra) = match self {
+            Self::Constant(value) => (None, Some(value)),
+            Self::Translate { map, otherwise, .. } => (Some(map), otherwise.as_ref()),
+            Self::Path { .. } => (None, None),
+        };
+        map.into_iter().flat_map(BTreeMap::values).chain(extra)
+    }
+
+    /// The value to write for `found`, or why there is none.
+    fn convert(&self, found: &Value) -> Result<Value, String> {
+        match self {
+            Self::Constant(value) => Ok(value.clone()),
+            Self::Path { coercion, .. } => coerce(found, *coercion),
+            Self::Translate { map, otherwise, .. } => {
+                let key = match found {
+                    Value::String(text) => text.clone(),
+                    Value::Number(_) | Value::Bool(_) => found.to_string(),
+                    other => return Err(format!("cannot translate {}", describe(other))),
+                };
+                map.get(&key)
+                    .or(otherwise.as_ref())
+                    .cloned()
+                    .ok_or_else(|| format!("`{key}` is not in the translation table"))
+            }
         }
     }
 }

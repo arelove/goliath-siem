@@ -14,7 +14,8 @@ criterion that is measurable, so "done" is not a judgement call.
 end against the whole SigmaHQ repository and is published; its 10-million-event
 corpus run is still open. Sysmon events flow into ClickHouse with every role in
 one process, over topics on disk, and with each role in its own container,
-over Redpanda; CI runs both. The other three source definitions are next.
+over Redpanda; CI runs both. Falco alerts normalize too; Entra ID sign-ins
+and Linux auditd are next.
 
 ## M0 - Foundations
 

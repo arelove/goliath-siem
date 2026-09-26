@@ -1,0 +1,107 @@
+[
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "process": {
+          "name": "sh"
+        }
+      },
+      "category_uid": 2,
+      "class_uid": 2004,
+      "device": {
+        "hostname": "worker-1"
+      },
+      "finding_info": {
+        "analytic": {
+          "name": "Custom rule",
+          "type_id": 1
+        },
+        "title": "Custom rule",
+        "types": []
+      },
+      "is_alert": true,
+      "message": "10:30:00.000000000: Loud A priority this definition does not know",
+      "metadata": {
+        "log_name": "syscall",
+        "product": {
+          "name": "Falco",
+          "vendor_name": "The Falco Project"
+        },
+        "version": "1.5.0"
+      },
+      "severity": "Loud",
+      "severity_id": 99,
+      "time": 1790332200000,
+      "type_uid": 200401,
+      "unmapped": {
+        "proc.pid": "not a pid"
+      }
+    },
+    "id": "f95330f08d771f05284fd9b315ed21e4",
+    "issues": [
+      {
+        "reason": "`not a pid` is not a whole number",
+        "source": "output_fields.proc.pid",
+        "target": "actor.process.pid"
+      }
+    ],
+    "kind": "syscall"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "category_uid": 2,
+      "class_uid": 2004,
+      "device": {
+        "hostname": "worker-1"
+      },
+      "finding_info": {
+        "analytic": {
+          "name": "Custom rule",
+          "type_id": 1
+        },
+        "title": "Custom rule"
+      },
+      "is_alert": true,
+      "message": "an alert with a time Falco would never write",
+      "metadata": {
+        "log_name": "syscall",
+        "product": {
+          "name": "Falco",
+          "vendor_name": "The Falco Project"
+        },
+        "version": "1.5.0"
+      },
+      "severity": "Warning",
+      "severity_id": 3,
+      "type_uid": 200401,
+      "unmapped": {
+        "time": "yesterday"
+      }
+    },
+    "id": "1b0ad8ae93eb0d002f1994fd6d964dcb",
+    "issues": [
+      {
+        "reason": "`yesterday` is not an RFC 3339 time: failed to parse four digit integer as year: invalid digit, expected 0-9 but got y",
+        "source": "time",
+        "target": "time"
+      }
+    ],
+    "kind": "syscall"
+  },
+  {
+    "dead_letter": {
+      "error": "no kind of source `falco` accepts the record",
+      "raw": "{\"output\":\"an alert from a plugin this definition has no kind for\",\"priority\":\"Warning\",\"rule\":\"Console login without MFA\",\"time\":\"2026-09-25T10:31:00Z\",\"source\":\"aws_cloudtrail\",\"hostname\":\"falco-cloud-0\",\"output_fields\":{\"ct.user\":\"alice\"}}",
+      "stage": "mapping"
+    }
+  },
+  {
+    "dead_letter": {
+      "error": "trailing characters at line 1 column 3",
+      "raw": "10:32:00.000000000: Warning an alert written as text, with json_output off",
+      "stage": "decoding"
+    }
+  }
+]

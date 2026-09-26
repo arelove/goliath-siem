@@ -286,6 +286,98 @@ fn enumerated_constants_must_be_defined_values() {
 }
 
 #[test]
+fn members_with_dots_in_their_names_are_found() {
+    let definition = MINIMAL.replace("user.name: who", "user.name: extra.user.name");
+    let Outcome::Event(normalized) = one(
+        &definition,
+        r#"{"type": "login", "extra": {"user.name": "adam", "proc.pid": 7}}"#,
+    ) else {
+        panic!("not an event");
+    };
+    assert_eq!(normalized.event["user"]["name"], "adam");
+    // The member it read is not kept twice; the rest are kept by name.
+    assert_eq!(normalized.event["unmapped"], json!({ "proc.pid": 7 }));
+
+    // A member named by the segment alone comes first.
+    let Outcome::Event(normalized) = one(
+        &definition,
+        r#"{"type": "login", "extra": {"user": {"name": "eve"}, "user.name": "adam"}}"#,
+    ) else {
+        panic!("not an event");
+    };
+    assert_eq!(normalized.event["user"]["name"], "eve");
+}
+
+#[test]
+fn a_translation_turns_source_words_into_ocsf_values() {
+    let definition = MINIMAL.replace(
+        "user.name: who",
+        "severity_id: { from: level, map: { warn: 3, crit: 5, \"7\": 6 } }",
+    );
+    let severity = |input: &str| match one(&definition, input) {
+        Outcome::Event(normalized) => normalized,
+        other => panic!("{other:?}"),
+    };
+    assert_eq!(
+        severity(r#"{"type": "login", "level": "warn"}"#).event["severity_id"],
+        3
+    );
+    // A number is looked up by its text.
+    assert_eq!(
+        severity(r#"{"type": "login", "level": 7}"#).event["severity_id"],
+        6
+    );
+
+    // A word the table does not list is kept and reported, not dropped.
+    let unlisted = severity(r#"{"type": "login", "level": "loud"}"#);
+    assert!(unlisted.event.get("severity_id").is_none());
+    assert_eq!(unlisted.event["unmapped"]["level"], "loud");
+    assert_eq!(unlisted.issues[0].target, "severity_id");
+
+    // Unless the table says what it becomes.
+    let definition = definition.replace("} }", "}, otherwise: 99 }");
+    let Outcome::Event(other) = one(&definition, r#"{"type": "login", "level": "loud"}"#) else {
+        panic!("not an event");
+    };
+    assert_eq!(other.event["severity_id"], 99);
+    assert!(other.issues.is_empty());
+}
+
+#[test]
+fn translations_are_checked_when_they_load() {
+    let with = |table: &str| MINIMAL.replace("user.name: who", table);
+    assert_eq!(
+        error(&with(
+            "severity_id: { from: level, map: { warn: 3, crit: 42 } }"
+        ))
+        .to_string(),
+        "kind `login`: 42 is not a defined value of `severity_id`"
+    );
+    assert_eq!(
+        error(&with(
+            "severity_id: { from: level, map: { warn: 3 }, otherwise: 42 }"
+        ))
+        .to_string(),
+        "kind `login`: 42 is not a defined value of `severity_id`"
+    );
+    assert_eq!(
+        error(&with(
+            "severity_id: { from: level, map: { warn: 3, crit: high } }"
+        ))
+        .to_string(),
+        "kind `login`: the translation for `severity_id` mixes values of different types"
+    );
+    assert_eq!(
+        error(&with("severity_id: { from: level, map: {} }")).to_string(),
+        "kind `login`: the translation for `severity_id` is empty"
+    );
+    assert!(matches!(
+        error(&with("severity_id: { from: level, map: { warn: high } }")),
+        DefinitionError::Type { .. }
+    ));
+}
+
+#[test]
 fn a_record_has_the_same_identity_every_time_it_arrives() {
     let record = r#"{"type": "login", "who": "adam"}"#;
     let id = |input: &str| match one(MINIMAL, input) {

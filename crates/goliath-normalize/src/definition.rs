@@ -96,6 +96,20 @@ pub enum FieldSpec {
         #[serde(rename = "as")]
         coercion: Coercion,
     },
+    /// A source path, translated through a table, as a source's own words
+    /// become the values of an OCSF enumeration.
+    Translated {
+        /// The source path.
+        from: String,
+        /// Source values, as text, and what each becomes. A number in the
+        /// source is looked up by its decimal text.
+        map: BTreeMap<String, Scalar>,
+        /// What a value the table does not list becomes, such as `99`, the
+        /// OCSF `Other`. Without it, such a value is kept under `unmapped`
+        /// and reported as an issue.
+        #[serde(default)]
+        otherwise: Option<Scalar>,
+    },
     /// A constant.
     Value {
         /// The value.
