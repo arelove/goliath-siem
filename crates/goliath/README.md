@@ -41,6 +41,25 @@ SELECT time, event.process.cmd_line FROM goliath.events WHERE class_uid = 1007
 | `collector` | Takes finished files from each source's inbox | The file is in the raw topic |
 | `normalizer` | Turns raw records into OCSF events and dead letters | The outcomes are in the normalized topic |
 | `writer` | Batches outcomes into ClickHouse, retrying while it is unavailable | The batch is stored |
+| `api` | Serves searches over the stored events over HTTP, under `/api/v1` | Reads only |
+
+## Search
+
+With the `api` role, events are searched by OCSF path, checked against the
+schema before any query runs ([ADR-0016](../../docs/adr/0016-event-search.md)):
+
+```sh
+curl -s localhost:8080/api/v1/search -H 'content-type: application/json' -d '{
+  "from": "2026-09-24T00:00:00Z", "to": "2026-09-25T00:00:00Z", "classes": [1007],
+  "filters": [{ "path": "process.cmd_line", "op": "contains", "value": "powershell" }]
+}'
+```
+
+A page holds up to 1,000 events, newest first; its `next` goes into the next
+search's `after`. `GET /api/v1/events/{at}` returns one event with its
+normalization issues, and `/api/v1/schema/classes/{uid}/paths` lists what a
+search can name. The API listens on loopback unless `[api]` names a
+`token_file`, whose token every request then carries as a bearer token.
 
 ## License
 

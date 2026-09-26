@@ -26,6 +26,16 @@ retention_days = 30
 max_rows = 50000
 max_delay_ms = 1000
 
+# The `api` role, if listed in `roles`: searches over HTTP. On loopback by
+# default; any other address needs a token of at least 32 bytes, such as one
+# from `openssl rand -hex 32`, in a file.
+#
+# [api]
+# listen = "127.0.0.1:8080"
+# token_file = "/run/secrets/api_token"
+# ui = "ui/dist"                   # the built interface, served at /
+# max_span_days = 31               # the longest time range a search may cover
+
 # Keep topics in Kafka or Redpanda instead of `data`, so that roles can run in
 # separate processes; each then lists only its own roles. Needs a binary built
 # with `--features kafka`.
