@@ -1,0 +1,93 @@
+# Microsoft Entra ID sign-in logs, as Azure Monitor diagnostic settings write
+# them to a storage account: one JSON record per line, with the sign-in
+# itself under `properties`. Records sent to an event hub arrive wrapped in a
+# `records` array; unwrap them into lines first.
+#
+# Every sign-in becomes an OCSF Authentication: Logon. Interactive and
+# non-interactive user sign-ins share one shape; service principal sign-ins
+# name the application instead of a user. Every member of `properties` not
+# mapped below, such as the conditional access policies applied, is kept
+# under `unmapped` by its Entra name.
+#
+# Entra writes an empty string where it knows no value, such as the device of
+# a sign-in from an unmanaged client. Those are kept as written, like every
+# other value.
+
+name: entra
+version: 1
+framing: lines
+decoding: json
+
+common:
+  time: { from: time, as: timestamp }
+  # A sign-in has no severity of its own; its risk is below.
+  severity_id: { value: 1 }
+  metadata.version: { value: "1.5.0" }
+  metadata.product.name: { value: Microsoft Entra ID }
+  metadata.product.vendor_name: { value: Microsoft }
+  metadata.log_name: category
+  metadata.uid: properties.id
+  metadata.correlation_uid: correlationId
+  cloud.provider: { value: Azure }
+  cloud.account.uid: tenantId
+  # Entra's result code: 0 is success, anything else an error code, such as
+  # 50126 for a wrong password.
+  status_code: { from: resultType, as: string }
+  status_id: { from: resultType, map: { "0": 1 }, otherwise: 2 }
+  status_detail: properties.status.failureReason
+  src_endpoint.ip: properties.ipAddress
+  src_endpoint.location.city: properties.location.city
+  src_endpoint.location.region: properties.location.state
+  src_endpoint.location.country: properties.location.countryOrRegion
+  src_endpoint.location.lat: properties.location.geoCoordinates.latitude
+  src_endpoint.location.long: properties.location.geoCoordinates.longitude
+  service.name: properties.resourceDisplayName
+  service.uid: properties.resourceId
+  risk_level: properties.riskLevelDuringSignIn
+  risk_level_id:
+    from: properties.riskLevelDuringSignIn
+    map: { none: 0, low: 1, medium: 2, high: 3 }
+    otherwise: 99
+
+kinds:
+  - name: user
+    when:
+      category: SignInLogs
+    # Authentication: Logon.
+    class: { class_uid: 3002, activity_id: 1 }
+    fields: &user
+      user.name: properties.userPrincipalName
+      user.uid: properties.userId
+      user.display_name: properties.userDisplayName
+      actor.app_name: properties.appDisplayName
+      actor.app_uid: properties.appId
+      http_request.user_agent: properties.userAgent
+      is_mfa:
+        from: properties.authenticationRequirement
+        map: { multiFactorAuthentication: true, singleFactorAuthentication: false }
+      device.uid: properties.deviceDetail.deviceId
+      device.name: properties.deviceDetail.displayName
+      device.os.name: properties.deviceDetail.operatingSystem
+      device.is_compliant: properties.deviceDetail.isCompliant
+      device.is_managed: properties.deviceDetail.isManaged
+    unmapped: [properties]
+
+  - name: non_interactive
+    when:
+      category: NonInteractiveUserSignInLogs
+    # Authentication: Logon.
+    class: { class_uid: 3002, activity_id: 1 }
+    fields: *user
+    unmapped: [properties]
+
+  - name: service_principal
+    when:
+      category: ServicePrincipalSignInLogs
+    # Authentication: Logon.
+    class: { class_uid: 3002, activity_id: 1 }
+    fields:
+      user.name: properties.servicePrincipalName
+      user.uid: properties.servicePrincipalId
+      actor.app_name: properties.appDisplayName
+      actor.app_uid: properties.appId
+    unmapped: [properties]

@@ -61,8 +61,11 @@ pub const SYSMON: &str = include_str!("../sources/sysmon.yaml");
 /// The Falco source definition shipped with this crate.
 pub const FALCO: &str = include_str!("../sources/falco.yaml");
 
+/// The Microsoft Entra ID sign-in log definition shipped with this crate.
+pub const ENTRA: &str = include_str!("../sources/entra.yaml");
+
 /// Every definition shipped with this crate, by name.
-pub const BUILTIN: &[(&str, &str)] = &[("falco", FALCO), ("sysmon", SYSMON)];
+pub const BUILTIN: &[(&str, &str)] = &[("entra", ENTRA), ("falco", FALCO), ("sysmon", SYSMON)];
 
 /// The shipped definition named `name`, if there is one.
 pub fn builtin(name: &str) -> Option<&'static str> {

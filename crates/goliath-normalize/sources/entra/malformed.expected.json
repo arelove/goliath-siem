@@ -1,0 +1,100 @@
+[
+  {
+    "event": {
+      "activity_id": 1,
+      "category_uid": 3,
+      "class_uid": 3002,
+      "cloud": {
+        "account": {
+          "uid": "72f988bf-86f1-41af-91ab-2d7cd011db47"
+        },
+        "provider": "Azure"
+      },
+      "metadata": {
+        "log_name": "SignInLogs",
+        "product": {
+          "name": "Microsoft Entra ID",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "9c5b6a7f-0000-4000-8000-000000000001",
+        "version": "1.5.0"
+      },
+      "risk_level": "hidden",
+      "risk_level_id": 99,
+      "severity_id": 1,
+      "status_code": "0",
+      "status_id": 1,
+      "time": 1790326800000,
+      "type_uid": 300201,
+      "unmapped": {
+        "authenticationRequirement": "passwordlessAuthentication"
+      },
+      "user": {
+        "name": "carol@contoso.com"
+      }
+    },
+    "id": "139f8ac377a580106f68bdadb1fb1064",
+    "issues": [
+      {
+        "reason": "`passwordlessAuthentication` is not in the translation table",
+        "source": "properties.authenticationRequirement",
+        "target": "is_mfa"
+      }
+    ],
+    "kind": "user"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "category_uid": 3,
+      "class_uid": 3002,
+      "cloud": {
+        "account": {
+          "uid": "72f988bf-86f1-41af-91ab-2d7cd011db47"
+        },
+        "provider": "Azure"
+      },
+      "metadata": {
+        "log_name": "SignInLogs",
+        "product": {
+          "name": "Microsoft Entra ID",
+          "vendor_name": "Microsoft"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status_code": "0",
+      "status_id": 1,
+      "type_uid": 300201,
+      "unmapped": {
+        "time": "not a time"
+      },
+      "user": {
+        "name": "carol@contoso.com"
+      }
+    },
+    "id": "3a590267c40efb01a29730d63d45f505",
+    "issues": [
+      {
+        "reason": "`not a time` is not an RFC 3339 time: failed to parse four digit integer as year: invalid digit, expected 0-9 but got n",
+        "source": "time",
+        "target": "time"
+      }
+    ],
+    "kind": "user"
+  },
+  {
+    "dead_letter": {
+      "error": "no kind of source `entra` accepts the record",
+      "raw": "{\"time\":\"2026-09-25T09:01:00Z\",\"category\":\"AuditLogs\",\"tenantId\":\"72f988bf-86f1-41af-91ab-2d7cd011db47\",\"operationName\":\"Add member to role\",\"properties\":{\"id\":\"Directory_0001\"}}",
+      "stage": "mapping"
+    }
+  },
+  {
+    "dead_letter": {
+      "error": "no kind of source `entra` accepts the record",
+      "raw": "{\"records\":[{\"time\":\"2026-09-25T09:02:00Z\",\"category\":\"SignInLogs\"}]}",
+      "stage": "mapping"
+    }
+  }
+]

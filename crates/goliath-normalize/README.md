@@ -29,6 +29,7 @@ produce.
 | Definition | Covers |
 | --- | --- |
 | `sources/sysmon.yaml` | Sysmon process creation, network connections, image loads, file creation, and registry value sets, as `evtx_dump` writes them |
+| `sources/entra.yaml` | Microsoft Entra ID interactive, non-interactive, and service principal sign-ins, as Azure Monitor diagnostic settings write them, as OCSF Authentication |
 | `sources/falco.yaml` | Falco alerts on system calls and the Kubernetes audit log, as `json_output` writes them, as OCSF Detection Findings |
 
 The Sysmon definition feeds the SigmaHQ regression run in `goliath-match`, so
