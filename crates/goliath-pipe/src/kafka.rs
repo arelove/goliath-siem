@@ -149,26 +149,44 @@ impl KafkaTopic {
             .set("linger.ms", "5")
             .create()
             .map_err(kafka)?;
-        let partitions = blocking({
-            let producer = producer.clone();
-            let name = name.to_owned();
-            move || {
-                use rdkafka::producer::Producer;
-                let metadata = producer
-                    .client()
-                    .fetch_metadata(Some(&name), REQUEST)
-                    .map_err(kafka)?;
-                Ok(metadata
-                    .topics()
-                    .first()
-                    .map_or(0, |topic| topic.partitions().len()))
+        // A topic just created has no leader for a moment, and every request
+        // to it fails until it has one.
+        let deadline = Instant::now() + REQUEST;
+        loop {
+            let found = blocking({
+                let producer = producer.clone();
+                let name = name.to_owned();
+                move || {
+                    use rdkafka::producer::Producer;
+                    let metadata = producer
+                        .client()
+                        .fetch_metadata(Some(&name), REQUEST)
+                        .map_err(kafka)?;
+                    Ok(metadata.topics().first().map(|topic| {
+                        let led = topic.error().is_none()
+                            && topic.partitions().iter().all(|partition| {
+                                partition.error().is_none() && partition.leader() >= 0
+                            });
+                        (topic.partitions().len(), led)
+                    }))
+                }
+            })
+            .await;
+            match found {
+                Ok(Some((partitions, _))) if partitions > 1 => {
+                    return Err(PipeError::Io(format!(
+                        "topic {name} has {partitions} partitions; the pipe needs exactly one for its order"
+                    )));
+                }
+                Ok(Some((1, true))) => break,
+                Err(error) if Instant::now() >= deadline => return Err(error),
+                _ if Instant::now() >= deadline => {
+                    return Err(PipeError::Io(format!(
+                        "topic {name} has no leader after {REQUEST:?}"
+                    )));
+                }
+                _ => tokio::time::sleep(RECHECK * 5).await,
             }
-        })
-        .await?;
-        if partitions != 1 {
-            return Err(PipeError::Io(format!(
-                "topic {name} has {partitions} partitions; the pipe needs exactly one for its order"
-            )));
         }
         let topic = Self {
             shared: Arc::new(Shared {
