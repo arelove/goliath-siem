@@ -1,0 +1,81 @@
+# Falco alerts, as Falco writes them with `json_output: true`: one JSON
+# object per line, with the fields the rule's output names under
+# `output_fields`, by Falco's own dotted names such as `proc.cmdline`.
+#
+# An alert is a finding another detector made, so it becomes an OCSF
+# Detection Finding. The rule is the finding's title and analytic, and its
+# tags, which carry MITRE ATT&CK techniques such as `T1059`, are the
+# finding's types. Every output field not mapped below is kept under
+# `unmapped` by its Falco name.
+#
+# Kinds cover alerts on system calls and on the Kubernetes audit log. An
+# alert from another plugin source, such as `aws_cloudtrail`, goes to the
+# dead letters with its bytes until a kind is added for it.
+
+name: falco
+version: 1
+framing: lines
+decoding: json
+
+common:
+  time: { from: time, as: timestamp }
+  metadata.version: { value: "1.5.0" }
+  metadata.product.name: { value: Falco }
+  metadata.product.vendor_name: { value: The Falco Project }
+  metadata.log_name: source
+  metadata.uid: uuid
+  device.hostname: hostname
+  message: output
+  is_alert: { value: true }
+  severity: priority
+  severity_id:
+    from: priority
+    # Falco's priorities are syslog's; OCSF has fewer levels.
+    map:
+      Emergency: 6
+      Alert: 5
+      Critical: 5
+      Error: 4
+      Warning: 3
+      Notice: 2
+      Informational: 1
+      Info: 1
+      Debug: 1
+    otherwise: 99
+  finding_info.uid: uuid
+  finding_info.title: rule
+  finding_info.types: tags
+  finding_info.analytic.name: rule
+  # Rule.
+  finding_info.analytic.type_id: { value: 1 }
+
+kinds:
+  - name: syscall
+    when:
+      source: syscall
+    # Detection Finding: Create.
+    class: { class_uid: 2004, activity_id: 1 }
+    fields:
+      actor.user.name: output_fields.user.name
+      actor.user.uid: { from: output_fields.user.uid, as: string }
+      actor.process.name: output_fields.proc.name
+      actor.process.cmd_line: output_fields.proc.cmdline
+      actor.process.pid: { from: output_fields.proc.pid, as: integer }
+      actor.process.file.path: output_fields.proc.exepath
+      actor.process.working_directory: output_fields.proc.cwd
+      actor.process.parent_process.name: output_fields.proc.pname
+      actor.process.parent_process.pid: { from: output_fields.proc.ppid, as: integer }
+      actor.process.container.uid: output_fields.container.id
+      actor.process.container.name: output_fields.container.name
+      actor.process.container.image.name: output_fields.container.image.repository
+      actor.process.container.image.tag: output_fields.container.image.tag
+    unmapped: [output_fields]
+
+  - name: k8s_audit
+    when:
+      source: k8s_audit
+    # Detection Finding: Create.
+    class: { class_uid: 2004, activity_id: 1 }
+    fields:
+      actor.user.name: output_fields.ka.user.name
+    unmapped: [output_fields]

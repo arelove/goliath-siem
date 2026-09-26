@@ -1,0 +1,4 @@
+{"output":"10:30:00.000000000: Loud A priority this definition does not know","priority":"Loud","rule":"Custom rule","time":"2026-09-25T10:30:00Z","source":"syscall","tags":[],"hostname":"worker-1","output_fields":{"proc.name":"sh","proc.pid":"not a pid"}}
+{"output":"an alert with a time Falco would never write","priority":"Warning","rule":"Custom rule","time":"yesterday","source":"syscall","hostname":"worker-1","output_fields":{}}
+{"output":"an alert from a plugin this definition has no kind for","priority":"Warning","rule":"Console login without MFA","time":"2026-09-25T10:31:00Z","source":"aws_cloudtrail","hostname":"falco-cloud-0","output_fields":{"ct.user":"alice"}}
+10:32:00.000000000: Warning an alert written as text, with json_output off

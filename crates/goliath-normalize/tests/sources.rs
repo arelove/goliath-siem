@@ -127,10 +127,16 @@ fn every_definition_produces_its_fixtures() {
 }
 
 #[test]
-fn the_shipped_constant_is_the_sysmon_file() {
-    let file = Path::new(env!("CARGO_MANIFEST_DIR")).join("sources/sysmon.yaml");
-    assert_eq!(
-        fs::read_to_string(file).expect("readable"),
-        goliath_normalize::SYSMON
-    );
+fn every_definition_is_shipped_under_its_name() {
+    let shipped: Vec<PathBuf> = goliath_normalize::BUILTIN
+        .iter()
+        .map(|(name, text)| {
+            let file = Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("sources/{name}.yaml"));
+            assert_eq!(&fs::read_to_string(&file).expect("readable"), text);
+            let normalizer = Normalizer::from_yaml(text).expect("loads");
+            assert_eq!(normalizer.name(), *name);
+            file
+        })
+        .collect();
+    assert_eq!(shipped, definitions());
 }
