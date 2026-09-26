@@ -64,17 +64,37 @@ jobs:
 
   kafka:
     # The pipe contract on a real Kafka API, the same suite memory and disk
-    # run. A step starts Redpanda: service containers cannot take its
-    # command-line arguments.
+    # run, and the roles in separate processes meeting through it. A step
+    # starts Redpanda: service containers cannot take its command-line
+    # arguments.
     name: pipe / kafka
     runs-on: ubuntu-latest
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:25.8
+        env:
+          CLICKHOUSE_USER: goliath
+          CLICKHOUSE_PASSWORD: goliath
+        ports:
+          - 8123:8123
+        options: >-
+          --ulimit nofile=262144:262144
+          --health-cmd "clickhouse-client --user goliath --password goliath --query 'SELECT 1'"
+          --health-interval 2s
+          --health-retries 30
     env:
       GOLIATH_KAFKA_BROKERS: localhost:9092
+      GOLIATH_CLICKHOUSE_URL: http://localhost:8123
+      GOLIATH_CLICKHOUSE_USER: goliath
+      GOLIATH_CLICKHOUSE_PASSWORD: goliath
+      GOLIATH_REQUIRE_CLICKHOUSE: "1"
     steps:
       - uses: actions/checkout@v7
       - name: Start Redpanda
         run: |
-          docker run -d --name redpanda -p 9092:9092 redpandadata/redpanda:latest             redpanda start --mode dev-container --smp 1 --overprovisioned             --kafka-addr PLAINTEXT://0.0.0.0:9092 --advertise-kafka-addr PLAINTEXT://localhost:9092
+          docker run -d --name redpanda -p 9092:9092 redpandadata/redpanda:latest \
+            redpanda start --mode dev-container --smp 1 --overprovisioned \
+            --kafka-addr PLAINTEXT://0.0.0.0:9092 --advertise-kafka-addr PLAINTEXT://localhost:9092
           for attempt in $(seq 1 60); do
             docker exec redpanda rpk cluster health --exit-when-healthy --watch=false >/dev/null 2>&1 && exit 0
             sleep 1
@@ -83,16 +103,22 @@ jobs:
           exit 1
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test -p goliath-pipe --features kafka
+      - run: cargo test -p goliath-pipe -p goliath --features kafka
 
   container:
-    # The image and compose.yaml, as a user runs them: build, start, drop a
-    # Sysmon file, and find its events in ClickHouse.
-    name: container / compose
+    # The image and each compose file, as a user runs them: build, start,
+    # drop a Sysmon file, and find its events in ClickHouse.
+    name: container / ${{ matrix.stack }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [compose.yaml, compose.distributed.yaml]
+    env:
+      COMPOSE_FILE: ${{ matrix.stack }}
     steps:
       - uses: actions/checkout@v7
-      - run: scripts/compose-smoke.sh
+      - run: scripts/compose-smoke.sh "$COMPOSE_FILE"
       - if: failure()
         run: docker compose logs
       - if: always()
