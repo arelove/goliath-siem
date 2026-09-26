@@ -610,6 +610,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "goliath-search"
+version = "0.1.0"
+dependencies = [
+ "goliath-ocsf",
+ "jiff",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "goliath-sigma"
 version = "0.1.2"
 dependencies = [
