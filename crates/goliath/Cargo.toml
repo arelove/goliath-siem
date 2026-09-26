@@ -17,10 +17,15 @@ goliath-pipe = { path = "../goliath-pipe", version = "0.1.0" }
 goliath-store = { path = "../goliath-store", version = "0.1.0" }
 serde.workspace = true
 thiserror.workspace = true
-tokio = { version = "1", features = ["fs", "macros", "rt-multi-thread", "signal", "time"] }
+tokio = { version = "1", features = ["fs", "macros", "rt-multi-thread", "signal", "sync", "time"] }
 toml = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[features]
+# Topics in Kafka or Redpanda, for roles in separate processes. Builds
+# librdkafka, which needs a C toolchain.
+kafka = ["goliath-pipe/kafka"]
 
 [dev-dependencies]
 clickhouse = { version = "0.15.2", default-features = false, features = ["lz4"] }

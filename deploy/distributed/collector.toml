@@ -1,0 +1,13 @@
+# The collector alone, as compose.distributed.yaml runs it: files dropped into
+# the inbox go to Redpanda, for a normalizer elsewhere.
+
+roles = ["collector"]
+
+[[sources]]
+definition = "sysmon"
+inbox = "/var/lib/goliath/inbox/sysmon"
+
+[kafka]
+brokers = "redpanda:9092"
+# One broker in development; 3 on a real cluster.
+replication = 1

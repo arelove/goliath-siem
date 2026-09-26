@@ -1,23 +1,27 @@
 //! The Goliath security platform as one binary.
 //!
 //! A process runs the roles its configuration lists
-//! (`docs/adr/0006-deployment-topology.md`), connected by durable topics in
-//! its data directory: `raw-<source>` from the collector to the normalizer,
-//! and `normalized` from the normalizer to the writer.
+//! (`docs/adr/0006-deployment-topology.md`), connected by durable topics:
+//! `raw-<source>` from the collector to the normalizer, and `normalized` from
+//! the normalizer to the writer. The topics are in the data directory, for
+//! roles in one process, or in Kafka, for roles in several.
 
 // Tests assert on outcomes; a failed assertion should abort the test.
 #![cfg_attr(test, allow(clippy::expect_used, clippy::panic, clippy::unwrap_used))]
 
 pub mod config;
 mod roles;
+mod topics;
 
 use std::future::Future;
 
-use goliath_pipe::{DiskOptions, DiskTopic, PipeError};
+use goliath_pipe::PipeError;
 use goliath_store::{Limits, Store, StoreError};
 use tokio::sync::watch;
 use tokio::task::JoinSet;
 use tracing::{error, info};
+
+use crate::topics::Topics;
 
 pub use config::{Config, Role};
 
@@ -52,9 +56,31 @@ pub enum RunError {
 ///
 /// Returns the first error of any role, or of setting them up.
 pub async fn run(config: Config, shutdown: impl Future<Output = ()>) -> Result<(), RunError> {
+    match &config.kafka {
+        #[cfg(feature = "kafka")]
+        Some(kafka) => run_on(&config, &topics::Kafka::new(kafka)?, shutdown).await,
+        #[cfg(not(feature = "kafka"))]
+        Some(_) => Err(RunError::Config(
+            "this goliath was built without Kafka; build it with `--features kafka`".to_owned(),
+        )),
+        None => {
+            let data = config
+                .data
+                .clone()
+                .ok_or_else(|| RunError::Config("no `data` directory".to_owned()))?;
+            run_on(&config, &topics::Disk::new(data), shutdown).await
+        }
+    }
+}
+
+async fn run_on<T: Topics>(
+    config: &Config,
+    topics: &T,
+    shutdown: impl Future<Output = ()>,
+) -> Result<(), RunError> {
     let (stop, stopped) = watch::channel(false);
     let mut roles = JoinSet::new();
-    let outcomes = DiskTopic::open(config.data.join("normalized"), DiskOptions::default())?;
+    let outcomes = topics.open("normalized", "writer").await?;
 
     // Readers subscribe before anything is sent, so that no record is sent
     // before the group that needs it exists.
@@ -76,31 +102,29 @@ pub async fn run(config: Config, shutdown: impl Future<Output = ()>) -> Result<(
         roles.spawn(roles::write(
             store,
             limits,
-            outcomes.subscribe("writer")?,
+            topics.subscribe(&outcomes, "writer").await?,
             stopped.clone(),
         ));
     }
     for source in &config.sources {
         let normalizer = source.normalizer()?;
-        let raw = DiskTopic::open(
-            config.data.join(format!("raw-{}", normalizer.name())),
-            DiskOptions::default(),
-        )?;
+        let raw = topics
+            .open(&format!("raw-{}", normalizer.name()), "normalizer")
+            .await?;
         if config.roles.contains(&Role::Normalizer) {
-            let receiver = raw.subscribe("normalizer")?;
+            let receiver = topics.subscribe(&raw, "normalizer").await?;
             roles.spawn(roles::normalize(
                 normalizer.clone(),
                 receiver,
-                outcomes.sender(),
+                T::sender(&outcomes),
                 stopped.clone(),
             ));
         }
         if config.roles.contains(&Role::Collector) {
-            roles.spawn(roles::collect(
-                source.inbox.clone(),
-                raw.sender(),
-                stopped.clone(),
-            ));
+            let inbox = source.inbox.clone().ok_or_else(|| {
+                RunError::Config(format!("source `{}` has no inbox", normalizer.name()))
+            })?;
+            roles.spawn(roles::collect(inbox, T::sender(&raw), stopped.clone()));
         }
     }
     info!(roles = ?config.roles, sources = config.sources.len(), "running");

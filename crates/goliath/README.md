@@ -2,9 +2,8 @@
 
 The [Goliath](https://github.com/arelove/goliath-siem) security platform as
 one binary. A process runs the roles its configuration lists, connected by
-durable topics in its data directory (see
-[ADR-0006](../../docs/adr/0006-deployment-topology.md) and
-[ADR-0015](../../docs/adr/0015-pipe-semantics.md)):
+durable topics (see [ADR-0006](../../docs/adr/0006-deployment-topology.md)
+and [ADR-0015](../../docs/adr/0015-pipe-semantics.md)):
 
 ```text
 inbox --collector--> raw-<source> --normalizer--> normalized --writer--> ClickHouse
@@ -12,6 +11,12 @@ inbox --collector--> raw-<source> --normalizer--> normalized --writer--> ClickHo
 
 Every hop acknowledges only after handing on durably, so a crash repeats work
 and never loses a record; storage drops the repeats by event identity.
+
+The topics are files in the `data` directory when every role is in one
+process. With a `[kafka]` section they are in Kafka or Redpanda instead, and
+each role can run in a process, container, or host of its own; the binary
+needs the `kafka` feature for that, which the container image has. See
+`deploy/distributed/` for one configuration per role.
 
 ## Try it
 

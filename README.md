@@ -52,8 +52,7 @@ The engine's speed is guarded in CI: a pull request fails if evaluating an
 event allocates, or if the engine spends more than 2% more instructions on a
 fixed workload. See [docs/benchmarks.md](docs/benchmarks.md).
 
-Not built yet: ingestion, storage, scheduled detection, response, and the
-interface. The order is in [docs/roadmap.md](docs/roadmap.md).
+Not built yet: detection on the stored stream, response, and the interface. The order is in [docs/roadmap.md](docs/roadmap.md).
 
 ## Run it
 
@@ -72,9 +71,16 @@ and query them by any OCSF path:
 SELECT time, event.process.cmd_line FROM goliath.events WHERE class_uid = 1007
 ```
 
+The same, with each role in a container of its own and Redpanda between
+them, as roles on separate hosts would meet through Kafka:
+
+```text
+docker compose -f compose.distributed.yaml up -d --build
+```
+
 The password stays in `.env`, which git ignores, and reaches goliath as a
 mounted secret file, not an environment variable. `scripts/compose-smoke.sh`
-does all of this end to end, and runs in CI.
+does all of this end to end for either stack, and CI runs both.
 
 ## Try it
 

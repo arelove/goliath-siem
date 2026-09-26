@@ -25,3 +25,16 @@ retention_days = 30
 [writer]
 max_rows = 50000
 max_delay_ms = 1000
+
+# Keep topics in Kafka or Redpanda instead of `data`, so that roles can run in
+# separate processes; each then lists only its own roles. Needs a binary built
+# with `--features kafka`.
+#
+# [kafka]
+# brokers = "localhost:9092"
+# replication = 3                  # replicas of each topic created
+# password_file = "/run/secrets/kafka_password"
+# [kafka.client]                   # librdkafka settings, never the password
+# "security.protocol" = "SASL_SSL"
+# "sasl.mechanism" = "SCRAM-SHA-512"
+# "sasl.username" = "goliath"

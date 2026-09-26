@@ -1,0 +1,20 @@
+# The writer alone, as compose.distributed.yaml runs it: outcomes from
+# Redpanda are stored in ClickHouse.
+
+roles = ["writer"]
+
+[store]
+url = "http://clickhouse:8123"
+database = "goliath"
+user = "goliath"
+# Mounted by compose from the CLICKHOUSE_PASSWORD in .env.
+password_file = "/run/secrets/clickhouse_password"
+retention_days = 30
+
+[writer]
+max_rows = 50000
+max_delay_ms = 1000
+
+[kafka]
+brokers = "redpanda:9092"
+replication = 1
