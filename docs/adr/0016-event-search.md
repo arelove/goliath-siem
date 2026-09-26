@@ -76,6 +76,10 @@ built from searches, store the structure.
   `event.process.cmd_line.:String`, so that a value of another type does not
   match instead of failing the query.
 - The query reads with `FINAL`, so that an event delivered twice appears once.
+  A minmax index on `time` skips granules outside the window, with
+  `use_skip_indexes_if_final_exact_mode = 0`: copies of an event share its
+  time, so the index cannot skip one copy and keep another
+  ([benchmarks.md](../benchmarks.md#search)).
 - Every query runs with `readonly = 2`, a time limit, and a limit on rows
   read, whatever user the service connects as. Deployments should give the
   `api` role its own read-only ClickHouse user as well.

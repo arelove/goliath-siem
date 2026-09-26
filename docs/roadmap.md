@@ -13,11 +13,14 @@ criterion that is measurable, so "done" is not a judgement call.
 **M2.5 - Event search.** In progress. M2 met its exit criterion: Sysmon,
 Falco, Entra ID, and Linux auditd events flow into ClickHouse with every role in
 one process and with each role in its own container, both tested in CI; skip
-indexes and the S3 transport remain. Search is designed in
+indexes and the S3 transport remained. Search is designed in
 [ADR-0016](adr/0016-event-search.md): a typed structure checked against the
 OCSF schema and compiled to parameterized SQL, served by the `api` role with
-the interface on the same origin. The matching engine's 10-million-event
-corpus run from M1 is still open.
+the interface on the same origin. The search half of the exit criterion is
+met: over 10 million stored events, searches filtered by time, class, and one
+path return in 38 to 806 ms ([benchmarks.md](benchmarks.md#search)), after a
+minmax index on `time`, the skip index M2 left open. The matching engine's
+10-million-event corpus run from M1 is still open.
 
 ## M0 - Foundations
 

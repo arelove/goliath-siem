@@ -115,3 +115,53 @@ The throughput barely moves, but the first version kept every other task on
 the runtime waiting for the whole run: a network listener sharing it would
 have accepted nothing. The rate is bound by one sync per batch, so larger
 batches raise it.
+
+## Search
+
+The M2.5 exit criterion asks for a search over 10 million stored events,
+filtered by time, class, and one path, to return in under one second. The
+`search` benchmark stores them and times the searches the interface sends:
+
+```text
+GOLIATH_CLICKHOUSE_URL=http://127.0.0.1:8123 GOLIATH_CLICKHOUSE_USER=goliath \
+GOLIATH_CLICKHOUSE_PASSWORD=... \
+cargo run --release -p goliath-bench --features search --bin search
+```
+
+The events are a synthetic fleet of 2,000 Windows machines running Sysmon over
+30 days, generated from a fixed seed: image loads, network connections,
+process launches, file creation, and registry writes, in the proportions a
+workstation fleet writes them. They go through the shipped Sysmon definition
+and `Store::write`, the path the writer role takes, into a database of their
+own, which a second run reuses. Each search runs five times; rows read are
+the server's own count for the last run.
+
+On the reference laptop (Ryzen 9 9955HX, 32 GB, Windows 11), against
+ClickHouse 25.8 in Docker Desktop, the 10 million events were stored at about
+62,000 events/s, and the searches took:
+
+| Search | Median, sorting key only | Rows read | Median, with the time index | Rows read |
+| --- | ---: | ---: | ---: | ---: |
+| Last hour, every class | 444 ms | 2,415,700 | 38 ms | 41,808 |
+| Last 24 hours, launches, command line contains | 156 ms | 499,712 | 68 ms | 155,648 |
+| Last 24 hours, every class, one host | 532 ms | 2,718,225 | 92 ms | 511,822 |
+| Last 7 days, connections, destination port | 319 ms | 1,385,207 | 213 ms | 994,032 |
+| Last 30 days, launches, one user | 740 ms | 4,251,648 | 806 ms | 4,251,648 |
+
+The sorting key is `(class_uid, time, id)`, and parts are partitioned by the
+day an event was received, not by its time. A search over every class could
+only narrow `time` within each class, in every part, so the last hour read a
+quarter of the table. A minmax index on `time`, one entry per granule, skips
+every granule outside the window instead.
+
+The index alone made it worse, at first: with `FINAL`, ClickHouse widens what
+a skip index selected to every granule whose key range overlaps it, and
+granules that straddle two classes overlap most of the table. The last hour
+then read 13 million rows. That widening guards against a skipped granule
+holding another copy of a selected row, which cannot happen here: copies of
+an event share its `time`, so the index selects every copy of what it selects.
+Searches turn it off with `use_skip_indexes_if_final_exact_mode = 0`.
+
+The last search covers the whole recording, so no index on `time` can help
+it; it is bound by reading one path of every launch. An index on the paths
+searched most is the next step when a search like it has to be faster.
