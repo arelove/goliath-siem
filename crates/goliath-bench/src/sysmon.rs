@@ -64,7 +64,6 @@ impl Fleet {
 
     /// The next record, written at `time` milliseconds since the Unix epoch.
     pub fn record(&mut self, time: i64) -> Value {
-        self.record += 1;
         let random = &mut self.random;
         let host = random.below(HOSTS);
         let user = format!(r"CORP\user{:04}", random.below(USERS));
@@ -103,13 +102,175 @@ impl Fleet {
                 }),
             ),
         };
+        let actor = Actor {
+            host: format!("WS-{host:04}.corp.example"),
+            user,
+            image,
+            pid,
+            guid,
+        };
+        self.wrap(time, id, &actor, data)
+    }
+
+    /// An intrusion on one machine, starting at `start` milliseconds since
+    /// the Unix epoch and lasting twenty minutes: a macro in a mailed
+    /// document starts encoded PowerShell, which drops a DLL, makes it start
+    /// with the user's session, calls out to its server on port 4444, looks
+    /// around the domain, and packs the user's finance documents into an
+    /// archive with a password, ready to leave.
+    ///
+    /// The encoded PowerShell decodes to a harmless line, and the chain leaves
+    /// out what antivirus software quarantines as text on disk, such as a
+    /// credential dump, so the recording can be written anywhere.
+    ///
+    /// Every record names `WS-0042.corp.example` and `CORP\user0042`, so a
+    /// search for either finds the whole chain among the fleet's records.
+    // The chain is data, read from top to bottom; split up, it reads worse.
+    #[allow(clippy::too_many_lines)]
+    pub fn intrusion(&mut self, start: i64) -> Vec<(i64, Value)> {
+        const TEMP: &str = r"C:\Users\user0042\AppData\Local\Temp\";
+        let actor = |image: &str, pid: usize, guid: &str| Actor {
+            host: "WS-0042.corp.example".to_owned(),
+            user: r"CORP\user0042".to_owned(),
+            image: image.to_owned(),
+            pid,
+            guid: guid.to_owned(),
+        };
+        let outlook = actor(
+            r"C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE",
+            4_120,
+            "4E2A1C3B-0042-6512-0A00-000000000001",
+        );
+        let word = actor(
+            r"C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE",
+            6_312,
+            "4E2A1C3B-0042-6512-0A00-000000000002",
+        );
+        let powershell = actor(
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
+            7_044,
+            "4E2A1C3B-0042-6512-0A00-000000000003",
+        );
+        let rundll32 = actor(
+            r"C:\Windows\System32\rundll32.exe",
+            7_588,
+            "4E2A1C3B-0042-6512-0A00-000000000004",
+        );
+        let cmd = actor(
+            r"C:\Windows\System32\cmd.exe",
+            7_902,
+            "4E2A1C3B-0042-6512-0A00-000000000005",
+        );
+        let child = |parent: &Actor, command: &str| {
+            json!({
+                "CommandLine": command,
+                "CurrentDirectory": TEMP,
+                "IntegrityLevel": "Medium",
+                "LogonId": "0x3c2a1",
+                "ParentImage": parent.image,
+                "ParentProcessId": parent.pid,
+                "ParentProcessGuid": parent.guid,
+            })
+        };
+        let server = |port: u16| {
+            json!({
+                "Protocol": "tcp",
+                "SourceIp": "10.4.0.42",
+                "SourcePort": 51_337,
+                "DestinationIp": "198.51.100.77",
+                "DestinationHostname": "cdn-update.example.org",
+                "DestinationPort": port,
+            })
+        };
+        let dll = format!("{TEMP}msupdate.dll");
+        let steps = [
+            (
+                0,
+                1,
+                &word,
+                child(
+                    &outlook,
+                    &format!(r#""{}" /n "{TEMP}Invoice_0917.docm""#, word.image),
+                ),
+            ),
+            (
+                1,
+                1,
+                &powershell,
+                child(
+                    &word,
+                    "powershell.exe -nop -w hidden -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAGMAaABlAGMAawBpAG4AZwAgAGYAbwByACAAdQBwAGQAYQB0AGUAcwAnAA==",
+                ),
+            ),
+            (2, 3, &powershell, server(443)),
+            (3, 11, &powershell, json!({ "TargetFilename": dll })),
+            (
+                4,
+                1,
+                &rundll32,
+                child(
+                    &powershell,
+                    &format!("rundll32.exe {dll},DllRegisterServer"),
+                ),
+            ),
+            (
+                5,
+                13,
+                &rundll32,
+                json!({
+                    "EventType": "SetValue",
+                    "TargetObject": r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run\MsUpdate",
+                    "Details": format!("rundll32.exe {dll},DllRegisterServer"),
+                }),
+            ),
+            (6, 3, &rundll32, server(4444)),
+            (9, 1, &cmd, child(&rundll32, "cmd.exe /c whoami /all")),
+            (
+                11,
+                1,
+                &cmd,
+                child(&rundll32, "cmd.exe /c nltest /domain_trusts"),
+            ),
+            (
+                14,
+                1,
+                &cmd,
+                child(&rundll32, r#"cmd.exe /c net group "Domain Admins" /domain"#),
+            ),
+            (
+                18,
+                1,
+                &cmd,
+                child(
+                    &rundll32,
+                    r"cmd.exe /c 7z.exe a -mx1 -pq3report C:\Users\Public\q3.7z C:\Users\user0042\Documents\Finance",
+                ),
+            ),
+            (
+                19,
+                11,
+                &cmd,
+                json!({ "TargetFilename": r"C:\Users\Public\q3.7z" }),
+            ),
+        ];
+        steps
+            .into_iter()
+            .map(|(minutes, id, actor, data)| {
+                let time = start + minutes * 60_000;
+                (time, self.wrap(time, id, actor, data))
+            })
+            .collect()
+    }
+
+    fn wrap(&mut self, time: i64, id: u32, actor: &Actor, data: Value) -> Value {
+        self.record += 1;
         let mut data = data;
         data["RuleName"] = json!("-");
         data["UtcTime"] = json!(timestamp(time, ' '));
-        data["ProcessGuid"] = json!(guid);
-        data["ProcessId"] = json!(pid);
-        data["Image"] = json!(image);
-        data["User"] = json!(user);
+        data["ProcessGuid"] = json!(actor.guid);
+        data["ProcessId"] = json!(actor.pid);
+        data["Image"] = json!(actor.image);
+        data["User"] = json!(actor.user);
         json!({
             "Event": {
                 "System": {
@@ -118,12 +279,21 @@ impl Fleet {
                     "TimeCreated": { "#attributes": { "SystemTime": timestamp(time, 'T') } },
                     "EventRecordID": self.record,
                     "Channel": "Microsoft-Windows-Sysmon/Operational",
-                    "Computer": format!("WS-{host:04}.corp.example"),
+                    "Computer": actor.host,
                 },
                 "EventData": data,
             }
         })
     }
+}
+
+/// The machine, account, and process a record is written for.
+struct Actor {
+    host: String,
+    user: String,
+    image: String,
+    pid: usize,
+    guid: String,
 }
 
 fn image(random: &mut Random) -> String {
@@ -259,6 +429,28 @@ mod tests {
             classes.into_iter().collect::<Vec<_>>(),
             [1001, 1005, 1007, 4001, 201_002]
         );
+    }
+
+    #[test]
+    fn the_intrusion_is_one_host_and_one_user_in_time_order() {
+        let normalizer = Normalizer::from_yaml(SYSMON).unwrap();
+        let steps = Fleet::new(3).intrusion(1_790_244_930_000);
+        assert_eq!(steps.len(), 12);
+        let mut previous = 0;
+        for (time, record) in steps {
+            assert!(time > previous);
+            previous = time;
+            let record = record.to_string();
+            let mut became = Vec::new();
+            normalizer.normalize(record.as_bytes(), |outcome| became.push(outcome));
+            let [Outcome::Event(done)] = became.as_slice() else {
+                panic!("{record} became {became:?}");
+            };
+            assert!(done.issues.is_empty(), "{:?}", done.issues);
+            assert_eq!(done.event["time"], json!(time));
+            assert_eq!(done.event["device"]["hostname"], "WS-0042.corp.example");
+            assert!(record.contains(r"CORP\\user0042"), "{record}");
+        }
     }
 
     #[test]
