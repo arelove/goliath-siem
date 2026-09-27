@@ -30,7 +30,20 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # volume mounted over them starts with their owner, the unprivileged user.
 RUN mkdir -p /state/var/lib/goliath/data /state/var/lib/goliath/inbox
 
+# The demo's recording generator, built only when a target asks for it:
+#   docker build --target fleet -t goliath-fleet .
+FROM build AS fleet-build
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/src/target \
+    cargo build --release --locked -p goliath-bench --bin fleet \
+    && cp target/release/fleet /fleet
+
+FROM gcr.io/distroless/cc-debian12:nonroot AS fleet
+COPY --from=fleet-build /fleet /usr/local/bin/fleet
+ENTRYPOINT ["/usr/local/bin/fleet"]
+
 # Runtime stage: glibc and CA certificates, no shell or package manager.
+# Last, so that it is what a plain `docker build` produces.
 FROM gcr.io/distroless/cc-debian12:nonroot
 COPY --from=build /goliath /usr/local/bin/goliath
 COPY --from=build --chown=65532:65532 /state/var/lib/goliath /var/lib/goliath

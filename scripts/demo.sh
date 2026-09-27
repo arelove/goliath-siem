@@ -75,7 +75,7 @@ Things to try:
     to WINWORD.EXE and the mailed document.
   - Every class, destination hostname equals cdn-update.example.org: one
     machine of 2,000 reaching it, once on 443 and once on 4444.
-  - Class Process Activity, command line contains lsass.
+  - Class Process Activity, command line contains q3.7z: the archive it packed.
 EOF
 case "$(uname -s)" in
     Darwin) open "$url" ;;
