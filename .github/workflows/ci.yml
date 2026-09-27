@@ -124,6 +124,19 @@ jobs:
       - if: always()
         run: docker compose down --volumes
 
+  demo:
+    # The demo as a newcomer runs it: build, start, fill with a day of a
+    # fleet's events, and find the intrusion through the API.
+    name: demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: scripts/demo.sh
+      - if: failure()
+        run: docker compose logs
+      - if: always()
+        run: docker compose down --volumes
+
   ui:
     # The interface: installed exactly as locked, then lint, types, tests,
     # and the production build.
