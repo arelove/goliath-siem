@@ -127,11 +127,12 @@ events with one intrusion among them, and opens the view on it.
 
 ## M3 - Benchmark rig
 
-Without this, nothing after it can be honestly measured.
+Without this, nothing after it can be honestly measured. Designed in
+[ADR-0017](adr/0017-benchmark-rig.md).
 
 | Deliverable | Detail |
 | --- | --- |
-| Entity-model generator | N users and M hosts, daily cycles, Zipf activity, same entity under different identifiers per source |
+| Entity-model generator | `goliath-gen`: N users and M hosts, daily cycles, Zipf activity, same entity under different identifiers per source, raw records in each source's own format, and the ground truth of which identifiers belong together |
 | Replay engine | Real datasets time-shifted to now, with a speed multiplier |
 | Attack injector | Labelled chains at known offsets, producing ground truth |
 | Metrics report | Events/s per core, latency percentiles, compression ratio, precision and recall |
@@ -139,7 +140,9 @@ Without this, nothing after it can be honestly measured.
 
 **Exit criterion:** a single command produces a reproducible report covering
 every metric listed in [architecture.md](architecture.md#benchmark-method),
-and a 30-minute run sustains 100k events/s on one developer machine.
+measured where the component exists and marked with the milestone that
+brings it where it does not, and a 30-minute run sustains 100k events/s on one
+developer machine, with the lag of every reader bounded.
 
 ## M3.5 - Collection
 

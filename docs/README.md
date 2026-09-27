@@ -33,6 +33,7 @@ orchestration, and incident handling in one system.
 | [0014](adr/0014-one-language-for-services.md) | Rust for every platform service | Accepted |
 | [0015](adr/0015-pipe-semantics.md) | Pipe semantics: ordered topics, consumer groups, at least once, bounded | Accepted |
 | [0016](adr/0016-event-search.md) | Event search: a typed structure compiled to parameterized SQL | Accepted |
+| [0017](adr/0017-benchmark-rig.md) | Benchmark rig: raw records from an entity model, ground truth, the platform's own metrics | Accepted |
 
 ## Writing an ADR
 
