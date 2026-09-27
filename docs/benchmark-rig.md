@@ -22,8 +22,23 @@ GOLIATH_KAFKA_BROKERS=127.0.0.1:9092 \
 cargo run --release -p goliath-bench --features rig --bin rig -- --profile ci
 ```
 
-`ci` offers 5,000 records/s for 60 seconds. `laptop` offers 100,000 records/s
-for 30 minutes. `GOLIATH_BIN` selects the platform executable, defaulting to
+`ci` offers 5,000 records/s for 60 seconds. `probe` offers 100,000 records/s
+for 5 minutes, to see whether the laptop rate holds before committing to
+`laptop`, which offers it for 30 minutes.
+
+At 100,000 records/s the rig sends about 66 MB of source data a second.
+Kafka keeps what it has delivered for as long as its retention says, seven
+days by default, so on a development machine shorten it first, for example
+`rpk cluster config set log_retention_ms 600000`, or a 30-minute run needs
+several hundred gigabytes of free disk.
+
+Retention must never be shorter than the time a record can wait unread. The
+rig bounds that wait: each topic holds at most 20 seconds of the offered rate
+for its reader, and senders wait beyond it, so a platform that falls behind
+shows as a rate the driver could not offer rather than as records Kafka
+deleted. A first 5-minute probe, run with two minutes of retention and no
+such bound, lost 13 million of 30 million records that way; its throughput
+is in the roadmap's M3 notes, its totals are not evidence of anything. `GOLIATH_BIN` selects the platform executable, defaulting to
 `target/release/goliath` (`goliath.exe` on Windows). Defaults for the servers
 are the addresses above, user `default`, and an empty password. Set the
 variables in the shell environment on Windows before running the command.

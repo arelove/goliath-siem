@@ -168,6 +168,11 @@ developer machine, with the lag of every reader bounded.
 - The current pipe uses one partition per topic and manual assignment. More
   producer threads do not demonstrate horizontal scaling of consumers. Measure
   this bottleneck before choosing sharding or revising ADR-0015.
+- Measured by a 5-minute probe at 100,000 records/s: 99,989 records/s were
+  offered, and the platform stored about 40,000 events/s using 1.56 of 16
+  cores and 559 MiB, receipt to stored p50 61 s. The single normalizer on one
+  partition is the limit, not the machine. Parallel normalization within the
+  reader is the first step, before partitions.
 - Distinguish entity-resolution precision against synthetic identity truth
   from detection precision against real labelled telemetry. The blanket
   statement in architecture.md that precision cannot use synthetic data needs

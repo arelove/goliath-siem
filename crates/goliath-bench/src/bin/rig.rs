@@ -31,10 +31,19 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(3);
 const SEND_TIMEOUT: Duration = Duration::from_secs(30);
 const METRICS: &str = "127.0.0.1:9465";
 const SEED: u64 = 42;
+/// Records per payload the driver sends.
+const PER_PAYLOAD: u64 = 1_000;
+/// Seconds of the offered rate a topic may hold for its reader before
+/// senders wait. The backlog is then bounded by backpressure, as ADR-0015
+/// intends, and never by Kafka deleting what no one has read yet; a platform
+/// that falls behind shows as a rate the driver could not offer.
+const BACKLOG_SECONDS: u64 = 20;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Profile {
     Ci,
+    /// The laptop rate for five minutes, before committing to thirty.
+    Probe,
     Laptop,
 }
 
@@ -43,27 +52,42 @@ impl Profile {
         match args {
             [flag, name] if flag == "--profile" => match name.as_str() {
                 "ci" => Ok(Self::Ci),
+                "probe" => Ok(Self::Probe),
                 "laptop" => Ok(Self::Laptop),
-                _ => Err("profile must be ci or laptop".into()),
+                _ => Err("profile must be ci, probe, or laptop".into()),
             },
-            _ => Err("usage: rig --profile ci|laptop".into()),
+            _ => Err("usage: rig --profile ci|probe|laptop".into()),
         }
     }
     fn name(self) -> &'static str {
         match self {
             Self::Ci => "ci",
+            Self::Probe => "probe",
             Self::Laptop => "laptop",
         }
     }
     fn rate(self) -> u64 {
         match self {
             Self::Ci => 5_000,
-            Self::Laptop => 100_000,
+            Self::Probe | Self::Laptop => 100_000,
         }
     }
+    /// Payloads the raw topic holds for the normalizer before the driver
+    /// waits.
+    fn raw_capacity(self) -> u64 {
+        (self.rate() * BACKLOG_SECONDS / PER_PAYLOAD).max(10)
+    }
+
+    /// Outcomes the normalized topic holds for the writer before the
+    /// normalizer waits.
+    fn normalized_capacity(self) -> u64 {
+        self.rate() * BACKLOG_SECONDS
+    }
+
     fn duration(self) -> Duration {
         Duration::from_secs(match self {
             Self::Ci => 60,
+            Self::Probe => 300,
             Self::Laptop => 1_800,
         })
     }
@@ -112,12 +136,13 @@ impl Settings {
         let quote = |s: &str| serde_json::Value::String(s.to_owned()).to_string();
         format!(
             "roles = [\"normalizer\", \"writer\"]\n\
-            [kafka]\nbrokers = {}\nprefix = {}\nreplication = 1\n\
+            [kafka]\nbrokers = {}\nprefix = {}\nreplication = 1\ncapacity = {}\n\
             [[sources]]\ndefinition = \"sysmon\"\n\
             [store]\nurl = {}\ndatabase = {}\nuser = {}\npassword_env = \"GOLIATH_CLICKHOUSE_PASSWORD\"\n\
             [metrics]\nlisten = \"{METRICS}\"\n",
             quote(&self.brokers),
             quote(&self.prefix),
+            self.profile.normalized_capacity(),
             quote(&self.url),
             quote(&self.database),
             quote(&self.user)
@@ -208,6 +233,8 @@ async fn run() -> Result<(), Failure> {
         .readers
         .insert(format!("{}normalizer", settings.prefix));
     options.replication = 1;
+    options.capacity = std::num::NonZeroU64::new(settings.profile.raw_capacity())
+        .ok_or("the raw topic's capacity must not be zero")?;
     let topic = timeout(
         Duration::from_secs(60),
         KafkaTopic::open(&format!("{}raw-sysmon", settings.prefix), options),
