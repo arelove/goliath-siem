@@ -3,7 +3,7 @@
 use goliath_ocsf::schema::{self, Base, Class, Resolution};
 use serde_json::Value;
 
-use crate::{Checked, Condition, Kind, Limits, Op, Scalar, Search, SearchError};
+use crate::{Checked, Condition, Kind, Limits, Op, Scalar, Search, SearchError, Window};
 
 impl Search {
     /// Checks every part of the search: the time range and its span, the
@@ -13,16 +13,7 @@ impl Search {
     ///
     /// Returns [`SearchError`] describing the first problem found.
     pub fn check(&self, limits: &Limits) -> Result<Checked, SearchError> {
-        let from = time("from", &self.from)?;
-        let to = time("to", &self.to)?;
-        if to <= from {
-            return Err(SearchError::EmptyRange);
-        }
-        if to - from > limits.max_span_ms {
-            return Err(SearchError::SpanTooLong {
-                max_days: limits.max_span_ms / (24 * 60 * 60 * 1000),
-            });
-        }
+        let (from, to) = span(&self.from, &self.to, limits)?;
         let limit = self.limit.unwrap_or(limits.default_limit);
         if limit == 0 || limit > limits.max_limit {
             return Err(SearchError::Limit {
@@ -63,6 +54,33 @@ impl Search {
             after: self.after,
         })
     }
+}
+
+impl Window {
+    /// Checks the range and its span, and returns its start, inclusive, and
+    /// end, exclusive, in milliseconds since the epoch.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SearchError`] if a bound does not parse, the range is
+    /// empty, or it is longer than `limits` allow.
+    pub fn check(&self, limits: &Limits) -> Result<(i64, i64), SearchError> {
+        span(&self.from, &self.to, limits)
+    }
+}
+
+fn span(from: &str, to: &str, limits: &Limits) -> Result<(i64, i64), SearchError> {
+    let from = time("from", from)?;
+    let to = time("to", to)?;
+    if to <= from {
+        return Err(SearchError::EmptyRange);
+    }
+    if to - from > limits.max_span_ms {
+        return Err(SearchError::SpanTooLong {
+            max_days: limits.max_span_ms / (24 * 60 * 60 * 1000),
+        });
+    }
+    Ok((from, to))
 }
 
 fn time(bound: &'static str, text: &str) -> Result<i64, SearchError> {

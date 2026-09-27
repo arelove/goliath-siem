@@ -42,6 +42,17 @@ use serde_json::Value;
 pub use cursor::{Cursor, CursorError};
 pub use error::SearchError;
 
+/// A time range as a client writes it, for a question about a span of time
+/// rather than a search, such as an overview.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Window {
+    /// The start, inclusive, in RFC 3339.
+    pub from: String,
+    /// The end, exclusive, in RFC 3339.
+    pub to: String,
+}
+
 /// A search as a client writes it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
