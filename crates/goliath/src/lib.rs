@@ -13,7 +13,7 @@
 mod api;
 pub mod config;
 mod metrics;
-mod raw;
+pub mod raw;
 mod roles;
 mod topics;
 
