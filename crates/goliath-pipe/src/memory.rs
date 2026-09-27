@@ -205,6 +205,14 @@ impl Receiver for MemoryReceiver {
         // implementations, which write the position before returning.
         future::ready(self.acknowledge_now(offset))
     }
+
+    fn lag(&self) -> impl Future<Output = Result<u64, PipeError>> + Send {
+        let state = lock(&self.shared.state);
+        future::ready(match state.groups.get(&self.group) {
+            Some(position) => Ok(state.end().saturating_sub(*position)),
+            None => Err(PipeError::Unsubscribed(self.group.clone())),
+        })
+    }
 }
 
 impl MemoryReceiver {

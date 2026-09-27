@@ -15,7 +15,7 @@ pub(crate) trait Topics: Sync {
     /// Sends to a topic.
     type Sender: Sender + Send + Sync + 'static;
     /// Reads a topic as one group.
-    type Receiver: Receiver + Send + 'static;
+    type Receiver: Receiver + Send + Sync + 'static;
 
     /// Opens the topic `name`, which the group `reader` reads, wherever that
     /// group runs.

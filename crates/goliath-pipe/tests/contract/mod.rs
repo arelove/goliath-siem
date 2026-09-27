@@ -202,6 +202,28 @@ pub(crate) async fn an_unsubscribed_group_s_receivers_fail<F: Fixture>() {
     ));
 }
 
+pub(crate) async fn lag_counts_what_the_group_has_not_acknowledged<F: Fixture>() {
+    let topic = F::create(10).await;
+    let mut group = topic.subscribe("writer").await;
+    assert_eq!(group.lag().await.unwrap(), 0);
+    topic
+        .sender()
+        .send(records(&["a", "b", "c"]))
+        .await
+        .unwrap();
+    assert_eq!(group.lag().await.unwrap(), 3);
+    let batch = receive_all(&mut group, 3).await;
+    // Received is not handled: a restart would deliver them again.
+    assert_eq!(group.lag().await.unwrap(), 3);
+    group.acknowledge(batch[1].offset).await.unwrap();
+    assert_eq!(group.lag().await.unwrap(), 1);
+    group.acknowledge(batch[2].offset).await.unwrap();
+    assert_eq!(group.lag().await.unwrap(), 0);
+    let other = topic.subscribe("other").await;
+    topic.unsubscribe("other").await;
+    assert!(matches!(other.lag().await, Err(PipeError::Unsubscribed(_))));
+}
+
 pub(crate) async fn many_senders_lose_nothing<F: Fixture>() {
     let topic = F::create(64).await;
     let mut group = topic.subscribe("writer").await;
@@ -251,6 +273,7 @@ macro_rules! contract {
             a_waiting_receiver_wakes_when_records_arrive,
             acknowledging_what_was_not_received_is_refused,
             an_unsubscribed_group_s_receivers_fail,
+            lag_counts_what_the_group_has_not_acknowledged,
             many_senders_lose_nothing,
         );
     };

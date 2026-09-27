@@ -505,6 +505,15 @@ impl Receiver for DiskReceiver {
         }
         Ok(())
     }
+
+    fn lag(&self) -> impl Future<Output = Result<u64, PipeError>> + Send {
+        // Positions are kept in memory as well as on disk; nothing waits.
+        let log = lock(&self.shared.log);
+        std::future::ready(match log.groups.get(&self.group) {
+            Some(position) => Ok(log.end().saturating_sub(*position)),
+            None => Err(PipeError::Unsubscribed(self.group.clone())),
+        })
+    }
 }
 
 /// Records `group`'s position as after `offset`, durably, and deletes the

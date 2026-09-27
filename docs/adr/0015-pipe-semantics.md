@@ -42,6 +42,12 @@ stops acknowledging therefore stops its topic once the bound is reached. That
 is deliberate: dropping records a group has not handled would break point 4
 for it. A group that is gone for good is removed explicitly.
 
+A group can ask its lag: the records in the topic it has not acknowledged.
+Received but unacknowledged records count, since a restart delivers them
+again. The roles report it as a metric, and a rate counts as sustained only
+while every group's lag stays bounded
+([ADR-0017](0017-benchmark-rig.md)).
+
 ### Implementations
 
 | Implementation | Durable across restarts | Used when |

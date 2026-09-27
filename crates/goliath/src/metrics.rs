@@ -16,6 +16,7 @@ use axum::routing::get;
 use prometheus_client::encoding::EncodeLabelSet;
 use prometheus_client::metrics::counter::Counter;
 use prometheus_client::metrics::family::Family;
+use prometheus_client::metrics::gauge::Gauge;
 use prometheus_client::metrics::histogram::{Histogram, exponential_buckets};
 use prometheus_client::registry::Registry;
 use tokio::net::TcpListener;
@@ -42,6 +43,12 @@ struct DeadLetter {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, EncodeLabelSet)]
+struct Reader {
+    topic: String,
+    reader: &'static str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, EncodeLabelSet)]
 struct Answer {
     answer: &'static str,
 }
@@ -59,6 +66,7 @@ struct Inner {
     outcomes: Family<Outcome, Counter>,
     dead_letters: Family<DeadLetter, Counter>,
     stored: Counter,
+    lag: Family<Reader, Gauge>,
     receipt_to_stored_seconds: Histogram,
     flush_seconds: Histogram,
     searches: Family<Answer, Counter>,
@@ -86,6 +94,7 @@ impl Metrics {
         let outcomes = Family::default();
         let dead_letters = Family::default();
         let stored = Counter::default();
+        let lag = Family::default();
         // From 10 milliseconds to about five minutes.
         let receipt_to_stored_seconds = Histogram::new(exponential_buckets(0.01, 2.0, 15));
         // From a millisecond to about 30 seconds.
@@ -128,6 +137,11 @@ impl Metrics {
             stored.clone(),
         );
         registry.register(
+            "reader_lag_records",
+            "Records in a topic its reader has not acknowledged, sampled once a second",
+            lag.clone(),
+        );
+        registry.register(
             "receipt_to_stored_seconds",
             "Time from the platform taking a record to its outcome being stored",
             receipt_to_stored_seconds.clone(),
@@ -156,6 +170,7 @@ impl Metrics {
             outcomes,
             dead_letters,
             stored,
+            lag,
             receipt_to_stored_seconds,
             flush_seconds,
             searches,
@@ -227,6 +242,17 @@ impl Metrics {
         }
     }
 
+    /// How many records of `topic` its reader `reader` has not acknowledged.
+    pub(crate) fn lag(&self, topic: &str, reader: &'static str, records: u64) {
+        self.0
+            .lag
+            .get_or_create(&Reader {
+                topic: topic.to_owned(),
+                reader,
+            })
+            .set(i64::try_from(records).unwrap_or(i64::MAX));
+    }
+
     pub(crate) fn flushed(&self, took: Duration) {
         self.0.flush_seconds.observe(took.as_secs_f64());
     }
@@ -296,6 +322,7 @@ mod tests {
         metrics.event("sysmon");
         metrics.dead_letter("sysmon", "decoding");
         metrics.stored(&[Some(1_000), None], 1_250);
+        metrics.lag("normalized", "writer", 42);
         metrics.searched(Searched::Found, Duration::from_millis(38));
         let text = metrics.encode();
         for expected in [
@@ -304,6 +331,7 @@ mod tests {
             r#"goliath_dead_letters_total{source="sysmon",stage="decoding"} 1"#,
             "goliath_stored_outcomes_total 2",
             "goliath_receipt_to_stored_seconds_count 1",
+            r#"goliath_reader_lag_records{topic="normalized",reader="writer"} 42"#,
             "goliath_receipt_to_stored_seconds_sum 0.25",
             r#"goliath_searches_total{answer="found"} 1"#,
             "goliath_search_seconds_count 1",
