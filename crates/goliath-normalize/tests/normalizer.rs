@@ -517,6 +517,17 @@ fn outcomes_travel_between_roles_unchanged() {
             .contains("unknown format 9")
     );
     assert!(Envelope::decode(b"\x01{").is_err());
+
+    // The receipt time travels too, and envelopes written before it existed
+    // still read, with none.
+    let outcome = outcomes(MINIMAL, "{\"type\": \"login\", \"who\": \"adam\"}\n").remove(0);
+    let timed = Envelope::new("test", 3, outcome).received_at(1_790_294_400_000);
+    assert_eq!(Envelope::decode(&timed.encode()).expect("decodes"), timed);
+    let mut untimed = timed.clone();
+    untimed.received = None;
+    let old = untimed.encode();
+    assert!(!String::from_utf8_lossy(&old).contains("received"));
+    assert_eq!(Envelope::decode(&old).expect("decodes").received, None);
 }
 
 #[test]

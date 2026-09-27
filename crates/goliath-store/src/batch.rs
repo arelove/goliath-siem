@@ -91,6 +91,17 @@ impl Batch {
     /// Returns [`StoreError::UnknownOutcome`] for a kind of outcome this
     /// crate does not know where to store, rather than drop it.
     pub fn push(&mut self, outcome: Outcome) -> Result<(), StoreError> {
+        self.push_received(outcome, self.received)
+    }
+
+    /// Adds an outcome of the batch's source whose record the platform took
+    /// at `received` milliseconds since the Unix epoch, rather than when the
+    /// batch was made.
+    ///
+    /// # Errors
+    ///
+    /// As [`push`](Self::push).
+    pub fn push_received(&mut self, outcome: Outcome, received: i64) -> Result<(), StoreError> {
         match outcome {
             Outcome::Event(normalized) => {
                 let event = &normalized.event;
@@ -101,7 +112,7 @@ impl Batch {
                     .get("time")
                     .and_then(Value::as_i64)
                     .filter(|time| TIMES.contains(time))
-                    .unwrap_or(self.received);
+                    .unwrap_or(received);
                 let mut issue_targets = Vec::with_capacity(normalized.issues.len());
                 let mut issue_sources = Vec::with_capacity(normalized.issues.len());
                 let mut issue_reasons = Vec::with_capacity(normalized.issues.len());
@@ -111,7 +122,7 @@ impl Batch {
                     issue_reasons.push(issue.reason);
                 }
                 self.events.push(EventRow {
-                    received: self.received,
+                    received,
                     time,
                     class_uid: narrow(number("class_uid")),
                     category_uid: narrow(number("category_uid")),
@@ -129,7 +140,7 @@ impl Batch {
                 });
             }
             Outcome::DeadLetter(dead) => self.dead_letters.push(DeadLetterRow {
-                received: self.received,
+                received,
                 source: self.source.clone(),
                 source_version: self.source_version,
                 stage: dead.stage.as_str(),

@@ -59,6 +59,7 @@ struct Inner {
     outcomes: Family<Outcome, Counter>,
     dead_letters: Family<DeadLetter, Counter>,
     stored: Counter,
+    receipt_to_stored_seconds: Histogram,
     flush_seconds: Histogram,
     searches: Family<Answer, Counter>,
     search_seconds: Histogram,
@@ -85,6 +86,8 @@ impl Metrics {
         let outcomes = Family::default();
         let dead_letters = Family::default();
         let stored = Counter::default();
+        // From 10 milliseconds to about five minutes.
+        let receipt_to_stored_seconds = Histogram::new(exponential_buckets(0.01, 2.0, 15));
         // From a millisecond to about 30 seconds.
         let flush_seconds = Histogram::new(exponential_buckets(0.001, 2.0, 16));
         let searches = Family::default();
@@ -125,6 +128,11 @@ impl Metrics {
             stored.clone(),
         );
         registry.register(
+            "receipt_to_stored_seconds",
+            "Time from the platform taking a record to its outcome being stored",
+            receipt_to_stored_seconds.clone(),
+        );
+        registry.register(
             "store_flush_seconds",
             "Time to write one batch to the event store",
             flush_seconds.clone(),
@@ -148,6 +156,7 @@ impl Metrics {
             outcomes,
             dead_letters,
             stored,
+            receipt_to_stored_seconds,
             flush_seconds,
             searches,
             search_seconds,
@@ -207,8 +216,15 @@ impl Metrics {
             .inc();
     }
 
-    pub(crate) fn stored(&self, outcomes: u64) {
-        self.0.stored.inc_by(outcomes);
+    /// Outcomes stored at `now`, each with when its record was taken, if
+    /// its envelope said; in milliseconds since the Unix epoch.
+    pub(crate) fn stored(&self, received: &[Option<i64>], now: i64) {
+        self.0.stored.inc_by(received.len() as u64);
+        for taken in received.iter().flatten() {
+            #[allow(clippy::cast_precision_loss)]
+            let seconds = (now - taken).max(0) as f64 / 1000.0;
+            self.0.receipt_to_stored_seconds.observe(seconds);
+        }
     }
 
     pub(crate) fn flushed(&self, took: Duration) {
@@ -279,7 +295,7 @@ mod tests {
         metrics.normalized("sysmon", 1);
         metrics.event("sysmon");
         metrics.dead_letter("sysmon", "decoding");
-        metrics.stored(2);
+        metrics.stored(&[Some(1_000), None], 1_250);
         metrics.searched(Searched::Found, Duration::from_millis(38));
         let text = metrics.encode();
         for expected in [
@@ -287,6 +303,8 @@ mod tests {
             r#"goliath_outcomes_total{source="sysmon",outcome="dead_letter"} 1"#,
             r#"goliath_dead_letters_total{source="sysmon",stage="decoding"} 1"#,
             "goliath_stored_outcomes_total 2",
+            "goliath_receipt_to_stored_seconds_count 1",
+            "goliath_receipt_to_stored_seconds_sum 0.25",
             r#"goliath_searches_total{answer="found"} 1"#,
             "goliath_search_seconds_count 1",
         ] {

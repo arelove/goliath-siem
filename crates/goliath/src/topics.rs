@@ -56,11 +56,17 @@ impl Topics for Disk {
     fn open(
         &self,
         name: &str,
-        _reader: &str,
+        reader: &str,
     ) -> impl Future<Output = Result<DiskTopic, RunError>> + Send {
-        future::ready(
-            DiskTopic::open(self.data.join(name), DiskOptions::default()).map_err(RunError::from),
-        )
+        future::ready((|| {
+            let topic = DiskTopic::open(self.data.join(name), DiskOptions::default())?;
+            // The reader's position is placed now, if it has none, as it is
+            // in Kafka: records sent before the reader first runs, by a
+            // process without its role, wait for it instead of being
+            // skipped.
+            drop(topic.subscribe(reader)?);
+            Ok(topic)
+        })())
     }
 
     fn sender(topic: &DiskTopic) -> DiskSender {
