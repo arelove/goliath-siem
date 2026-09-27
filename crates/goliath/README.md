@@ -74,6 +74,7 @@ on its own address, for whichever roles it runs:
 | `goliath_outcomes_total` | Events and dead letters made of them, by source |
 | `goliath_dead_letters_total` | Dead letters by source and the stage that refused them |
 | `goliath_stored_outcomes_total` | Outcomes the writer stored and acknowledged |
+| `goliath_reader_lag_records` | Records in a topic its reader has not acknowledged, by topic and reader; a rate is sustained while this stays bounded |
 | `goliath_receipt_to_stored_seconds` | Time from the collector taking a record to its outcome being stored |
 | `goliath_store_flush_seconds` | Time to write one batch to ClickHouse |
 | `goliath_searches_total`, `goliath_search_seconds` | Searches answered, refused, or failed, and their time |

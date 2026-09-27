@@ -125,5 +125,10 @@ if [[ "$COMPOSE_FILE" == compose.yaml ]]; then
         echo "the metrics count no stored outcomes" >&2
         exit 1
     fi
-    echo "metrics served: $stored outcomes stored"
+    lag=$(curl -sf http://127.0.0.1:9464/metrics         | grep '^goliath_reader_lag_records{topic="normalized",reader="writer"} ' | cut -d' ' -f2)
+    if [[ -z "$lag" ]]; then
+        echo "the metrics report no lag for the writer" >&2
+        exit 1
+    fi
+    echo "metrics served: $stored outcomes stored, the writer $lag records behind"
 fi
