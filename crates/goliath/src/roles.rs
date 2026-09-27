@@ -22,6 +22,38 @@ const POLL: Duration = Duration::from_millis(200);
 /// Records a normalizer or writer takes at once.
 const BATCH: usize = 1024;
 
+/// How often a reader reports how far behind it is. Asking costs a request
+/// to the broker when topics are in Kafka.
+const LAG_EVERY: Duration = Duration::from_secs(1);
+
+/// Reports a reader's lag at most every [`LAG_EVERY`]. A failure to learn it
+/// is not the reader's failure: the next receive reports what is wrong.
+struct Lag {
+    topic: String,
+    reader: &'static str,
+    last: Option<std::time::Instant>,
+}
+
+impl Lag {
+    fn new(topic: String, reader: &'static str) -> Self {
+        Self {
+            topic,
+            reader,
+            last: None,
+        }
+    }
+
+    async fn report(&mut self, receiver: &impl Receiver, metrics: &Metrics) {
+        if self.last.is_some_and(|last| last.elapsed() < LAG_EVERY) {
+            return;
+        }
+        self.last = Some(std::time::Instant::now());
+        if let Ok(records) = receiver.lag().await {
+            metrics.lag(&self.topic, self.reader, records);
+        }
+    }
+}
+
 /// The largest file the collector takes, since it travels as one record.
 const MAX_FILE: u64 = 64 << 20;
 
@@ -109,13 +141,15 @@ async fn move_into(path: &Path, directory: &Path) -> Result<(), RunError> {
 /// Normalizes the raw records of one source into the normalized topic.
 pub(crate) async fn normalize(
     normalizer: Normalizer,
-    mut raw: impl Receiver,
+    mut raw: impl Receiver + Sync,
     outcomes: impl Sender + Sync,
     metrics: Metrics,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
     let source = normalizer.name();
+    let mut lag = Lag::new(format!("raw-{source}"), "normalizer");
     while !*stop.borrow_and_update() {
+        lag.report(&raw, &metrics).await;
         let deliveries = raw.receive(BATCH, POLL).await?;
         let Some(last) = deliveries.last().map(|delivery| delivery.offset) else {
             continue;
@@ -156,7 +190,7 @@ pub(crate) async fn normalize(
 pub(crate) async fn write(
     store: Store,
     limits: Limits,
-    mut outcomes: impl Receiver,
+    mut outcomes: impl Receiver + Sync,
     metrics: Metrics,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
@@ -165,7 +199,9 @@ pub(crate) async fn write(
     // When the platform took each outcome's record, for those received since
     // the last acknowledgement.
     let mut pending = Vec::new();
+    let mut lag = Lag::new("normalized".to_owned(), "writer");
     loop {
+        lag.report(&outcomes, &metrics).await;
         let stopping = *stop.borrow_and_update();
         if stopping {
             flush(&mut writer, &mut stop, Flush::All, &metrics).await?;
