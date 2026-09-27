@@ -140,3 +140,33 @@ fn every_definition_is_shipped_under_its_name() {
         .collect();
     assert_eq!(shipped, definitions());
 }
+
+/// The flat Sysmon definition reads the same records, written flat, into the
+/// same events as the nested one, apart from what each keeps under
+/// `unmapped` and the record number only the nested form carries.
+#[test]
+fn flat_sysmon_makes_the_events_nested_sysmon_does() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("sources");
+    let events = |definition: &str, input: &str| -> Vec<serde_json::Value> {
+        let normalizer = Normalizer::from_yaml(definition).expect("loads");
+        let bytes = fs::read(root.join(input)).expect("readable");
+        let mut found = Vec::new();
+        normalizer.normalize(&bytes, |outcome| {
+            if let goliath_normalize::Outcome::Event(normalized) = outcome {
+                let mut event = normalized.event;
+                let object = event.as_object_mut().expect("an object");
+                object.remove("unmapped");
+                if let Some(metadata) = object.get_mut("metadata").and_then(|m| m.as_object_mut()) {
+                    metadata.remove("uid");
+                    metadata.remove("product");
+                }
+                found.push(event);
+            }
+        });
+        found
+    };
+    let nested = events(goliath_normalize::SYSMON, "sysmon/kinds.input.json");
+    let flat = events(goliath_normalize::SYSMON_FLAT, "sysmon-flat/kinds.input.json");
+    assert!(!nested.is_empty());
+    assert_eq!(flat, nested);
+}

@@ -1,0 +1,69 @@
+[
+  {
+    "event": {
+      "activity_id": 1,
+      "category_uid": 1,
+      "class_uid": 1007,
+      "device": {
+        "hostname": "WS-FINANCE-07",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "log_name": "Microsoft-Windows-Sysmon/Operational",
+        "product": {
+          "name": "Sysmon",
+          "vendor_name": "Microsoft"
+        },
+        "version": "1.5.0"
+      },
+      "process": {
+        "cmd_line": "notepad.exe",
+        "file": {
+          "path": "C:\\Windows\\System32\\notepad.exe"
+        },
+        "parent_process": {
+          "pid": 4012
+        }
+      },
+      "severity_id": 1,
+      "type_uid": 100701,
+      "unmapped": {
+        "@timestamp": "yesterday",
+        "EventID": 1,
+        "ProcessId": "not-a-pid",
+        "SourceName": "Microsoft-Windows-Sysmon"
+      }
+    },
+    "id": "adb24a5d22ffe202d02f655fef0e36da",
+    "issues": [
+      {
+        "reason": "`yesterday` is not an RFC 3339 time: failed to parse four digit integer as year: invalid digit, expected 0-9 but got y",
+        "source": "@timestamp",
+        "target": "time"
+      },
+      {
+        "reason": "`not-a-pid` is not a whole number",
+        "source": "ProcessId",
+        "target": "process.pid"
+      }
+    ],
+    "kind": "process_creation"
+  },
+  {
+    "dead_letter": {
+      "error": "EOF while parsing a value at line 1 column 52",
+      "raw": "{\"@timestamp\": \"2026-09-24T10:15:30Z\", \"EventID\": 1,",
+      "stage": "decoding"
+    }
+  },
+  {
+    "dead_letter": {
+      "error": "no kind of source `sysmon-flat` accepts the record",
+      "raw": "{\"@timestamp\": \"2026-09-24T10:16:02.000Z\", \"Hostname\": \"WS-FINANCE-07\", \"SourceName\": \"Microsoft-Windows-Security-Auditing\", \"Channel\": \"Security\", \"EventID\": 4688, \"NewProcessName\": \"C:\\\\Windows\\\\System32\\\\notepad.exe\"}",
+      "stage": "mapping"
+    }
+  }
+]
