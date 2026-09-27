@@ -61,7 +61,8 @@ pub(crate) async fn collect(
             let bytes = tokio::fs::read(&path)
                 .await
                 .map_err(|error| io(&path, &error))?;
-            raw.send(vec![bytes]).await?;
+            raw.send(vec![crate::raw::stamp(crate::raw::now(), &bytes)])
+                .await?;
             move_into(&path, &done).await?;
             metrics.collected(&source, size);
             info!(file = %path.display(), size, "collected");
@@ -121,13 +122,19 @@ pub(crate) async fn normalize(
         };
         let mut encoded = Vec::new();
         for delivery in &deliveries {
-            normalizer.normalize(&delivery.payload, |outcome| {
+            let (received, bytes) = crate::raw::read(&delivery.payload);
+            let received = received.unwrap_or_else(crate::raw::now);
+            normalizer.normalize(bytes, |outcome| {
                 match &outcome {
                     Outcome::Event(_) => metrics.event(source),
                     Outcome::DeadLetter(dead) => metrics.dead_letter(source, dead.stage.as_str()),
                     _ => {}
                 }
-                encoded.push(Envelope::new(source, normalizer.version(), outcome).encode());
+                encoded.push(
+                    Envelope::new(source, normalizer.version(), outcome)
+                        .received_at(received)
+                        .encode(),
+                );
             });
         }
         let count = encoded.len();
@@ -155,8 +162,9 @@ pub(crate) async fn write(
 ) -> Result<(), RunError> {
     let mut writer = Writer::new(store, limits);
     let mut received = None;
-    // Outcomes received since the last acknowledgement.
-    let mut pending = 0;
+    // When the platform took each outcome's record, for those received since
+    // the last acknowledgement.
+    let mut pending = Vec::new();
     loop {
         let stopping = *stop.borrow_and_update();
         if stopping {
@@ -172,7 +180,7 @@ pub(crate) async fn write(
                     RunError::Corrupt(format!("normalized offset {}: {error}", delivery.offset))
                 })?;
                 received = Some(delivery.offset);
-                pending += 1;
+                pending.push(envelope.received);
                 // A push that fails to flush has kept its outcome; only the
                 // flush is repeated.
                 match writer.push(envelope).await {
@@ -190,7 +198,7 @@ pub(crate) async fn write(
             && let Some(offset) = received.take()
         {
             outcomes.acknowledge(offset).await?;
-            metrics.stored(std::mem::take(&mut pending));
+            metrics.stored(&std::mem::take(&mut pending), crate::raw::now());
             info!(through = offset, "stored");
         }
         if stopping {
