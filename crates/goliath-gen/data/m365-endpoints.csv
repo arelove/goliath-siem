@@ -1,0 +1,13 @@
+service,host,network,port
+Exchange,outlook.cloud.microsoft,13.107.6.152/31,443
+Exchange,outlook.office.com,13.107.6.152/31,443
+Exchange,outlook.office365.com,13.107.6.152/31,443
+Skype,teams.cloud.microsoft,52.112.0.0/14,443
+Skype,teams.microsoft.com,52.112.0.0/14,443
+Common,office.live.com,13.107.6.171/32,443
+Common,account.activedirectory.windowsazure.com,20.20.32.0/19,443
+Common,accounts.accesscontrol.windows.net,20.20.32.0/19,443
+Common,adminwebservice.microsoftonline.com,20.20.32.0/19,443
+Common,compliance.microsoft.com,13.107.6.192/32,443
+Common,defender.microsoft.com,13.107.6.192/32,443
+Common,protection.office.com,13.107.6.192/32,443
