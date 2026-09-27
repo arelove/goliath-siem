@@ -360,3 +360,69 @@ async fn rows_taken_from_several_writers_and_absorbed_by_one_are_all_written() {
     );
     scratch.drop().await;
 }
+
+#[tokio::test]
+async fn an_overview_counts_what_is_stored_by_time_severity_and_value() {
+    use goliath_store::SearchLimits;
+
+    let Some(scratch) = Scratch::new("overview") else {
+        return;
+    };
+    scratch.store.migrate().await.unwrap();
+    // The samples' events are from 2026-09-24; received that day too.
+    let day = 24 * 3_600_000;
+    let received = 1_790_208_000_000; // 2026-09-24T00:00:00Z
+    let mut events = 0;
+    for input in [KINDS, MALFORMED] {
+        let written = batch(input, received + day / 2);
+        events += written.events() as u64;
+        scratch.store.write(&written).await.unwrap();
+    }
+
+    let hour = 3_600_000;
+    let overview = scratch
+        .store
+        .overview(
+            received - day,
+            received + 2 * day,
+            hour,
+            SearchLimits::default(),
+        )
+        .await
+        .unwrap();
+    let total: u64 = overview.series.iter().map(|bucket| bucket.count).sum();
+    assert_eq!(total, events);
+    assert!(overview.series.iter().all(|bucket| bucket.at % hour == 0));
+    let classes: u64 = overview.classes.iter().map(|entry| entry.count).sum();
+    assert!(classes > 0 && classes <= events);
+    assert_eq!(overview.sources.len(), 1);
+    assert_eq!(overview.sources[0].key, "sysmon");
+    assert!(!overview.hosts.is_empty(), "Sysmon events name their host");
+    assert!(overview.hosts.iter().all(|entry| !entry.key.is_empty()));
+    let top_host: u64 = overview
+        .host_series
+        .iter()
+        .filter(|bucket| bucket.host == overview.hosts[0].key)
+        .map(|bucket| bucket.count)
+        .sum();
+    assert_eq!(top_host, overview.hosts[0].count);
+    assert!(overview.dead_letters > 0);
+
+    // Arrivals count by when records were taken: only what was taken now.
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+    let recent = batch(KINDS, i64::try_from(now).unwrap());
+    scratch.store.write(&recent).await.unwrap();
+    let arrived = scratch
+        .store
+        .arrivals(60, SearchLimits::default())
+        .await
+        .unwrap();
+    assert_eq!(
+        arrived.iter().map(|second| second.count).sum::<u64>(),
+        recent.events() as u64
+    );
+    scratch.drop().await;
+}

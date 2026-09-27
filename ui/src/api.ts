@@ -185,3 +185,48 @@ export function operators(holds: Holds): Op[] {
       ];
   }
 }
+
+/** A value and how many events hold it. */
+export interface Frequent {
+  key: string;
+  count: number;
+}
+
+/** Events in one step of an overview, by a key such as `severity_id` or host. */
+export interface Step {
+  at: number;
+  counts: Record<string, number>;
+}
+
+export interface Overview {
+  from: number;
+  to: number;
+  step_ms: number;
+  total: number;
+  dead_letters: number;
+  series: Step[];
+  classes: Frequent[];
+  sources: Frequent[];
+  hosts: Frequent[];
+  /** The events of `hosts` by step, keyed by host. */
+  host_series: Step[];
+  users: Frequent[];
+}
+
+export interface Arrivals {
+  /** The server's clock, in milliseconds since the epoch. */
+  now: number;
+  seconds: { at: number; count: number }[];
+}
+
+export function overview(from: string, to: string, signal?: AbortSignal): Promise<Overview> {
+  return request<Overview>("/overview", {
+    method: "POST",
+    body: JSON.stringify({ from, to }),
+    ...(signal ? { signal } : {}),
+  });
+}
+
+export function arrivals(signal?: AbortSignal): Promise<Arrivals> {
+  return request<Arrivals>("/arrivals", signal ? { signal } : {});
+}

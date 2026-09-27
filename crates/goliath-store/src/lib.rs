@@ -13,6 +13,7 @@
 mod batch;
 mod error;
 mod migrate;
+mod overview;
 mod search;
 mod store;
 mod writer;
@@ -20,6 +21,7 @@ mod writer;
 pub use batch::Batch;
 pub use error::StoreError;
 pub use migrate::{MIGRATIONS, Migration};
+pub use overview::{Arrived, Bucket, Frequent, HostBucket, Overview};
 pub use search::{Found, Page, SearchLimits, Stored};
 pub use store::Store;
 pub use writer::{Limits, Writer};

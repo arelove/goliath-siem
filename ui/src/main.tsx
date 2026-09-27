@@ -16,6 +16,14 @@ const client = new QueryClient({
   },
 });
 
+// The theme chosen before, applied before the first paint; dark by default.
+try {
+  document.documentElement.dataset.theme =
+    localStorage.getItem("goliath.theme") === "light" ? "light" : "dark";
+} catch {
+  document.documentElement.dataset.theme = "dark";
+}
+
 const root = document.getElementById("root");
 if (root) {
   createRoot(root).render(

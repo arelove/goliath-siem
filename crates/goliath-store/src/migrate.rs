@@ -52,6 +52,16 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "events_time_index_built",
         sql: include_str!("../migrations/0004_events_time_index_built.sql"),
     },
+    Migration {
+        version: 5,
+        name: "events_received_index",
+        sql: include_str!("../migrations/0005_events_received_index.sql"),
+    },
+    Migration {
+        version: 6,
+        name: "events_received_index_built",
+        sql: include_str!("../migrations/0006_events_received_index_built.sql"),
+    },
 ];
 
 /// Where applied migrations are recorded. Created before any migration runs,
