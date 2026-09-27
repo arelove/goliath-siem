@@ -10,7 +10,7 @@
 
 use std::env;
 use std::path::Path;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use clickhouse::Client;
 use goliath::Config;
@@ -170,6 +170,82 @@ max_delay_ms = 100
     .await;
     stop.send(()).unwrap();
     running.await.unwrap().unwrap();
+
+    connect(&url)
+        .query(&format!("DROP DATABASE IF EXISTS {database}"))
+        .execute()
+        .await
+        .unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_store_records_when_the_collector_took_a_record() {
+    let Some(url) = clickhouse_url() else {
+        return;
+    };
+    let user = clickhouse_user();
+    let database = format!("goliath_test_received_{}", std::process::id());
+    let directory = tempfile::tempdir().unwrap();
+    let config = |roles: &str| {
+        let path = directory.path().join(format!("{}.toml", roles.len()));
+        std::fs::write(
+            &path,
+            format!(
+                r#"
+roles = [{roles}]
+data = "data"
+
+[[sources]]
+definition = "sysmon"
+inbox = "inbox/sysmon"
+
+[store]
+url = "{url}"
+database = "{database}"
+user = "{user}"
+password_env = "GOLIATH_CLICKHOUSE_PASSWORD"
+
+[writer]
+max_rows = 1000
+max_delay_ms = 100
+"#
+            ),
+        )
+        .unwrap();
+        Config::load(&path).unwrap()
+    };
+    let inbox = directory.path().join("inbox/sysmon");
+
+    // Collected and normalized with no writer running.
+    let (stop, running) = start(config(r#""collector", "normalizer""#));
+    let taken = SystemTime::now();
+    drop_file(&inbox, "kinds.json", KINDS);
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while !inbox.join("done/kinds.json").exists() {
+        assert!(Instant::now() < deadline, "the file was not collected");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    stop.send(()).unwrap();
+    running.await.unwrap().unwrap();
+
+    // Written seconds later: the store still records when it was taken.
+    tokio::time::sleep(Duration::from_secs(3)).await;
+    let (stop, running) = start(config(r#""writer""#));
+    let client = connect(&url).with_database(&database);
+    eventually(&client, "SELECT count() FROM events", expected(KINDS).0).await;
+    stop.send(()).unwrap();
+    running.await.unwrap().unwrap();
+    let taken = i64::try_from(taken.duration_since(UNIX_EPOCH).unwrap().as_millis()).unwrap();
+    let (earliest, latest) = client
+        .query("SELECT min(toUnixTimestamp64Milli(received)), max(toUnixTimestamp64Milli(received)) FROM events")
+        .fetch_one::<(i64, i64)>()
+        .await
+        .unwrap();
+    assert!(
+        earliest >= taken - 1_000 && latest <= taken + 1_500,
+        "received from {earliest} to {latest}, but the file was taken at {taken}"
+    );
 
     connect(&url)
         .query(&format!("DROP DATABASE IF EXISTS {database}"))
