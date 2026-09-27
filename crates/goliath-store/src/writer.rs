@@ -70,8 +70,12 @@ impl Writer {
             source,
             version,
             outcome,
+            received,
             ..
         } = envelope;
+        // When the platform took the record, as the role that took it said;
+        // for envelopes that do not say, when they reached the writer.
+        let received = received.unwrap_or_else(now);
         let index = if let Some(index) = self
             .pending
             .iter()
@@ -80,10 +84,10 @@ impl Writer {
             index
         } else {
             self.pending
-                .push(Batch::for_source(&source, version, now()));
+                .push(Batch::for_source(&source, version, received));
             self.pending.len() - 1
         };
-        self.pending[index].push(outcome)?;
+        self.pending[index].push_received(outcome, received)?;
         self.rows += 1;
         self.oldest.get_or_insert_with(Instant::now);
         if self.rows >= self.limits.max_rows {
