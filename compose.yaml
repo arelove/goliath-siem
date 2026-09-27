@@ -55,6 +55,7 @@ services:
       - ./inbox:/var/lib/goliath/inbox
     ports:
       - "127.0.0.1:8080:8080"
+      - "127.0.0.1:9464:9464"
     secrets:
       - clickhouse_password
       - api_token

@@ -12,3 +12,7 @@ definition = "sysmon"
 [kafka]
 brokers = "redpanda:9092"
 replication = 1
+
+# Reachable on the compose network, for a Prometheus beside the roles.
+[metrics]
+listen = "0.0.0.0:9464"

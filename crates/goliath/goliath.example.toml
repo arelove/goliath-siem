@@ -36,6 +36,14 @@ max_delay_ms = 1000
 # ui = "ui/dist"                   # the built interface, served at /
 # max_span_days = 31               # the longest time range a search may cover
 
+# Metrics for Prometheus, at /metrics: records collected, normalized, and
+# stored, dead letters by source and stage, and the time to write a batch and
+# to answer a search. No token: it holds counts, never events, so listen only
+# where the monitoring system reaches.
+#
+# [metrics]
+# listen = "127.0.0.1:9464"
+
 # Keep topics in Kafka or Redpanda instead of `data`, so that roles can run in
 # separate processes; each then lists only its own roles. Needs a binary built
 # with `--features kafka`.

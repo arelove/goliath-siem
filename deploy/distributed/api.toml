@@ -13,3 +13,7 @@ password_file = "/run/secrets/clickhouse_password"
 listen = "0.0.0.0:8080"
 token_file = "/run/secrets/api_token"
 ui = "/usr/share/goliath/ui"
+
+# Reachable on the compose network, for a Prometheus beside the roles.
+[metrics]
+listen = "0.0.0.0:9464"

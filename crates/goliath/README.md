@@ -61,6 +61,25 @@ normalization issues, and `/api/v1/schema/classes/{uid}/paths` lists what a
 search can name. The API listens on loopback unless `[api]` names a
 `token_file`, whose token every request then carries as a bearer token.
 
+## Metrics
+
+With `[metrics]` set, every process serves Prometheus metrics at `/metrics`
+on its own address, for whichever roles it runs:
+
+| Metric | What it counts |
+| --- | --- |
+| `goliath_collected_files_total`, `goliath_collected_bytes_total` | Files the collector sent, by source |
+| `goliath_rejected_files_total` | Files set aside as too large, by source |
+| `goliath_normalized_records_total` | Raw records normalized, by source |
+| `goliath_outcomes_total` | Events and dead letters made of them, by source |
+| `goliath_dead_letters_total` | Dead letters by source and the stage that refused them |
+| `goliath_stored_outcomes_total` | Outcomes the writer stored and acknowledged |
+| `goliath_store_flush_seconds` | Time to write one batch to ClickHouse |
+| `goliath_searches_total`, `goliath_search_seconds` | Searches answered, refused, or failed, and their time |
+
+The endpoint takes no token: it holds counts and durations, never an event.
+Listen only on an address the monitoring system reaches.
+
 ## License
 
 Copyright 2026 arelove. Licensed under the
