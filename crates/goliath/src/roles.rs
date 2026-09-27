@@ -4,11 +4,14 @@
 //! then acknowledge. A crash anywhere repeats work; it never loses records
 //! (`docs/adr/0015-pipe-semantics.md`).
 
+use std::collections::BTreeMap;
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Duration;
 
 use goliath_normalize::{Envelope, Normalizer, Outcome};
-use goliath_pipe::{Receiver, Sender};
+use goliath_pipe::{Delivery, Receiver, Sender};
 use goliath_store::{Limits, Store, StoreError, Writer};
 use tokio::sync::watch;
 use tracing::{info, warn};
@@ -139,14 +142,20 @@ async fn move_into(path: &Path, directory: &Path) -> Result<(), RunError> {
 }
 
 /// Normalizes the raw records of one source into the normalized topic.
+///
+/// A batch is normalized on `threads` threads at once, off the runtime's own
+/// threads; outcomes keep the order of their records, and the batch is
+/// acknowledged only once all of it is sent, as before.
 pub(crate) async fn normalize(
     normalizer: Normalizer,
+    threads: NonZeroUsize,
     mut raw: impl Receiver + Sync,
     outcomes: impl Sender + Sync,
     metrics: Metrics,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
-    let source = normalizer.name();
+    let normalizer = Arc::new(normalizer);
+    let source = normalizer.name().to_owned();
     let mut lag = Lag::new(format!("raw-{source}"), "normalizer");
     while !*stop.borrow_and_update() {
         lag.report(&raw, &metrics).await;
@@ -154,35 +163,95 @@ pub(crate) async fn normalize(
         let Some(last) = deliveries.last().map(|delivery| delivery.offset) else {
             continue;
         };
-        let mut encoded = Vec::new();
-        for delivery in &deliveries {
-            let (received, bytes) = crate::raw::read(&delivery.payload);
-            let received = received.unwrap_or_else(crate::raw::now);
-            normalizer.normalize(bytes, |outcome| {
-                match &outcome {
-                    Outcome::Event(_) => metrics.event(source),
-                    Outcome::DeadLetter(dead) => metrics.dead_letter(source, dead.stage.as_str()),
-                    _ => {}
-                }
-                encoded.push(
-                    Envelope::new(source, normalizer.version(), outcome)
-                        .received_at(received)
-                        .encode(),
-                );
-            });
+        let records = deliveries.len();
+        let shared = Arc::clone(&normalizer);
+        let (encoded, tally) =
+            tokio::task::spawn_blocking(move || normalize_batch(&shared, &deliveries, threads))
+                .await
+                .map_err(|error| RunError::Role(format!("normalizing: {error}")))?;
+        metrics.events(&source, tally.events);
+        for (stage, count) in tally.dead_letters {
+            metrics.dead_letters(&source, stage, count);
         }
         let count = encoded.len();
         outcomes.send(encoded).await?;
         raw.acknowledge(last).await?;
-        metrics.normalized(source, deliveries.len());
-        info!(
-            source,
-            records = deliveries.len(),
-            outcomes = count,
-            "normalized"
-        );
+        metrics.normalized(&source, records);
+        info!(source, records, outcomes = count, "normalized");
     }
     Ok(())
+}
+
+/// What a batch became, counted.
+#[derive(Default)]
+struct Tally {
+    events: u64,
+    dead_letters: BTreeMap<&'static str, u64>,
+}
+
+impl Tally {
+    fn add(&mut self, other: Self) {
+        self.events += other.events;
+        for (stage, count) in other.dead_letters {
+            *self.dead_letters.entry(stage).or_default() += count;
+        }
+    }
+}
+
+/// Normalizes `deliveries` on up to `threads` threads, each taking a run of
+/// consecutive records, and joins their outcomes in the records' order.
+fn normalize_batch(
+    normalizer: &Normalizer,
+    deliveries: &[Delivery],
+    threads: NonZeroUsize,
+) -> (Vec<Vec<u8>>, Tally) {
+    let per_thread = deliveries.len().div_ceil(threads.get()).max(1);
+    let parts: Vec<(Vec<Vec<u8>>, Tally)> = std::thread::scope(|scope| {
+        let running: Vec<_> = deliveries
+            .chunks(per_thread)
+            .map(|chunk| scope.spawn(move || normalize_run(normalizer, chunk)))
+            .collect();
+        running
+            .into_iter()
+            // A panic in normalization is a bug; carry it to this task.
+            .map(|thread| {
+                thread
+                    .join()
+                    .unwrap_or_else(|panic| std::panic::resume_unwind(panic))
+            })
+            .collect()
+    });
+    let mut encoded = Vec::with_capacity(parts.iter().map(|(part, _)| part.len()).sum());
+    let mut tally = Tally::default();
+    for (part, counted) in parts {
+        encoded.extend(part);
+        tally.add(counted);
+    }
+    (encoded, tally)
+}
+
+fn normalize_run(normalizer: &Normalizer, deliveries: &[Delivery]) -> (Vec<Vec<u8>>, Tally) {
+    let mut encoded = Vec::new();
+    let mut tally = Tally::default();
+    for delivery in deliveries {
+        let (received, bytes) = crate::raw::read(&delivery.payload);
+        let received = received.unwrap_or_else(crate::raw::now);
+        normalizer.normalize(bytes, |outcome| {
+            match &outcome {
+                Outcome::Event(_) => tally.events += 1,
+                Outcome::DeadLetter(dead) => {
+                    *tally.dead_letters.entry(dead.stage.as_str()).or_default() += 1;
+                }
+                _ => {}
+            }
+            encoded.push(
+                Envelope::new(normalizer.name(), normalizer.version(), outcome)
+                    .received_at(received)
+                    .encode(),
+            );
+        });
+    }
+    (encoded, tally)
 }
 
 /// Writes normalized outcomes to the store, acknowledging only what is
@@ -286,4 +355,75 @@ async fn flush(
 
 fn io(path: &Path, error: &std::io::Error) -> RunError {
     RunError::Io(format!("{}: {error}", path.display()))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fmt::Write as _;
+
+    use super::*;
+
+    const DEFINITION: &str = r#"
+name: test
+version: 1
+framing: lines
+decoding: json
+common:
+  time: { from: at, as: unix-seconds }
+  severity_id: { value: 1 }
+  metadata.version: { value: "1.5.0" }
+  metadata.product.name: { value: Test }
+kinds:
+  - name: launch
+    when: { type: launch }
+    class: { class_uid: 1007, activity_id: 1 }
+    fields:
+      process.pid: { from: pid, as: integer }
+"#;
+
+    fn deliveries() -> Vec<Delivery> {
+        (0..97_u64)
+            .map(|offset| {
+                let mut lines = String::new();
+                for line in 0..10 {
+                    // Every seventh record is not JSON, so dead letters are
+                    // interleaved with events.
+                    if (offset + line) % 7 == 0 {
+                        lines.push_str("not json\n");
+                    } else {
+                        let _ = writeln!(
+                            lines,
+                            "{{\"type\": \"launch\", \"at\": {}, \"pid\": {}}}",
+                            1_790_000_000 + offset,
+                            offset * 10 + line
+                        );
+                    }
+                }
+                Delivery {
+                    offset,
+                    payload: crate::raw::stamp(1_790_000_000_000, lines.as_bytes()),
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn any_number_of_threads_gives_the_same_outcomes_in_the_same_order() {
+        let normalizer = Normalizer::from_yaml(DEFINITION).unwrap();
+        let deliveries = deliveries();
+        let (alone, counted) = normalize_batch(&normalizer, &deliveries, NonZeroUsize::MIN);
+        assert_eq!(alone.len(), 970);
+        assert!(counted.events > 0);
+        assert!(counted.dead_letters.values().sum::<u64>() > 0);
+        for threads in [2, 3, 8, 200] {
+            let (together, tally) = normalize_batch(
+                &normalizer,
+                &deliveries,
+                NonZeroUsize::new(threads).unwrap(),
+            );
+            assert!(together == alone, "{threads} threads changed the outcomes");
+            assert_eq!(tally.events, counted.events);
+            assert_eq!(tally.dead_letters, counted.dead_letters);
+        }
+    }
 }
