@@ -10,14 +10,10 @@ criterion that is measurable, so "done" is not a judgement call.
 
 ## Current milestone
 
-**M2.5 - Event search.** In progress. The search API and the search view
-are built ([ADR-0016](adr/0016-event-search.md)): a typed structure checked
-against the OCSF schema, compiled to parameterized SQL, and served by the
-`api` role with the interface on the same origin. The search half of the exit
-criterion is met: over 10 million stored events, searches filtered by time,
-class, and one path return in 38 to 806 ms
-([benchmarks.md](benchmarks.md#search)). Open: the demo path, and a measured
-time from an event written to the source to the event visible in the view.
+**M3 - Benchmark rig.** Next. M2.5 met its exit criterion; the rig comes
+before collection, context, and the entity graph, because each of those is
+judged by a number only the rig can produce, and the entity-model generator
+is what the entity graph's precision and recall are measured against.
 
 ## M0 - Foundations
 
@@ -119,6 +115,15 @@ filtered by time, class, and one path returns in under one second.
 The view is built as the base of the M7 investigation view, not as a
 throwaway: its table, filters, and event detail are what M7 extends with
 entity pivots and the timeline.
+
+**Status:** done. Searches filtered by time, class, and one path return in 38
+to 806 ms over 10 million stored events
+([benchmarks.md](benchmarks.md#search)), after a minmax index on `time`. One
+Sysmon event dropped into the inbox is searchable about 1.2 seconds later with
+every role in one process, and 0.7 seconds later with the roles in separate
+containers over Kafka; CI fails either stack past five seconds.
+`scripts/demo.sh` starts the platform, fills it with a day of a fleet's
+events with one intrusion among them, and opens the view on it.
 
 ## M3 - Benchmark rig
 
