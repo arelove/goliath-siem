@@ -204,31 +204,31 @@ impl Metrics {
             .inc_by(records as u64);
     }
 
-    pub(crate) fn event(&self, source: &str) {
+    pub(crate) fn events(&self, source: &str, count: u64) {
         self.0
             .outcomes
             .get_or_create(&Outcome {
                 source: source.to_owned(),
                 outcome: "event",
             })
-            .inc();
+            .inc_by(count);
     }
 
-    pub(crate) fn dead_letter(&self, source: &str, stage: &'static str) {
+    pub(crate) fn dead_letters(&self, source: &str, stage: &'static str, count: u64) {
         self.0
             .outcomes
             .get_or_create(&Outcome {
                 source: source.to_owned(),
                 outcome: "dead_letter",
             })
-            .inc();
+            .inc_by(count);
         self.0
             .dead_letters
             .get_or_create(&DeadLetter {
                 source: source.to_owned(),
                 stage,
             })
-            .inc();
+            .inc_by(count);
     }
 
     /// Outcomes stored at `now`, each with when its record was taken, if
@@ -319,8 +319,8 @@ mod tests {
         let metrics = Metrics::new();
         metrics.collected("sysmon", 6_632);
         metrics.normalized("sysmon", 1);
-        metrics.event("sysmon");
-        metrics.dead_letter("sysmon", "decoding");
+        metrics.events("sysmon", 1);
+        metrics.dead_letters("sysmon", "decoding", 1);
         metrics.stored(&[Some(1_000), None], 1_250);
         metrics.lag("normalized", "writer", 42);
         metrics.searched(Searched::Found, Duration::from_millis(38));

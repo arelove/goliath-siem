@@ -26,6 +26,10 @@ retention_days = 30
 max_rows = 50000
 max_delay_ms = 1000
 
+# Threads that normalize a batch at once; every core if left out.
+# [normalizer]
+# threads = 8
+
 # The `api` role, if listed in `roles`: searches over HTTP. On loopback by
 # default; any other address needs a token of at least 32 bytes, such as one
 # from `openssl rand -hex 32`, in a file.

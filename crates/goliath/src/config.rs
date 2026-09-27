@@ -5,7 +5,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::SocketAddr;
-use std::num::{NonZeroU16, NonZeroU64};
+use std::num::{NonZeroU16, NonZeroU64, NonZeroUsize};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -34,6 +34,9 @@ pub struct Config {
     /// How the writer batches.
     #[serde(default)]
     pub writer: WriterConfig,
+    /// How the normalizer uses the machine.
+    #[serde(default)]
+    pub normalizer: NormalizerConfig,
     /// Where and how the API listens.
     #[serde(default)]
     pub api: ApiConfig,
@@ -185,6 +188,22 @@ pub struct StoreConfig {
     /// Days to keep events and dead letters, counted from receipt; kept
     /// forever if absent.
     pub retention_days: Option<NonZeroU16>,
+}
+
+/// How the normalizer uses the machine.
+#[derive(Debug, Clone, Copy, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NormalizerConfig {
+    /// Threads that normalize a batch at once; every core by default.
+    pub threads: Option<NonZeroUsize>,
+}
+
+impl NormalizerConfig {
+    /// The threads to normalize on.
+    pub fn threads(&self) -> NonZeroUsize {
+        self.threads
+            .unwrap_or_else(|| std::thread::available_parallelism().unwrap_or(NonZeroUsize::MIN))
+    }
 }
 
 /// How the writer batches.

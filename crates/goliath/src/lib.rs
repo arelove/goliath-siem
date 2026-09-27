@@ -169,6 +169,7 @@ async fn start_pipeline<T: Topics>(
             let receiver = topics.subscribe(&raw, "normalizer").await?;
             roles.spawn(roles::normalize(
                 normalizer.clone(),
+                config.normalizer.threads(),
                 receiver,
                 T::sender(&outcomes),
                 metrics.clone(),
