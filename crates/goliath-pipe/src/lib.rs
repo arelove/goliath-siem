@@ -118,4 +118,9 @@ pub trait Receiver {
     /// Records that everything up to and including `offset` is handled, so
     /// the group will not receive it again after a restart.
     fn acknowledge(&mut self, offset: u64) -> impl Future<Output = Result<(), PipeError>> + Send;
+
+    /// Records in the topic this group has not acknowledged: how far it is
+    /// behind the senders. Received but unacknowledged records count, since
+    /// a restart would deliver them again.
+    fn lag(&self) -> impl Future<Output = Result<u64, PipeError>> + Send;
 }

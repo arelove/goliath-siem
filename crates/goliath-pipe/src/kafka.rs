@@ -483,6 +483,22 @@ impl Receiver for KafkaReceiver {
         let name = self.shared.name.clone();
         blocking(move || commit(&consumer, &name, offset + 1)).await
     }
+
+    async fn lag(&self) -> Result<u64, PipeError> {
+        if !lock(&self.shared.local).contains(&self.group) {
+            return Err(PipeError::Unsubscribed(self.group.clone()));
+        }
+        let consumer = Arc::clone(&self.consumer);
+        let name = self.shared.name.clone();
+        blocking(move || {
+            let (_, end) = retry(|| consumer.fetch_watermarks(&name, 0, REQUEST))?;
+            let end = u64::try_from(end).unwrap_or(0);
+            // A group that never committed has read nothing.
+            let position = committed(&consumer, &name)?.unwrap_or(0);
+            Ok(end.saturating_sub(position))
+        })
+        .await
+    }
 }
 
 /// The group's committed offset for the topic's partition, if any.
