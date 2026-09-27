@@ -10,17 +10,14 @@ criterion that is measurable, so "done" is not a judgement call.
 
 ## Current milestone
 
-**M2.5 - Event search.** In progress. M2 met its exit criterion: Sysmon,
-Falco, Entra ID, and Linux auditd events flow into ClickHouse with every role in
-one process and with each role in its own container, both tested in CI; skip
-indexes and the S3 transport remained. Search is designed in
-[ADR-0016](adr/0016-event-search.md): a typed structure checked against the
-OCSF schema and compiled to parameterized SQL, served by the `api` role with
-the interface on the same origin. The search half of the exit criterion is
-met: over 10 million stored events, searches filtered by time, class, and one
-path return in 38 to 806 ms ([benchmarks.md](benchmarks.md#search)), after a
-minmax index on `time`, the skip index M2 left open. The matching engine's
-10-million-event corpus run from M1 is still open.
+**M2.5 - Event search.** In progress. The search API and the search view
+are built ([ADR-0016](adr/0016-event-search.md)): a typed structure checked
+against the OCSF schema, compiled to parameterized SQL, and served by the
+`api` role with the interface on the same origin. The search half of the exit
+criterion is met: over 10 million stored events, searches filtered by time,
+class, and one path return in 38 to 806 ms
+([benchmarks.md](benchmarks.md#search)). Open: the demo path, and a measured
+time from an event written to the source to the event visible in the view.
 
 ## M0 - Foundations
 
@@ -61,6 +58,15 @@ platform existing.
 at a measured and published events/s per core, with results identical to
 one-rule-at-a-time evaluation on the same corpus.
 
+**Status:** the engine is built and exact. On 2,046 SigmaHQ rules and
+converted OTRF recordings it returns what the reference evaluator returns for
+every event, at about 129,000 events/s on one core and over 2,000,000 on 32
+threads ([sigma-coverage.md](sigma-coverage.md#the-engine-on-the-same-events)),
+with instruction counts gated in CI. Open: the M1 corpus replicated to 10
+million events, which the exit criterion names, and
+`goliath-sigma-clickhouse`, which moves to M5 with the scheduler that needs
+it.
+
 The M1 corpus is deliberately not the M3 generator. It is real telemetry,
 replicated for volume, so it is good enough to check equivalence and measure
 the engine against itself; it cannot stand in for the entity-model stream when
@@ -82,7 +88,7 @@ Get real events into real storage.
 table in both single-process and fully distributed topologies, with the same
 integration suite passing against both.
 
-**Status:** started. `goliath-normalize` runs declarative source definitions
+**Status:** the exit criterion is met. `goliath-normalize` runs declarative source definitions
 with dead-letter routing, checked against the OCSF schema, and its Sysmon
 definition feeds the SigmaHQ regression run. `goliath-store` writes its events
 and dead letters to ClickHouse under versioned migrations
@@ -92,8 +98,8 @@ roles in memory or in a durable disk log ([ADR-0015](adr/0015-pipe-semantics.md)
 and the `goliath` binary runs collector, normalizer, and writer in one process:
 both halves of the exit criterion are met: with every role in one process over
 the disk log, and with each role in its own container over Kafka, both tested
-end to end in CI. Definitions ship for all four sources. Not built yet: skip
-indexes and the S3 transport.
+end to end in CI. Definitions ship for all four sources, and a minmax index
+on `time` keeps searches narrow (M2.5). Not built yet: the S3 transport.
 
 ## M2.5 - Event search
 
@@ -124,10 +130,26 @@ Without this, nothing after it can be honestly measured.
 | Replay engine | Real datasets time-shifted to now, with a speed multiplier |
 | Attack injector | Labelled chains at known offsets, producing ground truth |
 | Metrics report | Events/s per core, latency percentiles, compression ratio, precision and recall |
+| Platform metrics | A Prometheus endpoint on every role: events in and out, ingestion lag, pipe depth, dead letters by source and stage, query time; the report reads them rather than guessing from outside |
 
 **Exit criterion:** a single command produces a reproducible report covering
 every metric listed in [architecture.md](architecture.md#benchmark-method),
 and a 30-minute run sustains 100k events/s on one developer machine.
+
+## M3.5 - Collection
+
+Files dropped in an inbox prove the path; companies send logs over the
+network, from sources they already run.
+
+| Deliverable | Detail |
+| --- | --- |
+| Network receivers | Syslog (RFC 5424 and 3164) over TCP with TLS, an HTTP ingest endpoint with per-source tokens, and OpenTelemetry logs over OTLP, each writing to the pipe with the same backpressure as the file collector |
+| Source definitions | Windows Security events, AWS CloudTrail, Okta System Log, Microsoft 365 audit, Zeek, and Suricata EVE, each with fixtures of every kind and of malformed input |
+| Source health | For each source: last event seen, rate against its own baseline, and dead letters, so a source that goes silent is noticed before an investigation needs it |
+
+**Exit criterion:** each shipped source sends from a live sender to an event
+visible in search within five seconds, and each receiver sustains the M3
+rate on one machine without losing an acknowledged record.
 
 ## M4 - Context
 
@@ -143,6 +165,24 @@ Enrichment that makes an alert actionable rather than a row.
 measurable reduction in throughput, and an ATT&CK Navigator layer exported that
 distinguishes covered techniques from techniques lacking a data source.
 
+## M4.5 - Entity graph
+
+An alert about a process is a row; an alert about a person, on a host, talking
+to an address, is an investigation. The graph is what turns events into the
+things analysts reason about.
+
+| Deliverable | Detail |
+| --- | --- |
+| Entity model | Users, hosts, processes, files, addresses, and domains as typed objects with typed links (logged on to, ran, wrote, connected to), derived from OCSF observables, versioned like the schema |
+| Resolution | One entity under the identifiers each source gives it, such as `CORPdam`, `adam@corp.example`, and an Entra object id; every merge explainable by the rule and events that made it, and reversible; placement, streaming or at rest, decided by ADR |
+| Graph store | Entities and links in ClickHouse beside the events, with first and last seen and the events behind each link |
+| Graph API | Neighbours of an entity within a time window, and the path between two, under the same checked, parameterized discipline as search |
+
+**Exit criterion:** on the M3 generator's stream, where each entity appears
+under different identifiers per source, resolution reaches measured precision
+and recall against the generator's ground truth, and every entity within two
+links of an alert's subject is returned in under one second.
+
 ## M5 - Detection service
 
 | Deliverable | Detail |
@@ -150,6 +190,7 @@ distinguishes covered techniques from techniques lacking a data source.
 | Streaming detector | The match engine as a role, with rule hot reload |
 | Correlation in the stream | Sigma correlation rules (event count, value count, temporal, ordered temporal) evaluated as events arrive, with window state in RocksDB, not only as scheduled SQL |
 | Backtesting | Any rule run over stored history before it is enabled: how often it would have fired, on which events, and how many alerts a day it would add |
+| `goliath-sigma-clickhouse` | Sigma to ClickHouse SQL compilation, moved from M1, checked against the reference evaluator on stored events |
 | Scheduler | Windowed detections over ClickHouse, incremental materialized views |
 | Alert model | Deduplication, grouping, severity, provenance to the source event |
 | Detection content | An initial rule pack, each rule with true and false positive fixtures |
@@ -160,6 +201,21 @@ fixtures in CI; a correlation rule fires in the stream on the same events as
 its scheduled SQL form; a backtest of one rule over 30 days of stored events
 finishes in under a minute.
 
+## M5.5 - Open archive
+
+Customer data stays with the customer: the first promise in
+[architecture.md](architecture.md), and the one that makes leaving free.
+
+| Deliverable | Detail |
+| --- | --- |
+| Archive writer | Events older than the hot window written as Parquet to an Iceberg table in the customer's bucket, partitioned by day and class, with the OCSF schema in the table metadata |
+| Search over the archive | The same search structure over archived days, through ClickHouse's Iceberg support, marked as slower in the interface rather than refused |
+| Retention per tier | Hot and archive retention set separately, with legal hold on a case's events |
+
+**Exit criterion:** twelve months of events in a bucket are read by DuckDB or
+Spark with no Goliath component running, and a search over one archived day
+returns the same events it returned while hot.
+
 ## M6 - Response
 
 | Deliverable | Detail |
@@ -167,6 +223,8 @@ finishes in under a minute.
 | Case service | Cases, tasks, observables, state machine, audit with hash chaining |
 | Playbook runtime | Declarative playbooks with durable state in PostgreSQL, human-in-the-loop approvals, built-in, WASM, and sidecar actions; engine chosen by ADR under the single-binary constraint ([ADR-0014](adr/0014-one-language-for-services.md)) |
 | RBAC and tenancy | Row-level security, per-tenant quotas and backpressure |
+| Identity | Sign-in through OIDC single sign-on, roles mapped from the identity provider's groups, and API tokens scoped per role |
+| Analyst audit | Every search, event viewed, export, and change of configuration recorded with who and when, in the same tamper-evident log |
 
 **Exit criterion:** an alert becomes a case, a playbook executes with an
 approval step, and every state transition appears in a tamper-evident audit
@@ -180,6 +238,7 @@ log.
 | Case workspace | Triage queue, case detail, playbook status |
 | Coverage dashboard | The landing view: for each ATT&CK technique, whether a rule covers it, whether the data that rule needs is being collected, and whether it fired in its last backtest; a technique with a rule but no data is shown as uncovered |
 | Configuration | Source onboarding with dry-run plan preview |
+| Analyst assistant | A question in plain language becomes a search, a graph query, or a draft rule in the same typed structures a person writes, checked against the schema and shown for review before it runs; never free SQL; works with a local model, so no event has to leave the deployment |
 
 **Exit criterion:** an analyst completes triage of an alert into a closed case
 without leaving the interface.
@@ -192,6 +251,7 @@ without leaving the interface.
 | Installation paths | Docker Compose, Helm chart, plain binary |
 | Documentation | Operator guide, source authoring guide, rule authoring guide |
 | Published benchmarks | Full report with reproduction instructions |
+| Supply chain | Signed images and release binaries, an SBOM for each, and dependency audit in CI |
 
 **Exit criterion:** a person who has never seen the project runs it against
 their own logs within ten minutes, following only the README.
@@ -215,3 +275,13 @@ detection before the measurement rig means optimizing against intuition, and
 every later performance claim would be unfounded.
 
 M6 and M7 can overlap; neither blocks the other.
+
+M3.5 comes before context and detection because nothing after it is useful to
+a company that cannot send it logs, and M8's exit criterion, running against
+one's own logs, cannot be met from an inbox directory.
+
+M4.5 comes before M5 so that detections and alerts can name entities rather
+than events, and before M7 so that the investigation view's pivots walk the
+graph instead of repeating searches. The analyst assistant waits for both: it
+is only as safe as the typed structures it writes into, and only as useful as
+the entities it can name.
