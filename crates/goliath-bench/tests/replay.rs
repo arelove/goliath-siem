@@ -32,9 +32,9 @@ const SOURCES: [(&str, &str, &str); 4] = [
 fn events(normalizer: &Normalizer, bytes: &[u8]) -> Vec<(u64, i64)> {
     let mut found = Vec::new();
     normalizer.normalize(bytes, |outcome| match outcome {
-        Outcome::Event(normalized) => found.push((
-            normalized.event["class_uid"].as_u64().unwrap(),
-            normalized.event["time"].as_i64().unwrap(),
+        Outcome::Event(made) => found.push((
+            made.event["class_uid"].as_u64().unwrap(),
+            made.event["time"].as_i64().unwrap(),
         )),
         other => panic!("not an event: {other:?}"),
     });
