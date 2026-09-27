@@ -8,6 +8,10 @@
 //! - `GET /api/v1/schema/classes`: the OCSF classes.
 //! - `GET /api/v1/schema/classes/{uid}/paths`: the paths a search can name
 //!   in a class, with what each holds, for the interface to complete.
+//! - `POST /api/v1/overview`: what the events in a time range add up to, for
+//!   a dashboard: counts by time and severity, and the most frequent classes,
+//!   sources, hosts, and users.
+//! - `GET /api/v1/arrivals`: events that arrived in each of the last seconds.
 //! - `GET /api/v1/health`: whether the service is up; needs no token.
 //!
 //! With a token configured, every other API request must carry it as
@@ -26,8 +30,8 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use goliath_ocsf::schema::{self, Attribute, Base};
-use goliath_search::{Cursor, Limits, Search};
-use goliath_store::{Found, SearchLimits, Store, StoreError};
+use goliath_search::{Cursor, Limits, Search, Window};
+use goliath_store::{Found, Frequent, SearchLimits, Store, StoreError};
 use serde_json::{Value, json};
 use subtle::ConstantTimeEq;
 use tokio::net::TcpListener;
@@ -124,6 +128,8 @@ fn app(shared: Shared, ui: Option<PathBuf>) -> Router {
         .route("/events/{at}", get(event))
         .route("/schema/classes", get(classes))
         .route("/schema/classes/{uid}/paths", get(paths))
+        .route("/overview", post(overview))
+        .route("/arrivals", get(arrivals))
         .route_layer(middleware::from_fn_with_state(
             Arc::clone(&shared),
             authorize,
@@ -294,6 +300,111 @@ async fn event(State(shared): State<Arc<Shared>>, Path(at): Path<String>) -> Res
             axum::Json(body).into_response()
         }
         Ok(None) => problem(StatusCode::NOT_FOUND, "no event is stored there"),
+        Err(error) => store_failed(&error),
+    }
+}
+
+/// Steps an overview's series may count in, in milliseconds: the shortest
+/// that keeps the series within [`MAX_STEPS`].
+const STEPS: [i64; 13] = [
+    1_000,
+    5_000,
+    10_000,
+    30_000,
+    60_000,
+    5 * 60_000,
+    10 * 60_000,
+    30 * 60_000,
+    3_600_000,
+    3 * 3_600_000,
+    6 * 3_600_000,
+    12 * 3_600_000,
+    24 * 3_600_000,
+];
+
+/// Steps in an overview's series at most, enough for a smooth chart.
+const MAX_STEPS: i64 = 120;
+
+/// Seconds of arrivals an answer covers.
+const ARRIVALS: u32 = 180;
+
+fn step_for(span: i64) -> i64 {
+    STEPS
+        .into_iter()
+        .find(|step| span / step <= MAX_STEPS)
+        .unwrap_or(STEPS[STEPS.len() - 1])
+}
+
+fn frequent(list: &[Frequent]) -> Vec<Value> {
+    list.iter()
+        .map(|entry| json!({ "key": entry.key, "count": entry.count }))
+        .collect()
+}
+
+async fn overview(
+    State(shared): State<Arc<Shared>>,
+    body: Result<axum::Json<Window>, JsonRejection>,
+) -> Response {
+    let window = match body {
+        Ok(axum::Json(window)) => window,
+        Err(rejection) => return problem(rejection.status(), rejection.body_text()),
+    };
+    let (from, to) = match window.check(&shared.limits) {
+        Ok(range) => range,
+        Err(error) => return problem(StatusCode::BAD_REQUEST, error.to_string()),
+    };
+    let step = step_for(to - from);
+    match shared.store.overview(from, to, step, shared.query).await {
+        Ok(overview) => {
+            // One entry per step, empty steps included, so that a chart
+            // need not know the step to draw gaps.
+            let first = from.div_euclid(step) * step;
+            let steps = usize::try_from((to - first).div_euclid(step) + 1).unwrap_or(0);
+            let mut series = vec![serde_json::Map::new(); steps];
+            let mut total = 0;
+            for bucket in &overview.series {
+                let index = usize::try_from((bucket.at - first).div_euclid(step)).unwrap_or(0);
+                if let Some(counts) = series.get_mut(index) {
+                    counts.insert(bucket.severity_id.to_string(), json!(bucket.count));
+                }
+                total += bucket.count;
+            }
+            let series: Vec<Value> = series
+                .into_iter()
+                .zip((0_i64..).map(|index| first + index * step))
+                .map(|(counts, at)| json!({ "at": at, "counts": counts }))
+                .collect();
+            axum::Json(json!({
+                "from": from,
+                "to": to,
+                "step_ms": step,
+                "total": total,
+                "dead_letters": overview.dead_letters,
+                "series": series,
+                "classes": frequent(&overview.classes),
+                "sources": frequent(&overview.sources),
+                "hosts": frequent(&overview.hosts),
+                "users": frequent(&overview.users),
+            }))
+            .into_response()
+        }
+        Err(error) => store_failed(&error),
+    }
+}
+
+async fn arrivals(State(shared): State<Arc<Shared>>) -> Response {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |since| since.as_millis());
+    match shared.store.arrivals(ARRIVALS, shared.query).await {
+        Ok(arrived) => axum::Json(json!({
+            "now": now,
+            "seconds": arrived
+                .iter()
+                .map(|second| json!({ "at": i64::from(second.second) * 1000, "count": second.count }))
+                .collect::<Vec<_>>(),
+        }))
+        .into_response(),
         Err(error) => store_failed(&error),
     }
 }
@@ -550,5 +661,49 @@ mod tests {
         )
         .await;
         assert_eq!(status, StatusCode::NOT_FOUND);
+    }
+
+    fn post(path: &str, body: &str, token: Option<&str>) -> Request<Body> {
+        let mut request = Request::post(path).header("content-type", "application/json");
+        if let Some(token) = token {
+            request = request.header("authorization", format!("Bearer {token}"));
+        }
+        request.body(Body::from(body.to_owned())).unwrap()
+    }
+
+    #[test]
+    fn an_overview_counts_in_the_shortest_step_that_keeps_it_readable() {
+        assert_eq!(step_for(15 * 60_000), 10_000);
+        assert_eq!(step_for(3_600_000), 30_000);
+        assert_eq!(step_for(24 * 3_600_000), 30 * 60_000);
+        assert_eq!(step_for(31 * 24 * 3_600_000), 12 * 3_600_000);
+    }
+
+    #[tokio::test]
+    async fn an_overview_needs_the_token_and_a_range_the_limits_allow() {
+        let day = r#"{"from":"2026-09-25T00:00:00Z","to":"2026-09-26T00:00:00Z"}"#;
+        let (status, _, _) = call(test_app(Some(TOKEN)), post("/api/v1/overview", day, None)).await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        let (status, _, _) = call(
+            test_app(Some(TOKEN)),
+            Request::get("/api/v1/arrivals")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+        let backwards = r#"{"from":"2026-09-26T00:00:00Z","to":"2026-09-25T00:00:00Z"}"#;
+        let too_long = r#"{"from":"2026-01-01T00:00:00Z","to":"2026-09-25T00:00:00Z"}"#;
+        let unknown = r#"{"from":"2026-09-25T00:00:00Z","to":"2026-09-26T00:00:00Z","x":1}"#;
+        for body in [backwards, too_long, unknown] {
+            let (status, answer, _) =
+                call(test_app(None), post("/api/v1/overview", body, None)).await;
+            assert!(status.is_client_error(), "{body}: {status}");
+            assert!(answer["error"].is_string(), "{body}: {answer}");
+        }
+        // A valid range reaches the store, which is not there.
+        let (status, _, _) = call(test_app(None), post("/api/v1/overview", day, None)).await;
+        assert_eq!(status, StatusCode::BAD_GATEWAY);
     }
 }
