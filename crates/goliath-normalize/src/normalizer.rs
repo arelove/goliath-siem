@@ -334,7 +334,18 @@ impl Normalizer {
             let unmapped = kind
                 .unmapped
                 .iter()
-                .map(|path| source_path(&kind.name, path))
+                .map(|path| {
+                    // `.` is the record itself, for sources that write every
+                    // field at its top level.
+                    if path == "." {
+                        Ok(SourcePath {
+                            text: path.clone(),
+                            segments: Vec::new(),
+                        })
+                    } else {
+                        source_path(&kind.name, path)
+                    }
+                })
                 .collect::<Result<_, _>>()?;
 
             let class_uid = kind.class.class_uid;

@@ -68,11 +68,16 @@ pub const ENTRA: &str = include_str!("../sources/entra.yaml");
 /// The Linux audit log definition shipped with this crate.
 pub const AUDITD: &str = include_str!("../sources/auditd.yaml");
 
+/// The definition for Sysmon events as flat JSON lines, as NXLog-based
+/// pipelines and the OTRF Security Datasets write them.
+pub const SYSMON_FLAT: &str = include_str!("../sources/sysmon-flat.yaml");
+
 /// Every definition shipped with this crate, by name.
 pub const BUILTIN: &[(&str, &str)] = &[
     ("auditd", AUDITD),
     ("entra", ENTRA),
     ("falco", FALCO),
+    ("sysmon-flat", SYSMON_FLAT),
     ("sysmon", SYSMON),
 ];
 

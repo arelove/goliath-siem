@@ -1,0 +1,121 @@
+# Sysmon events as flat JSON objects, one per line: the event's System and
+# EventData members side by side at the top level, as NXLog-based pipelines
+# write them, and as the OTRF Security Datasets record them: `EventID`,
+# `SourceName`, `Channel`, `Hostname`, `@timestamp`, then `Image`,
+# `CommandLine`, and the rest by their Sysmon names.
+#
+# Kinds are those of `sysmon.yaml`, with the same attributes; only where
+# each value is read differs, and a test holds the two to the same events.
+# Every member not mapped is kept under `unmapped` by its own name, the
+# pipeline's own fields such as `Keywords` and `Message` among them. Events
+# of other channels, such as Security, go to the dead letters with their
+# bytes until a definition reads them.
+
+name: sysmon-flat
+version: 1
+framing: lines
+decoding: json
+
+common:
+  time: { from: "@timestamp", as: timestamp }
+  severity_id: { value: 1 }
+  metadata.version: { value: "1.5.0" }
+  metadata.product.name: { value: Sysmon }
+  metadata.product.vendor_name: { value: Microsoft }
+  metadata.log_name: Channel
+  device.hostname: Hostname
+  device.os.type_id: { value: 100 }
+  device.os.name: { value: Windows }
+
+kinds:
+  - name: process_creation
+    when:
+      SourceName: Microsoft-Windows-Sysmon
+      EventID: 1
+    # Process Activity: Launch.
+    class: { class_uid: 1007, activity_id: 1 }
+    fields:
+      process.file.path: Image
+      process.cmd_line: CommandLine
+      process.pid: { from: ProcessId, as: integer }
+      process.uid: ProcessGuid
+      process.working_directory: CurrentDirectory
+      process.integrity: IntegrityLevel
+      process.user.name: User
+      process.session.uid: LogonId
+      process.file.product.name: Product
+      process.file.company_name: Company
+      process.file.desc: Description
+      process.file.version: FileVersion
+      process.parent_process.file.path: ParentImage
+      process.parent_process.cmd_line: ParentCommandLine
+      process.parent_process.pid: { from: ParentProcessId, as: integer }
+      process.parent_process.uid: ParentProcessGuid
+      process.parent_process.user.name: ParentUser
+    unmapped: ["."]
+
+  - name: network_connection
+    when:
+      SourceName: Microsoft-Windows-Sysmon
+      EventID: 3
+    # Network Activity: Open.
+    class: { class_uid: 4001, activity_id: 1 }
+    fields:
+      actor.process.file.path: Image
+      actor.process.pid: { from: ProcessId, as: integer }
+      actor.process.uid: ProcessGuid
+      actor.user.name: User
+      connection_info.protocol_name: Protocol
+      src_endpoint.ip: SourceIp
+      src_endpoint.hostname: SourceHostname
+      src_endpoint.port: { from: SourcePort, as: integer }
+      dst_endpoint.ip: DestinationIp
+      dst_endpoint.hostname: DestinationHostname
+      dst_endpoint.port: { from: DestinationPort, as: integer }
+    unmapped: ["."]
+
+  - name: image_load
+    when:
+      SourceName: Microsoft-Windows-Sysmon
+      EventID: 7
+    # Module Activity: Load.
+    class: { class_uid: 1005, activity_id: 1 }
+    fields:
+      actor.process.file.path: Image
+      actor.process.pid: { from: ProcessId, as: integer }
+      actor.process.uid: ProcessGuid
+      actor.user.name: User
+      module.file.path: ImageLoaded
+      module.file.product.name: Product
+      module.file.company_name: Company
+      module.file.desc: Description
+      module.file.version: FileVersion
+    unmapped: ["."]
+
+  - name: file_create
+    when:
+      SourceName: Microsoft-Windows-Sysmon
+      EventID: 11
+    # File System Activity: Create.
+    class: { class_uid: 1001, activity_id: 1 }
+    fields:
+      actor.process.file.path: Image
+      actor.process.pid: { from: ProcessId, as: integer }
+      actor.process.uid: ProcessGuid
+      actor.user.name: User
+      file.path: TargetFilename
+    unmapped: ["."]
+
+  - name: registry_set
+    when:
+      SourceName: Microsoft-Windows-Sysmon
+      EventID: 13
+    # Registry Value Activity: Set, from the OCSF Windows extension.
+    class: { class_uid: 201002, activity_id: 2 }
+    fields:
+      actor.process.file.path: Image
+      actor.process.pid: { from: ProcessId, as: integer }
+      actor.process.uid: ProcessGuid
+      actor.user.name: User
+      reg_value.path: TargetObject
+    unmapped: ["."]

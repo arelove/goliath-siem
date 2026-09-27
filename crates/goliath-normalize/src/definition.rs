@@ -73,7 +73,9 @@ pub struct KindDefinition {
     #[serde(default)]
     pub fields: BTreeMap<String, FieldSpec>,
     /// Source objects whose other members are all kept under `unmapped`,
-    /// by their own names, so that nothing the source wrote is dropped.
+    /// by their own names, so that nothing the source wrote is dropped. `.`
+    /// names the record itself, for sources that write every field at its
+    /// top level.
     #[serde(default)]
     pub unmapped: Vec<String>,
 }
