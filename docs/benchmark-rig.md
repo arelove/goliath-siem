@@ -32,6 +32,22 @@ days by default, so on a development machine shorten it first, for example
 `rpk cluster config set log_retention_ms 600000`, or a 30-minute run needs
 several hundred gigabytes of free disk.
 
+Memory needs a bound too. Redpanda takes as much as it is allowed, and at
+this rate it reached 6.4 GiB in the first minutes of a probe; start it with
+a limit, for example:
+
+```sh
+docker run -d --name goliath-redpanda -p 9092:9092 redpandadata/redpanda:v26.2.3 \
+  redpanda start --mode dev-container --smp 1 --memory 2G --reserve-memory 0M \
+  --overprovisioned --kafka-addr PLAINTEXT://0.0.0.0:9092 \
+  --advertise-kafka-addr PLAINTEXT://127.0.0.1:9092
+```
+
+On Windows and macOS, Docker runs in a virtual machine that keeps what it
+has taken; cap it as well, in `%UserProfile%\.wslconfig` for WSL. Whatever
+the servers do, the rig stops a run, and says so, once more than 90% of the
+machine's memory is in use.
+
 Retention must never be shorter than the time a record can wait unread. The
 rig bounds that wait: each topic holds at most 20 seconds of the offered rate
 for its reader, and senders wait beyond it, so a platform that falls behind

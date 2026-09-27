@@ -27,6 +27,10 @@ use tokio::time::{Instant, interval_at, sleep, sleep_until, timeout};
 type Failure = Box<dyn Error + Send + Sync>;
 const BATCH: u64 = 1_000;
 const SAMPLE_EVERY: Duration = Duration::from_secs(5);
+/// The share of the machine's memory in use, by anything, above which the
+/// run stops: Kafka and ClickHouse grow with the load, and a laptop that runs
+/// out of memory takes everything down with it.
+const MAX_MEMORY: f64 = 0.9;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(3);
 const SEND_TIMEOUT: Duration = Duration::from_secs(30);
 const METRICS: &str = "127.0.0.1:9465";
@@ -407,6 +411,17 @@ async fn sample(
     shared: &Mutex<Counts>,
 ) -> Result<Sample, Failure> {
     platform.check()?;
+    system.refresh_memory();
+    #[allow(clippy::cast_precision_loss)]
+    let used = system.used_memory() as f64 / system.total_memory().max(1) as f64;
+    if used > MAX_MEMORY {
+        return Err(format!(
+            "the machine's memory is {:.0}% used, above {:.0}%; the run is stopped",
+            used * 100.0,
+            MAX_MEMORY * 100.0
+        )
+        .into());
+    }
     let metrics = metrics().await?;
     let pid = Pid::from_u32(platform.0.id());
     system.refresh_processes_specifics(
