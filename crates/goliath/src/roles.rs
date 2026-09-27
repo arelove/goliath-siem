@@ -264,10 +264,14 @@ pub(crate) async fn write(
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
     let mut writer = Writer::new(store, limits);
+    // The last offset received, and the last known to be written: every
+    // outcome up to it has been flushed.
     let mut received = None;
-    // When the platform took each outcome's record, for those received since
-    // the last acknowledgement.
+    let mut written = None;
+    // When the platform took each outcome's record, for those received but
+    // not yet written, and for those written but not yet acknowledged.
     let mut pending = Vec::new();
+    let mut stored = Vec::new();
     let mut lag = Lag::new("normalized".to_owned(), "writer");
     loop {
         lag.report(&outcomes, &metrics).await;
@@ -288,7 +292,10 @@ pub(crate) async fn write(
                 pending.push(envelope.received);
                 // A push that fails to flush has kept its outcome; only the
                 // flush is repeated.
+                let started = std::time::Instant::now();
                 match writer.push(envelope).await {
+                    // It filled the writer, and flushed.
+                    Ok(()) if writer.waiting() == 0 => metrics.flushed(started.elapsed()),
                     Ok(()) => {}
                     Err(StoreError::ClickHouse(error)) => {
                         warn!(%error, "store unavailable; holding records and retrying");
@@ -296,14 +303,26 @@ pub(crate) async fn write(
                     }
                     Err(other) => return Err(RunError::Store(other)),
                 }
+                // A push that filled the writer flushed everything so far.
+                // Under steady load the writer is never empty at the end of
+                // a receive, so this is where most of it becomes
+                // acknowledgeable.
+                if writer.waiting() == 0 {
+                    written = Some(delivery.offset);
+                    stored.append(&mut pending);
+                }
             }
             flush(&mut writer, &mut stop, Flush::IfDue, &metrics).await?;
         }
         if writer.waiting() == 0
             && let Some(offset) = received.take()
         {
+            written = Some(offset);
+            stored.append(&mut pending);
+        }
+        if let Some(offset) = written.take() {
             outcomes.acknowledge(offset).await?;
-            metrics.stored(&std::mem::take(&mut pending), crate::raw::now());
+            metrics.stored(&std::mem::take(&mut stored), crate::raw::now());
             info!(through = offset, "stored");
         }
         if stopping {

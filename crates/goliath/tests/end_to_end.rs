@@ -275,6 +275,100 @@ async fn http(port: u16, method: &str, path: &str, token: &str, body: &str) -> (
     (status, serde_json::from_str(body).unwrap_or(Value::Null))
 }
 
+/// The value of the sample `name` on the platform's metrics endpoint.
+async fn metric(port: u16, name: &str) -> Option<f64> {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+        .await
+        .ok()?;
+    let request = "GET /metrics HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
+    stream.write_all(request.as_bytes()).await.ok()?;
+    let mut response = String::new();
+    stream.read_to_string(&mut response).await.ok()?;
+    response
+        .lines()
+        .find_map(|line| line.strip_prefix(name)?.strip_prefix(' ')?.parse().ok())
+}
+
+/// A writer that is never empty, as under steady load, still acknowledges
+/// what each flush wrote: it does not wait for a moment when nothing is held.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_writer_acknowledges_each_flush_while_it_still_holds_rows() {
+    let Some(url) = clickhouse_url() else {
+        return;
+    };
+    let user = clickhouse_user();
+    let database = format!("goliath_test_acknowledged_{}", std::process::id());
+    let directory = tempfile::tempdir().unwrap();
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let (events, dead) = expected(KINDS);
+    let outcomes = events + dead;
+    assert!(outcomes > 2);
+    // Flushed once, with the last outcome left over; that one waits an hour.
+    let max_rows = outcomes - 1;
+    let path = directory.path().join("goliath.toml");
+    std::fs::write(
+        &path,
+        format!(
+            r#"
+roles = ["collector", "normalizer", "writer"]
+data = "data"
+
+[[sources]]
+definition = "sysmon"
+inbox = "inbox/sysmon"
+
+[store]
+url = "{url}"
+database = "{database}"
+user = "{user}"
+password_env = "GOLIATH_CLICKHOUSE_PASSWORD"
+
+[writer]
+max_rows = {max_rows}
+max_delay_ms = 3600000
+
+[metrics]
+listen = "127.0.0.1:{port}"
+"#
+        ),
+    )
+    .unwrap();
+    let client = connect(&url).with_database(&database);
+
+    let (stop, running) = start(Config::load(&path).unwrap());
+    drop_file(&directory.path().join("inbox/sysmon"), "001.json", KINDS);
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        let stored = metric(port, "goliath_stored_outcomes_total").await;
+        #[allow(clippy::cast_precision_loss)]
+        if stored == Some(max_rows as f64) {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "stored {stored:?}, expected {max_rows} acknowledged"
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let written = count(&client, "SELECT count() FROM events").await
+        + count(&client, "SELECT count() FROM dead_letters").await;
+    assert_eq!(written, max_rows);
+
+    stop.send(()).unwrap();
+    running.await.unwrap().unwrap();
+    connect(&url)
+        .query(&format!("DROP DATABASE IF EXISTS {database}"))
+        .execute()
+        .await
+        .unwrap();
+}
+
 /// The pipeline and the API in one process: a Sysmon file dropped into the
 /// inbox is found by a search over HTTP, and fetched again by where it is.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
