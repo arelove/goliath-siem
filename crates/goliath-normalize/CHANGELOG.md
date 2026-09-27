@@ -9,6 +9,13 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-09-27
+
+
+### Added
+
+- An envelope says when its record was taken
+
 ## [0.2.3] - 2026-09-26
 
 
