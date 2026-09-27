@@ -12,6 +12,7 @@
 
 mod api;
 pub mod config;
+mod metrics;
 mod roles;
 mod topics;
 
@@ -23,6 +24,7 @@ use tokio::sync::watch;
 use tokio::task::JoinSet;
 use tracing::{error, info};
 
+use crate::metrics::Metrics;
 use crate::topics::Topics;
 
 pub use config::{Config, Role};
@@ -60,20 +62,29 @@ pub enum RunError {
 pub async fn run(config: Config, shutdown: impl Future<Output = ()>) -> Result<(), RunError> {
     let (stop, stopped) = watch::channel(false);
     let mut roles = JoinSet::new();
+    let metrics = Metrics::new();
 
+    if let Some(served) = &config.metrics {
+        roles.spawn(metrics::serve(
+            served.listen,
+            metrics.clone(),
+            stopped.clone(),
+        ));
+    }
     if config.roles.contains(&Role::Api) {
         let settings = config
             .store
             .as_ref()
             .ok_or_else(|| RunError::Config("no [store]".to_owned()))?;
-        let server = api::Server::bind(&config.api, connect(settings)?).await?;
+        let server = api::Server::bind(&config.api, connect(settings)?, metrics.clone()).await?;
         roles.spawn(server.serve(stopped.clone()));
     }
     if config.has_pipeline() {
         match &config.kafka {
             #[cfg(feature = "kafka")]
             Some(kafka) => {
-                start_pipeline(&config, &topics::Kafka::new(kafka)?, &mut roles, &stopped).await?;
+                let topics = topics::Kafka::new(kafka)?;
+                start_pipeline(&config, &topics, &metrics, &mut roles, &stopped).await?;
             }
             #[cfg(not(feature = "kafka"))]
             Some(_) => {
@@ -87,7 +98,8 @@ pub async fn run(config: Config, shutdown: impl Future<Output = ()>) -> Result<(
                     .data
                     .clone()
                     .ok_or_else(|| RunError::Config("no `data` directory".to_owned()))?;
-                start_pipeline(&config, &topics::Disk::new(data), &mut roles, &stopped).await?;
+                let topics = topics::Disk::new(data);
+                start_pipeline(&config, &topics, &metrics, &mut roles, &stopped).await?;
             }
         }
     }
@@ -116,6 +128,7 @@ pub async fn run(config: Config, shutdown: impl Future<Output = ()>) -> Result<(
 async fn start_pipeline<T: Topics>(
     config: &Config,
     topics: &T,
+    metrics: &Metrics,
     roles: &mut JoinSet<Result<(), RunError>>,
     stopped: &watch::Receiver<bool>,
 ) -> Result<(), RunError> {
@@ -142,6 +155,7 @@ async fn start_pipeline<T: Topics>(
             store,
             limits,
             topics.subscribe(&outcomes, "writer").await?,
+            metrics.clone(),
             stopped.clone(),
         ));
     }
@@ -156,6 +170,7 @@ async fn start_pipeline<T: Topics>(
                 normalizer.clone(),
                 receiver,
                 T::sender(&outcomes),
+                metrics.clone(),
                 stopped.clone(),
             ));
         }
@@ -163,7 +178,13 @@ async fn start_pipeline<T: Topics>(
             let inbox = source.inbox.clone().ok_or_else(|| {
                 RunError::Config(format!("source `{}` has no inbox", normalizer.name()))
             })?;
-            roles.spawn(roles::collect(inbox, T::sender(&raw), stopped.clone()));
+            roles.spawn(roles::collect(
+                normalizer.name().to_owned(),
+                inbox,
+                T::sender(&raw),
+                metrics.clone(),
+                stopped.clone(),
+            ));
         }
     }
     Ok(())

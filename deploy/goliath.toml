@@ -27,3 +27,7 @@ max_delay_ms = 1000
 listen = "0.0.0.0:8080"
 token_file = "/run/secrets/api_token"
 ui = "/usr/share/goliath/ui"
+
+# Published on 127.0.0.1:9464 by compose.
+[metrics]
+listen = "0.0.0.0:9464"

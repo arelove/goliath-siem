@@ -37,6 +37,19 @@ pub struct Config {
     /// Where and how the API listens.
     #[serde(default)]
     pub api: ApiConfig,
+    /// Where Prometheus reads this process's metrics; not served if absent.
+    pub metrics: Option<MetricsConfig>,
+}
+
+/// Where the metrics endpoint listens.
+///
+/// It takes no token: it holds counts and durations, never an event's
+/// content. Listen on an address only the monitoring system reaches.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MetricsConfig {
+    /// The address to serve `/metrics` on, such as `127.0.0.1:9464`.
+    pub listen: SocketAddr,
 }
 
 /// A role, as named in the configuration.

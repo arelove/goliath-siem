@@ -11,3 +11,7 @@ inbox = "/var/lib/goliath/inbox/sysmon"
 brokers = "redpanda:9092"
 # One broker in development; 3 on a real cluster.
 replication = 1
+
+# Reachable on the compose network, for a Prometheus beside the roles.
+[metrics]
+listen = "0.0.0.0:9464"
