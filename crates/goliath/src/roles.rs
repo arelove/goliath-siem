@@ -7,13 +7,14 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use goliath_normalize::{Envelope, Normalizer};
+use goliath_normalize::{Envelope, Normalizer, Outcome};
 use goliath_pipe::{Receiver, Sender};
 use goliath_store::{Limits, Store, StoreError, Writer};
 use tokio::sync::watch;
 use tracing::{info, warn};
 
 use crate::RunError;
+use crate::metrics::Metrics;
 
 /// How long a loop waits for records before checking for shutdown.
 const POLL: Duration = Duration::from_millis(200);
@@ -32,8 +33,10 @@ const MAX_FILE: u64 = 64 << 20;
 /// large to send. A crash between sending and moving sends it again, and
 /// storage drops the duplicates by identity.
 pub(crate) async fn collect(
+    source: String,
     inbox: PathBuf,
     raw: impl Sender + Sync,
+    metrics: Metrics,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
     let done = inbox.join("done");
@@ -52,6 +55,7 @@ pub(crate) async fn collect(
             if size > MAX_FILE {
                 warn!(file = %path.display(), size, "file larger than 64 MiB rejected; split it and drop it again");
                 move_into(&path, &rejected).await?;
+                metrics.rejected(&source);
                 continue;
             }
             let bytes = tokio::fs::read(&path)
@@ -59,6 +63,7 @@ pub(crate) async fn collect(
                 .map_err(|error| io(&path, &error))?;
             raw.send(vec![bytes]).await?;
             move_into(&path, &done).await?;
+            metrics.collected(&source, size);
             info!(file = %path.display(), size, "collected");
         }
         // Woken early by shutdown; otherwise look again after a pause.
@@ -105,8 +110,10 @@ pub(crate) async fn normalize(
     normalizer: Normalizer,
     mut raw: impl Receiver,
     outcomes: impl Sender + Sync,
+    metrics: Metrics,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
+    let source = normalizer.name();
     while !*stop.borrow_and_update() {
         let deliveries = raw.receive(BATCH, POLL).await?;
         let Some(last) = deliveries.last().map(|delivery| delivery.offset) else {
@@ -115,15 +122,20 @@ pub(crate) async fn normalize(
         let mut encoded = Vec::new();
         for delivery in &deliveries {
             normalizer.normalize(&delivery.payload, |outcome| {
-                encoded
-                    .push(Envelope::new(normalizer.name(), normalizer.version(), outcome).encode());
+                match &outcome {
+                    Outcome::Event(_) => metrics.event(source),
+                    Outcome::DeadLetter(dead) => metrics.dead_letter(source, dead.stage.as_str()),
+                    _ => {}
+                }
+                encoded.push(Envelope::new(source, normalizer.version(), outcome).encode());
             });
         }
         let count = encoded.len();
         outcomes.send(encoded).await?;
         raw.acknowledge(last).await?;
+        metrics.normalized(source, deliveries.len());
         info!(
-            source = normalizer.name(),
+            source,
             records = deliveries.len(),
             outcomes = count,
             "normalized"
@@ -138,14 +150,17 @@ pub(crate) async fn write(
     store: Store,
     limits: Limits,
     mut outcomes: impl Receiver,
+    metrics: Metrics,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
     let mut writer = Writer::new(store, limits);
     let mut received = None;
+    // Outcomes received since the last acknowledgement.
+    let mut pending = 0;
     loop {
         let stopping = *stop.borrow_and_update();
         if stopping {
-            flush(&mut writer, &mut stop, Flush::All).await?;
+            flush(&mut writer, &mut stop, Flush::All, &metrics).await?;
         } else {
             let wait = writer.deadline().map_or(POLL, |deadline| {
                 deadline
@@ -157,23 +172,25 @@ pub(crate) async fn write(
                     RunError::Corrupt(format!("normalized offset {}: {error}", delivery.offset))
                 })?;
                 received = Some(delivery.offset);
+                pending += 1;
                 // A push that fails to flush has kept its outcome; only the
                 // flush is repeated.
                 match writer.push(envelope).await {
                     Ok(()) => {}
                     Err(StoreError::ClickHouse(error)) => {
                         warn!(%error, "store unavailable; holding records and retrying");
-                        flush(&mut writer, &mut stop, Flush::All).await?;
+                        flush(&mut writer, &mut stop, Flush::All, &metrics).await?;
                     }
                     Err(other) => return Err(RunError::Store(other)),
                 }
             }
-            flush(&mut writer, &mut stop, Flush::IfDue).await?;
+            flush(&mut writer, &mut stop, Flush::IfDue, &metrics).await?;
         }
         if writer.waiting() == 0
             && let Some(offset) = received.take()
         {
             outcomes.acknowledge(offset).await?;
+            metrics.stored(std::mem::take(&mut pending));
             info!(through = offset, "stored");
         }
         if stopping {
@@ -195,15 +212,24 @@ async fn flush(
     writer: &mut Writer,
     stop: &mut watch::Receiver<bool>,
     which: Flush,
+    metrics: &Metrics,
 ) -> Result<(), RunError> {
     let mut pause = Duration::from_millis(250);
     loop {
+        let holding = writer.waiting();
+        let started = std::time::Instant::now();
         let result = match which {
             Flush::All => writer.flush().await,
             Flush::IfDue => writer.flush_if_due().await,
         };
         match result {
-            Ok(()) => return Ok(()),
+            Ok(()) => {
+                // Only a flush that wrote something is a write worth timing.
+                if holding > 0 && writer.waiting() == 0 {
+                    metrics.flushed(started.elapsed());
+                }
+                return Ok(());
+            }
             Err(StoreError::ClickHouse(error)) if !*stop.borrow() => {
                 warn!(%error, retry_in = ?pause, "store unavailable; holding records and retrying");
                 let _ = tokio::time::timeout(pause, stop.changed()).await;

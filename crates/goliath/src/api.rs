@@ -16,6 +16,7 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Instant;
 
 use axum::Router;
 use axum::extract::rejection::JsonRejection;
@@ -37,6 +38,7 @@ use tracing::{error, info};
 
 use crate::RunError;
 use crate::config::ApiConfig;
+use crate::metrics::{Metrics, Searched};
 
 /// Bytes a request body may hold.
 const MAX_BODY: usize = 64 * 1024;
@@ -51,6 +53,7 @@ struct Shared {
     token: Option<String>,
     limits: Limits,
     query: SearchLimits,
+    metrics: Metrics,
 }
 
 /// The API, bound to its address and ready to serve.
@@ -66,7 +69,11 @@ impl Server {
     ///
     /// Returns [`RunError::Config`] if the token cannot be read, and
     /// [`RunError::Io`] if the address cannot be bound.
-    pub(crate) async fn bind(config: &ApiConfig, store: Store) -> Result<Self, RunError> {
+    pub(crate) async fn bind(
+        config: &ApiConfig,
+        store: Store,
+        metrics: Metrics,
+    ) -> Result<Self, RunError> {
         let shared = Shared {
             store,
             token: config.token()?,
@@ -75,6 +82,7 @@ impl Server {
                 ..Limits::default()
             },
             query: SearchLimits::default(),
+            metrics,
         };
         let listener = TcpListener::bind(config.listen)
             .await
@@ -217,21 +225,53 @@ async fn search(
     State(shared): State<Arc<Shared>>,
     body: Result<axum::Json<Search>, JsonRejection>,
 ) -> Response {
+    let started = Instant::now();
+    let (answer, response) = answer_search(&shared, body).await;
+    shared.metrics.searched(answer, started.elapsed());
+    response
+}
+
+async fn answer_search(
+    shared: &Shared,
+    body: Result<axum::Json<Search>, JsonRejection>,
+) -> (Searched, Response) {
     let search = match body {
         Ok(axum::Json(search)) => search,
-        Err(rejection) => return problem(rejection.status(), rejection.body_text()),
+        Err(rejection) => {
+            return (
+                Searched::Refused,
+                problem(rejection.status(), rejection.body_text()),
+            );
+        }
     };
     let checked = match search.check(&shared.limits) {
         Ok(checked) => checked,
-        Err(error) => return problem(StatusCode::BAD_REQUEST, error.to_string()),
+        Err(error) => {
+            return (
+                Searched::Refused,
+                problem(StatusCode::BAD_REQUEST, error.to_string()),
+            );
+        }
     };
     match shared.store.search(&checked, shared.query).await {
-        Ok(page) => axum::Json(json!({
-            "events": page.events.iter().map(found).collect::<Vec<_>>(),
-            "next": page.next.map(|cursor| cursor.to_string()),
-        }))
-        .into_response(),
-        Err(error) => store_failed(&error),
+        Ok(page) => (
+            Searched::Found,
+            axum::Json(json!({
+                "events": page.events.iter().map(found).collect::<Vec<_>>(),
+                "next": page.next.map(|cursor| cursor.to_string()),
+            }))
+            .into_response(),
+        ),
+        Err(error) => {
+            let response = store_failed(&error);
+            // Over its limits is the search's doing; anything else the store's.
+            let answer = if response.status() == StatusCode::UNPROCESSABLE_ENTITY {
+                Searched::Refused
+            } else {
+                Searched::Failed
+            };
+            (answer, response)
+        }
     }
 }
 
@@ -334,6 +374,7 @@ mod tests {
                 token: token.map(str::to_owned),
                 limits: Limits::default(),
                 query: SearchLimits::default(),
+                metrics: Metrics::new(),
             },
             None,
         )
