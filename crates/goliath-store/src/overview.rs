@@ -27,6 +27,17 @@ pub struct Bucket {
     pub count: u64,
 }
 
+/// Events of one of the most frequent hosts in one step of the series.
+#[derive(Debug, Clone, PartialEq, Eq, Row, Deserialize)]
+pub struct HostBucket {
+    /// The step's start, in milliseconds since the epoch.
+    pub at: i64,
+    /// The `device.hostname`.
+    pub host: String,
+    /// Events.
+    pub count: u64,
+}
+
 /// A value and how many events hold it.
 #[derive(Debug, Clone, PartialEq, Eq, Row, Deserialize)]
 pub struct Frequent {
@@ -57,6 +68,9 @@ pub struct Overview {
     pub sources: Vec<Frequent>,
     /// The most frequent `device.hostname`s.
     pub hosts: Vec<Frequent>,
+    /// The events of those hosts by step, oldest step first; steps with
+    /// none are absent.
+    pub host_series: Vec<HostBucket>,
     /// The most frequent `actor.user.name`s.
     pub users: Vec<Frequent>,
     /// Records that could not become events, received within the span.
@@ -135,11 +149,31 @@ impl Store {
         .await?;
         let [classes, sources, hosts, users] =
             <[Vec<Frequent>; 4]>::try_from(frequent).unwrap_or_default();
+        let host_series = if hosts.is_empty() {
+            Vec::new()
+        } else {
+            let names: Vec<&str> = hosts.iter().map(|entry| entry.key.as_str()).collect();
+            with_limits(
+                self.client()
+                    .query(&format!(
+                        "SELECT intDiv(toUnixTimestamp64Milli(time), {{step:Int64}}) * {{step:Int64}} AS at,                          ifNull({host}, '') AS host, count() AS count                          FROM events WHERE {WITHIN} AND host IN {{hosts:Array(String)}}                          GROUP BY at, host ORDER BY at, host",
+                        host = KEYS[2],
+                    ))
+                    .param("from", from)
+                    .param("to", to)
+                    .param("step", step.max(1))
+                    .param("hosts", names),
+                limits,
+            )
+            .fetch_all::<HostBucket>()
+            .await?
+        };
         Ok(Overview {
             series,
             classes,
             sources,
             hosts,
+            host_series,
             users,
             dead_letters,
         })

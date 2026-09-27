@@ -374,6 +374,18 @@ async fn overview(
                 .zip((0_i64..).map(|index| first + index * step))
                 .map(|(counts, at)| json!({ "at": at, "counts": counts }))
                 .collect();
+            let mut by_host = vec![serde_json::Map::new(); steps];
+            for bucket in &overview.host_series {
+                let index = usize::try_from((bucket.at - first).div_euclid(step)).unwrap_or(0);
+                if let Some(counts) = by_host.get_mut(index) {
+                    counts.insert(bucket.host.clone(), json!(bucket.count));
+                }
+            }
+            let host_series: Vec<Value> = by_host
+                .into_iter()
+                .zip((0_i64..).map(|index| first + index * step))
+                .map(|(counts, at)| json!({ "at": at, "counts": counts }))
+                .collect();
             axum::Json(json!({
                 "from": from,
                 "to": to,
@@ -384,6 +396,7 @@ async fn overview(
                 "classes": frequent(&overview.classes),
                 "sources": frequent(&overview.sources),
                 "hosts": frequent(&overview.hosts),
+                "host_series": host_series,
                 "users": frequent(&overview.users),
             }))
             .into_response()

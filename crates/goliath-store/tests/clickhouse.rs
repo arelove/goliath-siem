@@ -399,6 +399,13 @@ async fn an_overview_counts_what_is_stored_by_time_severity_and_value() {
     assert_eq!(overview.sources[0].key, "sysmon");
     assert!(!overview.hosts.is_empty(), "Sysmon events name their host");
     assert!(overview.hosts.iter().all(|entry| !entry.key.is_empty()));
+    let top_host: u64 = overview
+        .host_series
+        .iter()
+        .filter(|bucket| bucket.host == overview.hosts[0].key)
+        .map(|bucket| bucket.count)
+        .sum();
+    assert_eq!(top_host, overview.hosts[0].count);
     assert!(overview.dead_letters > 0);
 
     // Arrivals count by when records were taken: only what was taken now.
