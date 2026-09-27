@@ -24,6 +24,11 @@ pub struct Envelope {
     pub version: u32,
     /// What became of the record.
     pub outcome: Outcome,
+    /// When the platform took the record, in milliseconds since the Unix
+    /// epoch, if the role that took it said. Envelopes written before this
+    /// field existed have none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub received: Option<i64>,
 }
 
 /// Bytes that are not an encoded outcome.
@@ -39,7 +44,16 @@ impl Envelope {
             source: source.into(),
             version,
             outcome,
+            received: None,
         }
+    }
+
+    /// The same envelope, saying the platform took its record at
+    /// `received` milliseconds since the Unix epoch.
+    #[must_use]
+    pub fn received_at(mut self, received: i64) -> Self {
+        self.received = Some(received);
+        self
     }
 
     /// The envelope as bytes, for a pipe.
