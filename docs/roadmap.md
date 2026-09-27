@@ -202,6 +202,7 @@ Enrichment that makes an alert actionable rather than a row.
 | `goliath-intel` | STIX 2.1 model, feed connectors, bloom-prefiltered RocksDB lookup, allowlists, provenance ([ADR-0008](adr/0008-threat-intelligence-model.md)) |
 | `goliath-attack` | Versioned framework loader, technique mapping, coverage versus capability ([ADR-0009](adr/0009-attack-knowledge-model.md)) |
 | `goliath-enrich` | Entity and asset snapshot into local RocksDB, refresh scheduling |
+| Reference lists | An importer for curated community lists in CSV, starting with [mthcht/awesome-lists](https://github.com/mthcht/awesome-lists) (MIT): vulnerable drivers, named pipes, services and scheduled tasks of known tools, suspicious TLDs and ASNs, VPN and proxy ranges, dynamic DNS domains, offensive tool keywords, user agents. Each list is pinned to a commit, typed as indicators, allowlist, or context, and keeps its source and licence as provenance, so an enrichment says which list and which version matched |
 
 **Exit criterion:** 10^8 indicators matched against the event stream with no
 measurable reduction in throughput, and an ATT&CK Navigator layer exported that
