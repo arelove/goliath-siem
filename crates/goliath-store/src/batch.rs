@@ -19,8 +19,8 @@ const TIMES: std::ops::RangeInclusive<i64> = -2_208_988_800_000..=10_413_791_999
 #[derive(Debug, Clone)]
 pub struct Batch {
     received: i64,
-    source: String,
-    source_version: u32,
+    pub(crate) source: String,
+    pub(crate) source_version: u32,
     pub(crate) events: Vec<EventRow>,
     pub(crate) dead_letters: Vec<DeadLetterRow>,
 }
@@ -156,6 +156,13 @@ impl Batch {
     /// `version`.
     pub(crate) fn is_for(&self, source: &str, version: u32) -> bool {
         self.source == source && self.source_version == version
+    }
+
+    /// Moves the rows of `other`, a batch for the same source and version,
+    /// after this batch's own.
+    pub(crate) fn append(&mut self, mut other: Self) {
+        self.events.append(&mut other.events);
+        self.dead_letters.append(&mut other.dead_letters);
     }
 
     /// How many events the batch holds.

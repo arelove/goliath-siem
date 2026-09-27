@@ -201,8 +201,7 @@ pub struct NormalizerConfig {
 impl NormalizerConfig {
     /// The threads to normalize on.
     pub fn threads(&self) -> NonZeroUsize {
-        self.threads
-            .unwrap_or_else(|| std::thread::available_parallelism().unwrap_or(NonZeroUsize::MIN))
+        self.threads.unwrap_or_else(every_core)
     }
 }
 
@@ -216,6 +215,10 @@ pub struct WriterConfig {
     /// Milliseconds a row waits at most before it is written.
     #[serde(default = "default_max_delay_ms")]
     pub max_delay_ms: u64,
+    /// Threads that decode received outcomes into rows at once; every core
+    /// by default.
+    #[serde(default)]
+    pub threads: Option<NonZeroUsize>,
 }
 
 impl Default for WriterConfig {
@@ -223,6 +226,7 @@ impl Default for WriterConfig {
         Self {
             max_rows: default_max_rows(),
             max_delay_ms: default_max_delay_ms(),
+            threads: None,
         }
     }
 }
@@ -232,6 +236,11 @@ impl WriterConfig {
     pub fn max_delay(&self) -> Duration {
         Duration::from_millis(self.max_delay_ms)
     }
+
+    /// The threads to decode on.
+    pub fn threads(&self) -> NonZeroUsize {
+        self.threads.unwrap_or_else(every_core)
+    }
 }
 
 fn default_prefix() -> String {
@@ -240,6 +249,11 @@ fn default_prefix() -> String {
 
 fn default_replication() -> i32 {
     3
+}
+
+/// The machine's cores, or one if they cannot be told.
+fn every_core() -> NonZeroUsize {
+    std::thread::available_parallelism().unwrap_or(NonZeroUsize::MIN)
 }
 
 fn default_max_rows() -> usize {

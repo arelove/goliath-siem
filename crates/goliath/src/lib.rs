@@ -155,6 +155,7 @@ async fn start_pipeline<T: Topics>(
         roles.spawn(roles::write(
             store,
             limits,
+            config.writer.threads(),
             topics.subscribe(&outcomes, "writer").await?,
             metrics.clone(),
             stopped.clone(),
