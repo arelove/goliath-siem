@@ -128,6 +128,28 @@ impl Writer {
         std::mem::take(&mut self.pending)
     }
 
+    /// Adds the rows of `batches`, as another writer's [`take`](Self::take)
+    /// handed them over, after those already waiting. Lets several threads
+    /// turn outcomes into rows at once, each with a writer of its own.
+    pub fn absorb(&mut self, batches: Vec<Batch>) {
+        for batch in batches {
+            if batch.is_empty() {
+                continue;
+            }
+            self.rows += batch.events() + batch.dead_letters();
+            self.oldest.get_or_insert_with(Instant::now);
+            if let Some(waiting) = self
+                .pending
+                .iter_mut()
+                .find(|waiting| waiting.is_for(&batch.source, batch.source_version))
+            {
+                waiting.append(batch);
+            } else {
+                self.pending.push(batch);
+            }
+        }
+    }
+
     /// When the waiting rows must be written by, if any wait.
     pub fn deadline(&self) -> Option<Instant> {
         self.oldest.map(|oldest| oldest + self.limits.max_delay)

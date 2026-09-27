@@ -291,10 +291,11 @@ async fn metric(port: u16, name: &str) -> Option<f64> {
         .find_map(|line| line.strip_prefix(name)?.strip_prefix(' ')?.parse().ok())
 }
 
-/// A writer that is never empty, as under steady load, still acknowledges
-/// what each flush wrote: it does not wait for a moment when nothing is held.
+/// A writer acknowledges each insert once it is written, and nothing it
+/// still holds: a full writer inserts and acknowledges, while later outcomes
+/// too few to fill it wait, unacknowledged, for `max_delay`.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn the_writer_acknowledges_each_flush_while_it_still_holds_rows() {
+async fn the_writer_acknowledges_what_it_inserted_and_not_what_it_holds() {
     let Some(url) = clickhouse_url() else {
         return;
     };
@@ -307,10 +308,12 @@ async fn the_writer_acknowledges_each_flush_while_it_still_holds_rows() {
         .unwrap()
         .port();
     let (events, dead) = expected(KINDS);
-    let outcomes = events + dead;
-    assert!(outcomes > 2);
-    // Flushed once, with the last outcome left over; that one waits an hour.
-    let max_rows = outcomes - 1;
+    let max_rows = events + dead;
+    let (more_events, more_dead) = expected(MALFORMED);
+    let held = more_events + more_dead;
+    // The first file fills the writer; the second does not, and waits an
+    // hour.
+    assert!(held > 0 && held < max_rows);
     let path = directory.path().join("goliath.toml");
     std::fs::write(
         &path,
@@ -356,6 +359,31 @@ listen = "127.0.0.1:{port}"
         );
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
+    drop_file(
+        &directory.path().join("inbox/sysmon"),
+        "002.json",
+        MALFORMED,
+    );
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        let lag = metric(
+            port,
+            r#"goliath_reader_lag_records{topic="normalized",reader="writer"}"#,
+        )
+        .await;
+        #[allow(clippy::cast_precision_loss)]
+        if lag == Some(held as f64) {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "lag {lag:?}, expected {held} held"
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let stored = Some(max_rows as f64);
+    assert_eq!(metric(port, "goliath_stored_outcomes_total").await, stored);
     let written = count(&client, "SELECT count() FROM events").await
         + count(&client, "SELECT count() FROM dead_letters").await;
     assert_eq!(written, max_rows);

@@ -312,3 +312,51 @@ async fn the_writer_flushes_when_full_and_keeps_rows_until_written() {
     assert_eq!(written, total as u64);
     scratch.drop().await;
 }
+
+#[tokio::test]
+async fn rows_taken_from_several_writers_and_absorbed_by_one_are_all_written() {
+    use goliath_normalize::Outcome;
+    use goliath_store::{Limits, Writer};
+
+    let Some(scratch) = Scratch::new("absorb") else {
+        return;
+    };
+    scratch.store.migrate().await.unwrap();
+    let sysmon = Normalizer::from_yaml(SYSMON).unwrap();
+    let mut outcomes = Vec::new();
+    sysmon.normalize(KINDS.as_bytes(), |outcome| outcomes.push(outcome));
+    sysmon.normalize(MALFORMED.as_bytes(), |outcome| outcomes.push(outcome));
+    let total = outcomes.len();
+    let (events, dead) = outcomes
+        .iter()
+        .fold((0, 0), |(events, dead), outcome| match outcome {
+            Outcome::Event(_) => (events + 1, dead),
+            _ => (events, dead + 1),
+        });
+
+    // Two threads' worth of rows, each built by a writer of its own.
+    let mut halves = [
+        Writer::new(scratch.store.clone(), Limits::default()),
+        Writer::new(scratch.store.clone(), Limits::default()),
+    ];
+    let half = total / 2;
+    for (index, outcome) in outcomes.into_iter().enumerate() {
+        let envelope = Envelope::new(sysmon.name(), sysmon.version(), outcome);
+        halves[usize::from(index >= half)].add(envelope).unwrap();
+    }
+    let mut writer = Writer::new(scratch.store.clone(), Limits::default());
+    for part in &mut halves {
+        writer.absorb(part.take());
+        assert_eq!(part.waiting(), 0);
+    }
+    assert_eq!(writer.waiting(), total);
+    assert!(writer.deadline().is_some());
+
+    writer.flush().await.unwrap();
+    assert_eq!(scratch.count("SELECT count() FROM events").await, events);
+    assert_eq!(
+        scratch.count("SELECT count() FROM dead_letters").await,
+        dead
+    );
+    scratch.drop().await;
+}

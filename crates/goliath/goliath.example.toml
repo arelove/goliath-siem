@@ -25,6 +25,8 @@ retention_days = 30
 [writer]
 max_rows = 50000
 max_delay_ms = 1000
+# Threads that decode outcomes into rows at once; every core if left out.
+# threads = 8
 
 # Threads that normalize a batch at once; every core if left out.
 # [normalizer]

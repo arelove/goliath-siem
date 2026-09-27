@@ -268,6 +268,7 @@ const INSERTS: usize = 4;
 pub(crate) async fn write(
     store: Store,
     limits: Limits,
+    threads: NonZeroUsize,
     mut outcomes: impl Receiver + Sync,
     metrics: Metrics,
     mut stop: watch::Receiver<bool>,
@@ -288,22 +289,19 @@ pub(crate) async fn write(
                     .saturating_duration_since(std::time::Instant::now())
                     .min(POLL)
             });
-            for delivery in outcomes.receive(BATCH, wait).await? {
-                let envelope = Envelope::decode(&delivery.payload).map_err(|error| {
-                    RunError::Corrupt(format!("normalized offset {}: {error}", delivery.offset))
-                })?;
-                received = Some(delivery.offset);
-                pending.push(envelope.received);
-                writer.add(envelope).map_err(RunError::Store)?;
-                if writer.is_full() && inserts.len() < INSERTS {
-                    inserts.push_back(Insert::start(
-                        &store,
-                        &mut writer,
-                        &mut received,
-                        &mut pending,
-                        &stop,
-                    ));
+            let deliveries = outcomes.receive(WRITE_BATCH, wait).await?;
+            if let Some(last) = deliveries.last().map(|delivery| delivery.offset) {
+                let shared = store.clone();
+                let parts = tokio::task::spawn_blocking(move || {
+                    rows_of(&shared, limits, &deliveries, threads)
+                })
+                .await
+                .map_err(|error| RunError::Role(format!("decoding: {error}")))??;
+                for (batches, taken) in parts {
+                    writer.absorb(batches);
+                    pending.extend(taken);
                 }
+                received = Some(last);
             }
         }
         // Due, or everything on shutdown; a full writer that found no free
@@ -345,6 +343,59 @@ pub(crate) async fn write(
             return Ok(());
         }
     }
+}
+
+/// Outcomes the writer receives at once. Larger than [`BATCH`], so that
+/// decoding them is worth spreading over threads; an insert may exceed
+/// `max_rows` by up to this many rows.
+const WRITE_BATCH: usize = 8 * BATCH;
+
+/// A run of outcomes as rows, with when the platform took each.
+type Rows = (Vec<Batch>, Vec<Option<i64>>);
+
+/// Decodes `deliveries` into rows on up to `threads` threads, each taking a
+/// run of consecutive outcomes into a writer of its own, and returns each
+/// run's rows and receipt times in the outcomes' order.
+fn rows_of(
+    store: &Store,
+    limits: Limits,
+    deliveries: &[Delivery],
+    threads: NonZeroUsize,
+) -> Result<Vec<Rows>, RunError> {
+    // Below this, a thread costs more than it saves.
+    const FEWEST: usize = 256;
+    let per_thread = deliveries.len().div_ceil(threads.get()).max(FEWEST);
+    std::thread::scope(|scope| {
+        let running: Vec<_> = deliveries
+            .chunks(per_thread)
+            .map(|chunk| {
+                scope.spawn(move || {
+                    let mut rows = Writer::new(store.clone(), limits);
+                    let mut taken = Vec::with_capacity(chunk.len());
+                    for delivery in chunk {
+                        let envelope = Envelope::decode(&delivery.payload).map_err(|error| {
+                            RunError::Corrupt(format!(
+                                "normalized offset {}: {error}",
+                                delivery.offset
+                            ))
+                        })?;
+                        taken.push(envelope.received);
+                        rows.add(envelope).map_err(RunError::Store)?;
+                    }
+                    Ok((rows.take(), taken))
+                })
+            })
+            .collect();
+        running
+            .into_iter()
+            // A panic in decoding is a bug; carry it to this task.
+            .map(|thread| {
+                thread
+                    .join()
+                    .unwrap_or_else(|panic| std::panic::resume_unwind(panic))
+            })
+            .collect()
+    })
 }
 
 /// Outcomes on their way to the store, through the offset `through`.
