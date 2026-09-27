@@ -52,9 +52,27 @@ The engine's speed is guarded in CI: a pull request fails if evaluating an
 event allocates, or if the engine spends more than 2% more instructions on a
 fixed workload. See [docs/benchmarks.md](docs/benchmarks.md).
 
-Not built yet: detection on the stored stream, response, and the interface. The order is in [docs/roadmap.md](docs/roadmap.md).
+Stored events are searchable by time, class, and any OCSF attribute, in the
+browser and over HTTP: over 10 million events, in 38 to 806 ms on a laptop
+([docs/benchmarks.md](docs/benchmarks.md#search)).
+
+Not built yet: detection on the stored stream, the entity graph, response, and
+the investigation and case views. The order is in
+[docs/roadmap.md](docs/roadmap.md).
 
 ## Run it
+
+To see it with something in it, one command starts the platform, fills it
+with a day of Sysmon events from a fleet of 2,000 Windows machines, one
+intrusion hidden among them, and opens the search view on that intrusion:
+
+```text
+scripts/demo.sh
+```
+
+It needs Docker, bash, curl, and openssl, and writes a random ClickHouse
+password and API token to `.env` if there are none; the view asks for the
+token.
 
 The platform as it stands, Sysmon files in, OCSF events in ClickHouse out, and
 a search interface over them, in two containers:

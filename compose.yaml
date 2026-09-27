@@ -3,6 +3,9 @@
 #   cp .env.example .env      # then set CLICKHOUSE_PASSWORD and API_TOKEN
 #   docker compose up -d --build
 #
+# Or scripts/demo.sh, which does that and fills it with a day of a fleet's
+# Sysmon events, one intrusion among them.
+#
 # Drop Sysmon events, as `evtx_dump -o json` writes them, into
 # ./inbox/sysmon/ (write under a `.tmp` name, then rename), and search them
 # at http://127.0.0.1:8080 with API_TOKEN, or query ClickHouse directly:
@@ -58,6 +61,19 @@ services:
     environment:
       RUST_LOG: info
     restart: unless-stopped
+
+  # The demo's recording: a day of a fleet's Sysmon events, written into
+  # the inbox and then done. Only with `--profile demo`, or when run by name.
+  recording:
+    profiles: [demo]
+    build:
+      context: .
+      target: fleet
+    image: goliath-fleet:local
+    command: ["--out", "/inbox/sysmon"]
+    volumes:
+      - ./inbox:/inbox
+    restart: "no"
 
 secrets:
   # Mounted at /run/secrets/clickhouse_password, where deploy/goliath.toml
