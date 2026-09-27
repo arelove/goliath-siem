@@ -87,6 +87,7 @@ curl -sf "$api/" | grep -q '<title>Goliath</title>' || {
 }
 echo "found through the API: $found; interface served at $api"
 
+
 # The M2.5 exit criterion: one event written to the source is searchable
 # within five seconds. The stack is warm by now, as it is in use.
 millis() { echo $(($(date +%s%N) / 1000000)); }
@@ -115,3 +116,14 @@ while true; do
     sleep 0.05
 done
 echo "one event searchable $(($(millis) - started)) ms after it was written"
+
+# The single-process stack publishes its metrics. The event just timed was
+# stored by this very process, so its counter cannot be zero.
+if [[ "$COMPOSE_FILE" == compose.yaml ]]; then
+    stored=$(curl -sf http://127.0.0.1:9464/metrics | grep '^goliath_stored_outcomes_total ' | cut -d' ' -f2)
+    if [[ "${stored:-0}" -lt 1 ]]; then
+        echo "the metrics count no stored outcomes" >&2
+        exit 1
+    fi
+    echo "metrics served: $stored outcomes stored"
+fi
