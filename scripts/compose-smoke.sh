@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Brings a compose stack up, drops a Sysmon file into the inbox, waits for
-# its events in ClickHouse, and finds them through the API and its interface.
+# its events in ClickHouse, finds them through the API and its interface, and
+# checks that one event is searchable within five seconds of being written.
 # Used by CI; runs the same on a laptop.
 #
 #   scripts/compose-smoke.sh                           # every role in one container
@@ -85,3 +86,32 @@ curl -sf "$api/" | grep -q '<title>Goliath</title>' || {
     exit 1
 }
 echo "found through the API: $found; interface served at $api"
+
+# The M2.5 exit criterion: one event written to the source is searchable
+# within five seconds. The stack is warm by now, as it is in use.
+millis() { echo $(($(date +%s%N) / 1000000)); }
+marker="latency-$(date +%s%N)"
+now=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+record="{\"Event\": {\"System\": {\"Provider\": {\"#attributes\": {\"Name\": \"Microsoft-Windows-Sysmon\"}},
+  \"EventID\": 1, \"TimeCreated\": {\"#attributes\": {\"SystemTime\": \"$now\"}},
+  \"EventRecordID\": 1, \"Channel\": \"Microsoft-Windows-Sysmon/Operational\", \"Computer\": \"smoke\"},
+  \"EventData\": {\"CommandLine\": \"notepad.exe $marker\"}}}"
+search="{\"from\": \"$(date -u -d '-1 hour' +%Y-%m-%dT%H:%M:%SZ)\",
+  \"to\": \"$(date -u -d '+1 hour' +%Y-%m-%dT%H:%M:%SZ)\", \"classes\": [1007],
+  \"filters\": [{\"path\": \"process.cmd_line\", \"op\": \"contains\", \"value\": \"$marker\"}]}"
+printf '%s\n' "$record" > "inbox/sysmon/$marker.json.tmp"
+started=$(millis)
+mv "inbox/sysmon/$marker.json.tmp" "inbox/sysmon/$marker.json"
+while true; do
+    if curl -s "$api/api/v1/search" -H "Authorization: Bearer $API_TOKEN" \
+        -H 'content-type: application/json' -d "$search" | grep -q '"at":'; then
+        break
+    fi
+    if (($(millis) - started > 5000)); then
+        echo "one event was not searchable within five seconds" >&2
+        docker compose logs >&2
+        exit 1
+    fi
+    sleep 0.05
+done
+echo "one event searchable $(($(millis) - started)) ms after it was written"
