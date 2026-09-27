@@ -107,6 +107,10 @@ pub enum Verdict {
         growth: f64,
         /// The largest backlog there, in records.
         backlog: f64,
+        /// The growth allowed, in records per second.
+        max_growth: f64,
+        /// The largest backlog allowed, in records.
+        max_backlog: f64,
     },
     /// Too few samples in the load window to judge.
     Unmeasured(String),
@@ -119,10 +123,27 @@ impl fmt::Display for Verdict {
             Self::NotOffered { offered } => {
                 write!(f, "not offered: the driver reached {offered:.0} records/s")
             }
-            Self::Unbounded { growth, backlog } => write!(
-                f,
-                "not sustained: the backlog grew {growth:.0} records/s, up to {backlog:.0} records"
-            ),
+            Self::Unbounded {
+                growth,
+                backlog,
+                max_growth,
+                max_backlog,
+            } => {
+                // Name what was exceeded; a shrinking backlog that was still
+                // too large is not "growth".
+                let mut exceeded = Vec::new();
+                if growth > max_growth {
+                    exceeded.push(format!(
+                        "the backlog grew {growth:.0} records/s, above {max_growth:.0}"
+                    ));
+                }
+                if backlog > max_backlog {
+                    exceeded.push(format!(
+                        "the backlog reached {backlog:.0} records, above {max_backlog:.0}"
+                    ));
+                }
+                write!(f, "not sustained: {}", exceeded.join("; "))
+            }
             Self::Unmeasured(reason) => write!(f, "not measured: {reason}"),
         }
     }
@@ -487,12 +508,15 @@ fn compute(run: &Run, storage: Storage) -> Result<Computed, ReportError> {
             offered: offered_rate,
         },
         (Some(growth), Some(peak)) => {
-            if growth <= rate * MAX_GROWTH && peak <= rate * MAX_BACKLOG_SECONDS {
+            let (max_growth, max_backlog) = (rate * MAX_GROWTH, rate * MAX_BACKLOG_SECONDS);
+            if growth <= max_growth && peak <= max_backlog {
                 Verdict::Sustained
             } else {
                 Verdict::Unbounded {
                     growth,
                     backlog: peak,
+                    max_growth,
+                    max_backlog,
                 }
             }
         }
@@ -1013,6 +1037,20 @@ goliath_receipt_to_stored_seconds_bucket{le="+Inf"} 100
         );
         assert!(computed.complete);
         assert!((computed.stored_rate - 700.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_shrinking_backlog_that_is_still_too_large_is_named_as_too_large() {
+        let verdict = Verdict::Unbounded {
+            growth: -70_300.0,
+            backlog: 14_009_022.0,
+            max_growth: 1_000.0,
+            max_backlog: 1_000_000.0,
+        };
+        assert_eq!(
+            verdict.to_string(),
+            "not sustained: the backlog reached 14009022 records, above 1000000"
+        );
     }
 
     #[test]
