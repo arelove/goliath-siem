@@ -17,8 +17,12 @@ callgrind = []
 # Builds the search benchmark, which stores millions of events in a
 # ClickHouse server and times searches over them.
 search = ["dep:clickhouse", "dep:goliath-normalize", "dep:goliath-search", "dep:goliath-store", "dep:tokio"]
+rig = ["dep:goliath", "dep:goliath-pipe", "dep:sysinfo", "dep:clickhouse", "dep:tokio"]
 
 [dependencies]
+goliath = { path = "../goliath", features = ["kafka"], optional = true }
+goliath-pipe = { path = "../goliath-pipe", features = ["kafka"], optional = true }
+sysinfo = { version = "0.38", default-features = false, features = ["system"], optional = true }
 clickhouse = { version = "0.15.2", default-features = false, features = ["lz4"], optional = true }
 goliath-match = { path = "../goliath-match" }
 goliath-normalize = { path = "../goliath-normalize", optional = true }
@@ -27,7 +31,7 @@ goliath-search = { path = "../goliath-search", optional = true }
 goliath-sigma = { path = "../goliath-sigma" }
 goliath-store = { path = "../goliath-store", optional = true }
 serde_json.workspace = true
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"], optional = true }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "net", "io-util", "time", "signal"], optional = true }
 
 [dev-dependencies]
 goliath-normalize = { path = "../goliath-normalize" }
@@ -41,6 +45,10 @@ required-features = ["callgrind"]
 [[bin]]
 name = "search"
 required-features = ["search"]
+
+[[bin]]
+name = "rig"
+required-features = ["rig"]
 
 [lints]
 workspace = true

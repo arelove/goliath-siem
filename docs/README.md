@@ -11,6 +11,7 @@ orchestration, and incident handling in one system.
 | [roadmap.md](roadmap.md) | Delivery plan, milestones, current focus |
 | [sigma-coverage.md](sigma-coverage.md) | How much of the SigmaHQ repository loads and fires on real attack events |
 | [benchmarks.md](benchmarks.md) | How the engine's speed is measured, and how CI stops regressions |
+| [benchmark-rig.md](benchmark-rig.md) | Running the benchmark rig against the whole platform, and how its report decides |
 | [adr/](adr/) | Architecture decision records, one file per decision |
 
 ## Decisions

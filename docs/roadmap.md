@@ -15,6 +15,9 @@ before collection, context, and the entity graph, because each of those is
 judged by a number only the rig can produce, and the entity-model generator
 is what the entity graph's precision and recall are measured against.
 
+Review notes added on 2026-09-27 are implementation concerns, not revised ADRs
+or claims that an exit criterion has passed.
+
 ## M0 - Foundations
 
 Make the repository able to hold work.
@@ -67,6 +70,10 @@ The M1 corpus is deliberately not the M3 generator. It is real telemetry,
 replicated for volume, so it is good enough to check equivalence and measure
 the engine against itself; it cannot stand in for the entity-model stream when
 measuring the platform.
+
+**Review note (2026-09-27):** keep M1's formal exit open until the named
+10-million-event run is published. Exact agreement on the smaller regression
+corpus does not satisfy that volume criterion.
 
 ## M2 - Ingestion path
 
@@ -144,6 +151,28 @@ measured where the component exists and marked with the milestone that
 brings it where it does not, and a 30-minute run sustains 100k events/s on one
 developer machine, with the lag of every reader bounded.
 
+**Review notes (2026-09-27):**
+
+- The Sysmon and Entra formatters now have normalization and reproducibility
+  tests. This is a subset of M3: auditd, Falco, replay, and attack injection
+  are still missing. A driver or a successful 60-second run does not establish
+  the 30-minute exit criterion.
+- Define "bounded lag" with an allowed growth rate and maximum backlog before
+  publishing a verdict. Draining after load stops proves eventual completion,
+  not sustained throughput. Reader lag counts pipe payloads; one raw payload
+  can contain 1,000 events. Raw and normalized lag have different units.
+- Name the hardware and CPU accounting boundary. Platform process CPU excludes
+  Kafka, ClickHouse, and the generator. Publish whole-machine consumption
+  separately before making a cost-per-event claim. Separate startup, load,
+  and drain in throughput calculations.
+- The current pipe uses one partition per topic and manual assignment. More
+  producer threads do not demonstrate horizontal scaling of consumers. Measure
+  this bottleneck before choosing sharding or revising ADR-0015.
+- Distinguish entity-resolution precision against synthetic identity truth
+  from detection precision against real labelled telemetry. The blanket
+  statement in architecture.md that precision cannot use synthetic data needs
+  this qualification before the M4.5 evaluation is specified.
+
 ## M3.5 - Collection
 
 Files dropped in an inbox prove the path; companies send logs over the
@@ -173,6 +202,11 @@ Enrichment that makes an alert actionable rather than a row.
 measurable reduction in throughput, and an ATT&CK Navigator layer exported that
 distinguishes covered techniques from techniques lacking a data source.
 
+**Review note (2026-09-27):** "no measurable reduction" needs a tolerance,
+confidence interval, indicator mix, hit rate, and memory budget. A finite
+lookup cannot promise zero cost. Benchmark cold and warm caches separately
+and include refresh pressure at both indicator counts named in architecture.md.
+
 ## M4.5 - Entity graph
 
 An alert about a process is a row; an alert about a person, on a host, talking
@@ -182,7 +216,7 @@ things analysts reason about.
 | Deliverable | Detail |
 | --- | --- |
 | Entity model | Users, hosts, processes, files, addresses, and domains as typed objects with typed links (logged on to, ran, wrote, connected to), derived from OCSF observables, versioned like the schema |
-| Resolution | One entity under the identifiers each source gives it, such as `CORPdam`, `adam@corp.example`, and an Entra object id; every merge explainable by the rule and events that made it, and reversible; placement, streaming or at rest, decided by ADR |
+| Resolution | One entity under the identifiers each source gives it, such as `CORP\adam`, `adam@corp.example`, and an Entra object id; every merge explainable by the rule and events that made it, and reversible; placement, streaming or at rest, decided by ADR |
 | Graph store | Entities and links in ClickHouse beside the events, with first and last seen and the events behind each link |
 | Graph API | Neighbours of an entity within a time window, and the path between two, under the same checked, parameterized discipline as search |
 
@@ -190,6 +224,19 @@ things analysts reason about.
 under different identifiers per source, resolution reaches measured precision
 and recall against the generator's ground truth, and every entity within two
 links of an alert's subject is returned in under one second.
+
+**Review notes (2026-09-27):**
+
+- Resolve the storage boundary by ADR before implementing the graph. ADR-0003
+  puts mutable entities in PostgreSQL; this milestone puts entities and links
+  in ClickHouse while also requiring reversible merges. Immutable observed
+  edges and mutable identity decisions need explicit, separate ownership.
+- Static identifier lists do not establish IP ownership across time. Add
+  validity intervals, DHCP collision cases, shared hosts, account reuse, and
+  false-merge penalties to the evaluation before claiming resolution quality.
+- Bound graph expansion by time, result size, and degree. Two links from a
+  shared domain controller can include most of a company; "under one second"
+  is not testable without dataset size and limits on returned neighbours.
 
 ## M5 - Detection service
 
@@ -208,6 +255,11 @@ streaming path at target throughput, and every shipped rule passing its
 fixtures in CI; a correlation rule fires in the stream on the same events as
 its scheduled SQL form; a backtest of one rule over 30 days of stored events
 finishes in under a minute.
+
+**Review note (2026-09-27):** specify event time, allowed lateness, duplicate
+handling, restart recovery, and rule-version boundaries before sharing
+correlation semantics between streaming and SQL. The 30-day backtest target
+also needs event volume, rule complexity, hardware, and concurrency limits.
 
 ## M5.5 - Open archive
 
@@ -238,6 +290,13 @@ returns the same events it returned while hot.
 approval step, and every state transition appears in a tamper-evident audit
 log.
 
+**Review note (2026-09-27):** basic identity, authorization, and tenant
+isolation are prerequisites for network ingestion and shared deployments,
+even if the full M6 service comes later. Keep pre-M6 deployments explicitly
+single-tenant and trusted; add negative cross-tenant tests before changing
+that boundary. Hash chaining detects edits only against a trusted anchor;
+define external checkpoints to detect truncation and whole-log replacement.
+
 ## M7 - Interface
 
 | Deliverable | Detail |
@@ -263,6 +322,11 @@ without leaving the interface.
 
 **Exit criterion:** a person who has never seen the project runs it against
 their own logs within ten minutes, following only the README.
+
+**Review note (2026-09-27):** maintain the published status independently of
+this release milestone. Both root READMEs still describe ingestion and storage
+as unbuilt despite the M2 and M2.5 completion evidence above. Reconcile those
+statements before using the README as an onboarding acceptance test.
 
 ## Sequencing notes
 
