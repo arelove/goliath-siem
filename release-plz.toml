@@ -64,6 +64,11 @@ release = false
 
 # Workloads and benchmarks; never released.
 [[package]]
+name = "goliath-gen"
+publish = false
+release = false
+
+[[package]]
 name = "goliath-bench"
 publish = false
 release = false

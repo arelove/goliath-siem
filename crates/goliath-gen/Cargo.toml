@@ -1,0 +1,25 @@
+[package]
+name = "goliath-gen"
+description = "A synthetic organization's security telemetry, in each source's own format, with the ground truth of who is who"
+keywords = ["siem", "security", "benchmark", "synthetic-data"]
+categories = ["simulation", "development-tools::testing"]
+readme = "README.md"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+# Not published until the benchmark rig has used it; see
+# docs/adr/0017-benchmark-rig.md.
+publish = false
+
+[dependencies]
+jiff = { version = "0.2", default-features = false, features = ["std"] }
+serde_json.workspace = true
+
+[dev-dependencies]
+goliath-normalize = { path = "../goliath-normalize" }
+
+[lints]
+workspace = true

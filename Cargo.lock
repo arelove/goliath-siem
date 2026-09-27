@@ -619,6 +619,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "goliath-gen"
+version = "0.1.0"
+dependencies = [
+ "goliath-normalize",
+ "jiff",
+ "serde_json",
+]
+
+[[package]]
 name = "goliath-match"
 version = "0.2.0"
 dependencies = [
