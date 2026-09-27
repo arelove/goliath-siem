@@ -613,6 +613,7 @@ dependencies = [
  "goliath-sigma",
  "goliath-store",
  "gungraun",
+ "jiff",
  "serde_json",
  "sysinfo",
  "tokio",
