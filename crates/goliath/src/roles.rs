@@ -4,7 +4,7 @@
 //! then acknowledge. A crash anywhere repeats work; it never loses records
 //! (`docs/adr/0015-pipe-semantics.md`).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -12,7 +12,7 @@ use std::time::Duration;
 
 use goliath_normalize::{Envelope, Normalizer, Outcome};
 use goliath_pipe::{Delivery, Receiver, Sender};
-use goliath_store::{Limits, Store, StoreError, Writer};
+use goliath_store::{Batch, Limits, Store, StoreError, Writer};
 use tokio::sync::watch;
 use tracing::{info, warn};
 
@@ -254,8 +254,17 @@ fn normalize_run(normalizer: &Normalizer, deliveries: &[Delivery]) -> (Vec<Vec<u
     (encoded, tally)
 }
 
+/// Inserts the writer keeps in flight at once. While they run it goes on
+/// receiving and decoding, and ClickHouse takes several inserts in parallel.
+const INSERTS: usize = 4;
+
 /// Writes normalized outcomes to the store, acknowledging only what is
 /// written. While the store is unavailable it retries, holding what it has.
+///
+/// What the writer holds is handed to an insert of its own once it is full
+/// or due, with up to [`INSERTS`] running at once. Inserts may finish in any
+/// order; they are acknowledged in the order they were started, so an
+/// acknowledgement never covers an outcome still being written.
 pub(crate) async fn write(
     store: Store,
     limits: Limits,
@@ -263,22 +272,17 @@ pub(crate) async fn write(
     metrics: Metrics,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
-    let mut writer = Writer::new(store, limits);
-    // The last offset received, and the last known to be written: every
-    // outcome up to it has been flushed.
+    let mut writer = Writer::new(store.clone(), limits);
+    // The last offset the writer holds, and when the platform took each
+    // outcome it holds.
     let mut received = None;
-    let mut written = None;
-    // When the platform took each outcome's record, for those received but
-    // not yet written, and for those written but not yet acknowledged.
     let mut pending = Vec::new();
-    let mut stored = Vec::new();
+    let mut inserts = VecDeque::new();
     let mut lag = Lag::new("normalized".to_owned(), "writer");
     loop {
         lag.report(&outcomes, &metrics).await;
         let stopping = *stop.borrow_and_update();
-        if stopping {
-            flush(&mut writer, &mut stop, Flush::All, &metrics).await?;
-        } else {
+        if !stopping && inserts.len() < INSERTS {
             let wait = writer.deadline().map_or(POLL, |deadline| {
                 deadline
                     .saturating_duration_since(std::time::Instant::now())
@@ -290,40 +294,52 @@ pub(crate) async fn write(
                 })?;
                 received = Some(delivery.offset);
                 pending.push(envelope.received);
-                // A push that fails to flush has kept its outcome; only the
-                // flush is repeated.
-                let started = std::time::Instant::now();
-                match writer.push(envelope).await {
-                    // It filled the writer, and flushed.
-                    Ok(()) if writer.waiting() == 0 => metrics.flushed(started.elapsed()),
-                    Ok(()) => {}
-                    Err(StoreError::ClickHouse(error)) => {
-                        warn!(%error, "store unavailable; holding records and retrying");
-                        flush(&mut writer, &mut stop, Flush::All, &metrics).await?;
-                    }
-                    Err(other) => return Err(RunError::Store(other)),
-                }
-                // A push that filled the writer flushed everything so far.
-                // Under steady load the writer is never empty at the end of
-                // a receive, so this is where most of it becomes
-                // acknowledgeable.
-                if writer.waiting() == 0 {
-                    written = Some(delivery.offset);
-                    stored.append(&mut pending);
+                writer.add(envelope).map_err(RunError::Store)?;
+                if writer.is_full() && inserts.len() < INSERTS {
+                    inserts.push_back(Insert::start(
+                        &store,
+                        &mut writer,
+                        &mut received,
+                        &mut pending,
+                        &stop,
+                    ));
                 }
             }
-            flush(&mut writer, &mut stop, Flush::IfDue, &metrics).await?;
         }
-        if writer.waiting() == 0
-            && let Some(offset) = received.take()
-        {
-            written = Some(offset);
-            stored.append(&mut pending);
+        // Due, or everything on shutdown; a full writer that found no free
+        // insert waits here for one.
+        let hand_over = if stopping {
+            writer.waiting() > 0
+        } else {
+            writer.is_due() || writer.is_full()
+        };
+        if hand_over && (stopping || inserts.len() < INSERTS) {
+            inserts.push_back(Insert::start(
+                &store,
+                &mut writer,
+                &mut received,
+                &mut pending,
+                &stop,
+            ));
         }
-        if let Some(offset) = written.take() {
-            outcomes.acknowledge(offset).await?;
-            metrics.stored(&std::mem::take(&mut stored), crate::raw::now());
-            info!(through = offset, "stored");
+        // Acknowledge inserts that finished, oldest first. When no more can
+        // start, or on shutdown, wait for the oldest.
+        while let Some(oldest) = inserts.front() {
+            let wait = stopping || inserts.len() >= INSERTS;
+            if !wait && !oldest.task.is_finished() {
+                break;
+            }
+            let Some(insert) = inserts.pop_front() else {
+                break;
+            };
+            let took = insert
+                .task
+                .await
+                .map_err(|error| RunError::Role(format!("writing: {error}")))??;
+            outcomes.acknowledge(insert.through).await?;
+            metrics.flushed(took);
+            metrics.stored(&insert.received, crate::raw::now());
+            info!(through = insert.through, "stored");
         }
         if stopping {
             return Ok(());
@@ -331,43 +347,62 @@ pub(crate) async fn write(
     }
 }
 
-#[derive(Clone, Copy)]
-enum Flush {
-    All,
-    IfDue,
+/// Outcomes on their way to the store, through the offset `through`.
+struct Insert {
+    through: u64,
+    received: Vec<Option<i64>>,
+    task: tokio::task::JoinHandle<Result<Duration, RunError>>,
 }
 
-/// Flushes until it succeeds, waiting longer after each store failure, up
-/// to 30 seconds. On shutdown it gives up instead: what it holds is not
-/// acknowledged, so it is delivered again when the writer next starts.
-async fn flush(
-    writer: &mut Writer,
-    stop: &mut watch::Receiver<bool>,
-    which: Flush,
-    metrics: &Metrics,
-) -> Result<(), RunError> {
+impl Insert {
+    /// Starts writing everything `writer` holds.
+    fn start(
+        store: &Store,
+        writer: &mut Writer,
+        through: &mut Option<u64>,
+        received: &mut Vec<Option<i64>>,
+        stop: &watch::Receiver<bool>,
+    ) -> Self {
+        let batches = writer.take();
+        let task = tokio::spawn(insert(store.clone(), batches, stop.clone()));
+        Self {
+            // Something was added before anything is taken.
+            through: through.take().unwrap_or_default(),
+            received: std::mem::take(received),
+            task,
+        }
+    }
+}
+
+/// Writes `batches` until they are written, waiting longer after each store
+/// failure, up to 30 seconds, and returns how long the writing took. On
+/// shutdown it gives up instead: what it holds is not acknowledged, so it is
+/// delivered again when the writer next starts.
+async fn insert(
+    store: Store,
+    batches: Vec<Batch>,
+    mut stop: watch::Receiver<bool>,
+) -> Result<Duration, RunError> {
     let mut pause = Duration::from_millis(250);
+    let mut written = 0;
     loop {
-        let holding = writer.waiting();
         let started = std::time::Instant::now();
-        let result = match which {
-            Flush::All => writer.flush().await,
-            Flush::IfDue => writer.flush_if_due().await,
-        };
-        match result {
-            Ok(()) => {
-                // Only a flush that wrote something is a write worth timing.
-                if holding > 0 && writer.waiting() == 0 {
-                    metrics.flushed(started.elapsed());
-                }
-                return Ok(());
+        let mut failed = None;
+        for batch in &batches[written..] {
+            if let Err(error) = store.write(batch).await {
+                failed = Some(error);
+                break;
             }
-            Err(StoreError::ClickHouse(error)) if !*stop.borrow() => {
+            written += 1;
+        }
+        match failed {
+            None => return Ok(started.elapsed()),
+            Some(StoreError::ClickHouse(error)) if !*stop.borrow() => {
                 warn!(%error, retry_in = ?pause, "store unavailable; holding records and retrying");
                 let _ = tokio::time::timeout(pause, stop.changed()).await;
                 pause = (pause * 2).min(Duration::from_secs(30));
             }
-            Err(error) => return Err(RunError::Store(error)),
+            Some(error) => return Err(RunError::Store(error)),
         }
     }
 }

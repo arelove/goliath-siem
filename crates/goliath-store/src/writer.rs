@@ -66,6 +66,21 @@ impl Writer {
     /// no table for, and the errors of [`flush`](Self::flush). If the flush
     /// fails, the outcome is already kept: do not push it again.
     pub async fn push(&mut self, envelope: Envelope) -> Result<(), StoreError> {
+        self.add(envelope)?;
+        if self.is_full() {
+            self.flush().await?;
+        }
+        Ok(())
+    }
+
+    /// Adds an outcome without flushing, for a caller that writes what the
+    /// writer holds itself, through [`take`](Self::take).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError::UnknownOutcome`] for an outcome the store has
+    /// no table for.
+    pub fn add(&mut self, envelope: Envelope) -> Result<(), StoreError> {
         let Envelope {
             source,
             version,
@@ -90,10 +105,27 @@ impl Writer {
         self.pending[index].push_received(outcome, received)?;
         self.rows += 1;
         self.oldest.get_or_insert_with(Instant::now);
-        if self.rows >= self.limits.max_rows {
-            self.flush().await?;
-        }
         Ok(())
+    }
+
+    /// Whether the writer holds `max_rows` rows or more.
+    pub fn is_full(&self) -> bool {
+        self.rows >= self.limits.max_rows
+    }
+
+    /// Whether the oldest waiting row has waited `max_delay`.
+    pub fn is_due(&self) -> bool {
+        self.deadline()
+            .is_some_and(|deadline| Instant::now() >= deadline)
+    }
+
+    /// Hands over every waiting row, in batches to write with
+    /// [`Store::write`], leaving the writer empty. Until they are written,
+    /// they are the caller's to keep.
+    pub fn take(&mut self) -> Vec<Batch> {
+        self.rows = 0;
+        self.oldest = None;
+        std::mem::take(&mut self.pending)
     }
 
     /// When the waiting rows must be written by, if any wait.
@@ -108,9 +140,10 @@ impl Writer {
     ///
     /// The errors of [`flush`](Self::flush).
     pub async fn flush_if_due(&mut self) -> Result<(), StoreError> {
-        match self.deadline() {
-            Some(deadline) if Instant::now() >= deadline => self.flush().await,
-            _ => Ok(()),
+        if self.is_due() {
+            self.flush().await
+        } else {
+            Ok(())
         }
     }
 
