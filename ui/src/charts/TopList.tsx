@@ -12,8 +12,10 @@ interface Props {
 export function TopList({ title, entries, onPick }: Props) {
   const most = Math.max(1, ...entries.map((entry) => entry.count));
   return (
-    <section className="panel toplist">
-      <h2>{title}</h2>
+    <section className="card toplist">
+      <header>
+        <h2>{title}</h2>
+      </header>
       {entries.length === 0 ? (
         <p className="note">Nothing in this range.</p>
       ) : (

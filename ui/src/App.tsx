@@ -17,6 +17,61 @@ function unauthorized(error: unknown): boolean {
 
 type View = "overview" | "search";
 
+/** Ranges the dashboard offers, each ending now. */
+const RANGES = [
+  { label: "Last 15 minutes", ms: 15 * 60_000 },
+  { label: "Last hour", ms: 3_600_000 },
+  { label: "Last 6 hours", ms: 6 * 3_600_000 },
+  { label: "Last 24 hours", ms: 24 * 3_600_000 },
+  { label: "Last 7 days", ms: 7 * 24 * 3_600_000 },
+];
+
+type Theme = "dark" | "light";
+const THEME_KEY = "goliath.theme";
+
+/** The theme chosen before, dark unless light was. */
+function currentTheme(): Theme {
+  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
+}
+
+function applyTheme(theme: Theme): Theme {
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch {
+    // Storage may be unavailable; the choice then lasts until reload.
+  }
+  return theme;
+}
+
+function SunIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <path
+        d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function viewOf(params: URLSearchParams): View {
   return params.get("view") === "search" ? "search" : "overview";
 }
@@ -29,6 +84,8 @@ export function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<View>(() => viewOf(new URLSearchParams(window.location.search)));
   const [overviewError, setOverviewError] = useState<unknown>(null);
+  const [span, setSpan] = useState(24 * 3_600_000);
+  const [theme, setTheme] = useState(currentTheme);
   const show = (next: View) => {
     setView(next);
     const params = new URLSearchParams(window.location.search);
@@ -103,8 +160,24 @@ export function App() {
 
   return (
     <main className="app">
-      <header className="top">
-        <h1>Goliath</h1>
+      <header className="topbar">
+        <span className="brand">
+          goliath<span className="mark">.</span>
+        </span>
+        <span className="section">
+          {view === "overview" ? "Security overview" : "Event search"}
+        </span>
+        <button
+          type="button"
+          className="icon"
+          aria-label={theme === "dark" ? "Light theme" : "Dark theme"}
+          title={theme === "dark" ? "Light theme" : "Dark theme"}
+          onClick={() => setTheme(applyTheme(theme === "dark" ? "light" : "dark"))}
+        >
+          {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+        </button>
+      </header>
+      <nav className="subbar">
         <div className="tabs" role="tablist">
           {(["overview", "search"] as const).map((name) => (
             <button
@@ -115,15 +188,33 @@ export function App() {
               className={view === name ? "tab active" : "tab"}
               onClick={() => show(name)}
             >
-              {name === "overview" ? "Overview" : "Search"}
+              {name === "overview" ? "Dashboard" : "Events"}
             </button>
           ))}
         </div>
-      </header>
+        {view === "overview" && (
+          <select
+            aria-label="Time range"
+            value={span}
+            onChange={(event) => setSpan(Number(event.target.value))}
+          >
+            {RANGES.map((range) => (
+              <option key={range.ms} value={range.ms}>
+                {range.label}
+              </option>
+            ))}
+          </select>
+        )}
+      </nav>
       {view === "overview" ? (
         <Overview
+          span={span}
           className={(uid) => names.get(Number(uid)) ?? `Class ${uid}`}
           onError={setOverviewError}
+          onOpen={(at) => {
+            setSelected(at);
+            show("search");
+          }}
         />
       ) : (
         searchView()

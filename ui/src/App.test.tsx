@@ -30,6 +30,7 @@ const OVERVIEW = {
   classes: [{ key: "1007", count: 1234 }],
   sources: [{ key: "sysmon", count: 1234 }],
   hosts: [{ key: "ws-7", count: 900 }],
+  host_series: [{ at: 1790330370000, counts: { "ws-7": 900 } }],
   users: [{ key: "alice", count: 800 }],
 };
 
@@ -158,20 +159,28 @@ describe("the overview", () => {
   it("opens by default and shows what the stored events add up to", async () => {
     window.history.replaceState(null, "", "/");
     show();
-    expect(await screen.findByText("ws-7")).toBeInTheDocument();
-    expect(screen.getByText("alice")).toBeInTheDocument();
-    expect(screen.getByText("Process Activity")).toBeInTheDocument();
+    // Each appears in a chart's legend or list and in the recent events.
+    await waitFor(() => {
+      expect(screen.getByText("powershell -enc AAAA")).toBeInTheDocument();
+    });
+    expect(screen.getAllByText("ws-7").length).toBeGreaterThan(1);
+    expect(screen.getAllByText("alice").length).toBeGreaterThan(1);
+    expect(screen.getAllByText("Process Activity").length).toBeGreaterThan(1);
     const asked = calls.find((call) => call.path === "/overview");
     expect(asked?.body).toMatchObject({ from: expect.any(String), to: expect.any(String) });
-    expect(calls.some((call) => call.path === "/search")).toBe(false);
+    // The recent events table asks for Medium and above.
+    await waitFor(() => {
+      const recent = calls.find((call) => call.path === "/search");
+      expect(recent?.body?.filters).toEqual([{ path: "severity_id", op: "gte", value: 3 }]);
+    });
   });
 
   it("asks for another range when one is picked", async () => {
     window.history.replaceState(null, "", "/");
     const user = userEvent.setup();
     show();
-    await screen.findByText("ws-7");
-    await user.click(screen.getByRole("button", { name: "24 hours" }));
+    await screen.findAllByText("ws-7");
+    await user.selectOptions(screen.getByLabelText("Time range"), "Last hour");
     await waitFor(() => {
       const spans = calls
         .filter((call) => call.path === "/overview" && call.body)
@@ -179,7 +188,7 @@ describe("the overview", () => {
           const body = call.body as unknown as { from: string; to: string };
           return Date.parse(body.to) - Date.parse(body.from);
         });
-      expect(spans).toContain(24 * 3_600_000);
+      expect(spans).toContain(3_600_000);
     });
   });
 });

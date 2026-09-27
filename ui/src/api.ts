@@ -192,7 +192,7 @@ export interface Frequent {
   count: number;
 }
 
-/** Events in one step of an overview, by OCSF `severity_id`. */
+/** Events in one step of an overview, by a key such as `severity_id` or host. */
 export interface Step {
   at: number;
   counts: Record<string, number>;
@@ -208,6 +208,8 @@ export interface Overview {
   classes: Frequent[];
   sources: Frequent[];
   hosts: Frequent[];
+  /** The events of `hosts` by step, keyed by host. */
+  host_series: Step[];
   users: Frequent[];
 }
 

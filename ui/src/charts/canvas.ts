@@ -13,7 +13,8 @@ export interface Surface {
 /**
  * Calls `draw` on every animation frame, with the canvas sized to its box
  * at the display's pixel density, and the milliseconds since the last frame.
- * Nothing is drawn while the tab is hidden: the browser pauses frames.
+ * Nothing is drawn while the tab is hidden, as the browser pauses frames, or
+ * while the canvas is scrolled out of view.
  */
 export function useFrames(draw: (surface: Surface, elapsed: number) => void) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -29,7 +30,20 @@ export function useFrames(draw: (surface: Surface, elapsed: number) => void) {
     }
     let frame = 0;
     let last = performance.now();
+    let visible = true;
+    const watcher =
+      typeof IntersectionObserver === "undefined"
+        ? null
+        : new IntersectionObserver(([entry]) => {
+            visible = entry?.isIntersecting ?? true;
+          });
+    watcher?.observe(element);
     const tick = (now: number) => {
+      if (!visible) {
+        last = now;
+        frame = requestAnimationFrame(tick);
+        return;
+      }
       const ratio = window.devicePixelRatio || 1;
       const width = element.clientWidth;
       const height = element.clientHeight;
@@ -47,7 +61,10 @@ export function useFrames(draw: (surface: Surface, elapsed: number) => void) {
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      watcher?.disconnect();
+    };
   }, []);
 
   return canvas;
@@ -142,17 +159,157 @@ export function token(name: string, fallback: string): string {
   return value || fallback;
 }
 
+/** A series of counts to draw as layers, such as severities or hosts. */
+export interface Layer {
+  key: string;
+  name: string;
+  color: string;
+}
+
 /** OCSF `severity_id`s, lowest first, with their names and colours. */
-export const SEVERITIES: { id: string; name: string; color: string }[] = [
-  { id: "0", name: "Unknown", color: "#5b6573" },
-  { id: "1", name: "Informational", color: "#3d7eff" },
-  { id: "2", name: "Low", color: "#22b8cf" },
-  { id: "3", name: "Medium", color: "#f2c94c" },
-  { id: "4", name: "High", color: "#f2994a" },
-  { id: "5", name: "Critical", color: "#eb5757" },
-  { id: "6", name: "Fatal", color: "#c74bd9" },
-  { id: "99", name: "Other", color: "#8792a2" },
+export const SEVERITIES: Layer[] = [
+  { key: "0", name: "Unknown", color: "#9aa5b5" },
+  { key: "1", name: "Informational", color: "#3b7ddd" },
+  { key: "2", name: "Low", color: "#1f4fbf" },
+  { key: "3", name: "Medium", color: "#f1c232" },
+  { key: "4", name: "High", color: "#f08c3a" },
+  { key: "5", name: "Critical", color: "#e0533d" },
+  { key: "6", name: "Fatal", color: "#a23b8f" },
+  { key: "99", name: "Other", color: "#6cc5b0" },
 ];
 
-/** Colours for lists of values, in order. */
-export const PALETTE = ["#3d7eff", "#22b8cf", "#9b7bff", "#f2c94c", "#f2994a", "#5b6573"];
+/** Colours for lists of values, in order: blues first, as the eye reads them. */
+export const PALETTE = ["#3b7ddd", "#1f4fbf", "#9cc0f5", "#f1c232", "#6cc5b0", "#b39ddb"];
+
+/** Where a chart plots, inside its canvas. */
+export interface Plot {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+export function plotIn(width: number, height: number): Plot {
+  const left = 40;
+  const top = 8;
+  return { left, top, width: width - left - 8, height: height - top - 20 };
+}
+
+/** The colours a chart draws with, read from the theme once a frame. */
+export interface Ink {
+  line: string;
+  muted: string;
+  text: string;
+  panel: string;
+}
+
+export function ink(): Ink {
+  return {
+    line: token("--grid", "#262c35"),
+    muted: token("--muted", "#8a94a3"),
+    text: token("--text", "#d8dee6"),
+    panel: token("--panel", "#161a20"),
+  };
+}
+
+/** Horizontal grid lines with counts on the left, and times along the bottom. */
+export function drawGrid(
+  context: CanvasRenderingContext2D,
+  plot: Plot,
+  top: number,
+  times: { x: number; text: string }[],
+  colors: Ink,
+) {
+  context.font = "11px system-ui, sans-serif";
+  context.fillStyle = colors.muted;
+  context.strokeStyle = colors.line;
+  context.lineWidth = 1;
+  context.textAlign = "right";
+  context.textBaseline = "middle";
+  for (let tick = 0; tick <= 4; tick += 1) {
+    const value = (top * tick) / 4;
+    const level = Math.round(plot.top + plot.height - (tick / 4) * plot.height) + 0.5;
+    context.beginPath();
+    context.moveTo(plot.left, level);
+    context.lineTo(plot.left + plot.width, level);
+    context.stroke();
+    context.fillText(compact(value), plot.left - 6, level);
+  }
+  context.textAlign = "center";
+  context.textBaseline = "top";
+  for (const time of times) {
+    if (time.x >= plot.left - 1 && time.x <= plot.left + plot.width + 1) {
+      context.fillText(time.text, time.x, plot.top + plot.height + 6);
+    }
+  }
+}
+
+/** A box of labelled counts beside the pointer, kept inside the canvas. */
+export function drawTooltip(
+  context: CanvasRenderingContext2D,
+  at: { x: number; y: number },
+  bounds: { width: number; height: number },
+  heading: string,
+  rows: { color: string; name: string; count: number }[],
+  colors: Ink,
+) {
+  context.font = "12px system-ui, sans-serif";
+  const nameWidth = Math.max(0, ...rows.map((row) => context.measureText(row.name).width));
+  const boxWidth = Math.max(140, nameWidth + 90);
+  const boxHeight = 12 + (rows.length + 1) * 18;
+  const left = at.x + 14 + boxWidth > bounds.width ? at.x - 14 - boxWidth : at.x + 14;
+  const upper = Math.min(Math.max(at.y - boxHeight / 2, 0), bounds.height - boxHeight);
+  context.fillStyle = colors.panel;
+  context.strokeStyle = colors.line;
+  context.lineWidth = 1;
+  context.beginPath();
+  context.roundRect(left + 0.5, upper + 0.5, boxWidth, boxHeight, 6);
+  context.fill();
+  context.stroke();
+  context.textBaseline = "top";
+  context.textAlign = "left";
+  context.fillStyle = colors.muted;
+  context.fillText(heading, left + 10, upper + 8);
+  rows.forEach((row, index) => {
+    const rowTop = upper + 8 + (index + 1) * 18;
+    context.fillStyle = row.color;
+    context.beginPath();
+    context.arc(left + 14, rowTop + 6, 4, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = colors.text;
+    context.textAlign = "left";
+    context.fillText(row.name, left + 24, rowTop);
+    context.textAlign = "right";
+    context.fillText(row.count.toLocaleString("en-US"), left + boxWidth - 10, rowTop);
+  });
+}
+
+/** A time label that suits the span: hours and minutes, or a date. */
+export function clock(at: number, span: number): string {
+  const date = new Date(at);
+  if (span > 2 * 24 * 3_600_000) {
+    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  }
+  return date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    ...(span <= 15 * 60_000 ? { second: "2-digit" } : {}),
+  });
+}
+
+/** A step's length in words, as a chart's caption says it. */
+export function per(step: number): string {
+  const units: [number, string][] = [
+    [24 * 3_600_000, "day"],
+    [3_600_000, "hour"],
+    [60_000, "minute"],
+    [1000, "second"],
+  ];
+  for (const [size, unit] of units) {
+    if (step >= size && step % size === 0) {
+      const count = step / size;
+      return count === 1 ? unit : `${count} ${unit}s`;
+    }
+  }
+  return `${step} ms`;
+}

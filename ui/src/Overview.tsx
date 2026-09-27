@@ -1,38 +1,35 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { arrivals, overview } from "./api";
 import { Counter } from "./charts/Counter";
-import { SEVERITIES } from "./charts/canvas";
+import { PALETTE, per, SEVERITIES } from "./charts/canvas";
 import { Donut } from "./charts/Donut";
 import { LiveChart } from "./charts/LiveChart";
-import { StackedArea } from "./charts/StackedArea";
+import { SeriesChart } from "./charts/SeriesChart";
 import { TopList } from "./charts/TopList";
-
-/** Ranges the overview offers, each ending now. */
-const RANGES = [
-  { label: "15 min", ms: 15 * 60_000 },
-  { label: "1 hour", ms: 3_600_000 },
-  { label: "6 hours", ms: 6 * 3_600_000 },
-  { label: "24 hours", ms: 24 * 3_600_000 },
-  { label: "7 days", ms: 7 * 24 * 3_600_000 },
-];
+import { Card, Legend } from "./components/Card";
+import { RecentEvents } from "./components/RecentEvents";
 
 /** Severities from High up, as OCSF numbers them. */
 const SEVERE = ["4", "5", "6"];
 
 interface Props {
+  /** The range, ending now, in milliseconds. */
+  span: number;
   /** A readable name for a class, by its uid as text. */
   className: (uid: string) => string;
-  /** Whether the API refused the token, to ask for another. */
+  /** Reports a failure, so that a refused token can be asked for again. */
   onError: (error: unknown) => void;
+  /** Opens an event in the events view. */
+  onOpen: (at: string) => void;
 }
 
 /**
- * What the stored events add up to: a live rate, counts by severity over
- * time, and the most frequent classes, sources, hosts, and users.
+ * What the stored events add up to: headline counts, counts by severity and
+ * by host over time, the most frequent classes, hosts, and users, the live
+ * rate, and the newest events that matter.
  */
-export function Overview({ className, onError }: Props) {
-  const [span, setSpan] = useState(3_600_000);
+export function Overview({ span, className, onError, onOpen }: Props) {
   const summary = useQuery({
     queryKey: ["overview", span],
     queryFn: ({ signal }) => {
@@ -53,6 +50,7 @@ export function Overview({ className, onError }: Props) {
       onError(summary.error);
     }
   }, [summary.error, onError]);
+  const rate = useRef<HTMLSpanElement>(null);
 
   const data = summary.data;
   const bySeverity = new Map<string, number>();
@@ -62,82 +60,91 @@ export function Overview({ className, onError }: Props) {
     }
   }
   const severe = SEVERE.reduce((sum, id) => sum + (bySeverity.get(id) ?? 0), 0);
-  // The last five complete seconds; the current one is still arriving.
-  const seconds = live.data?.seconds ?? [];
-  const now = Math.floor((live.data?.now ?? 0) / 1000) * 1000;
-  const recent = seconds
-    .filter((second) => second.at < now - 1000 && second.at >= now - 6000)
-    .reduce((sum, second) => sum + second.count, 0);
+  const severities = SEVERITIES.filter((severity) => bySeverity.has(severity.key));
+  const hosts = (data?.hosts ?? []).map((entry, index) => ({
+    key: entry.key,
+    name: entry.key,
+    color: PALETTE[index % PALETTE.length] ?? "#9aa5b5",
+    count: entry.count,
+  }));
+  const range = {
+    from: data?.from ?? Date.now() - span,
+    to: data?.to ?? Date.now(),
+    step: data?.step_ms ?? 60_000,
+  };
+  const caption = `time per ${per(range.step)}`;
 
   return (
     <div className="overview">
-      <div className="toolbar">
-        <fieldset className="ranges">
-          <legend className="hidden">Time range</legend>
-          {RANGES.map((range) => (
-            <button
-              key={range.ms}
-              type="button"
-              className={range.ms === span ? "range active" : "range"}
-              onClick={() => setSpan(range.ms)}
-            >
-              {range.label}
-            </button>
-          ))}
-        </fieldset>
-        <span className={summary.isFetching ? "sync busy" : "sync"} title="Refreshes every 5 s" />
-      </div>
       {summary.error && <p className="error banner">{summary.error.message}</p>}
-
-      <section className="tiles">
-        <div className="tile">
+      <section className="card figures">
+        <div>
           <h3>Events</h3>
           <p className="figure">
             <Counter value={data?.total ?? 0} />
           </p>
         </div>
-        <div className="tile">
+        <div>
           <h3>High and above</h3>
           <p className="figure severe">
             <Counter value={severe} />
           </p>
         </div>
-        <div className="tile">
+        <div>
           <h3>Dead letters</h3>
-          <p className={data?.dead_letters ? "figure warn" : "figure"}>
+          <p className={data?.dead_letters ? "figure severe" : "figure"}>
             <Counter value={data?.dead_letters ?? 0} />
           </p>
         </div>
-        <div className="tile">
-          <h3>Stored now</h3>
+        <div>
+          <h3>Stored now, per second</h3>
           <p className="figure">
-            <Counter value={Math.round(recent / 5)} ms={700} />
-            <small> /s</small>
+            <span ref={rate}>0</span>
           </p>
         </div>
       </section>
 
-      <div className="grid">
-        <LiveChart arrivals={live.data} />
-        <section className="panel wide">
-          <header>
-            <h2>Events by severity</h2>
-            <ul className="legend inline">
-              {SEVERITIES.filter((severity) => bySeverity.has(severity.id)).map((severity) => (
-                <li key={severity.id}>
-                  <span className="swatch" style={{ background: severity.color }} />
-                  {severity.name}
-                </li>
-              ))}
-            </ul>
-          </header>
-          <StackedArea overview={data} live />
-        </section>
-        <Donut title="Classes" entries={data?.classes ?? []} label={className} />
-        <Donut title="Sources" entries={data?.sources ?? []} />
-        <TopList title="Top hosts" entries={data?.hosts ?? []} />
+      <div className="rows">
+        <Card
+          className="span-2"
+          title="Events by severity"
+          axis="Count"
+          caption={caption}
+          legend={
+            <Legend
+              items={severities.map((severity) => ({
+                ...severity,
+                count: bySeverity.get(severity.key) ?? 0,
+              }))}
+            />
+          }
+        >
+          <SeriesChart steps={data?.series} layers={SEVERITIES} kind="area" live {...range} />
+        </Card>
+        <Card title="Classes">
+          <Donut entries={data?.classes ?? []} label={className} />
+        </Card>
+
+        <Card title="Top 5 hosts">
+          <Donut entries={data?.hosts ?? []} />
+        </Card>
+        <Card
+          className="span-2"
+          title="Events by host, top 5"
+          axis="Count"
+          caption={caption}
+          legend={<Legend items={hosts} />}
+        >
+          <SeriesChart steps={data?.host_series} layers={hosts} kind="bars" live {...range} />
+        </Card>
+
+        <Card className="span-2" title="Events stored, last two minutes" axis="Events/s">
+          <LiveChart arrivals={live.data} rate={rate} />
+        </Card>
         <TopList title="Top users" entries={data?.users ?? []} />
       </div>
+
+      <RecentEvents from={range.from} to={range.to} className={className} onOpen={onOpen} />
     </div>
   );
 }
