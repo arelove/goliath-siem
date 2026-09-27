@@ -241,7 +241,10 @@ impl Store {
     }
 }
 
-fn with_limits(query: clickhouse::query::Query, limits: SearchLimits) -> clickhouse::query::Query {
+pub(crate) fn with_limits(
+    query: clickhouse::query::Query,
+    limits: SearchLimits,
+) -> clickhouse::query::Query {
     query
         // Read-only whatever the user may do; 2 still lets this request
         // set the limits below.
