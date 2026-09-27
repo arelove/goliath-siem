@@ -20,6 +20,19 @@ const LAUNCH: Found = {
   },
 };
 
+const OVERVIEW = {
+  from: 1790326800000,
+  to: 1790330400000,
+  step_ms: 30000,
+  total: 1234,
+  dead_letters: 2,
+  series: [{ at: 1790330370000, counts: { "1": 1200, "4": 34 } }],
+  classes: [{ key: "1007", count: 1234 }],
+  sources: [{ key: "sysmon", count: 1234 }],
+  hosts: [{ key: "ws-7", count: 900 }],
+  users: [{ key: "alice", count: 800 }],
+};
+
 interface Call {
   path: string;
   body: Search | null;
@@ -40,7 +53,7 @@ beforeEach(() => {
   calls = [];
   requireToken = null;
   sessionStorage.clear();
-  window.history.replaceState(null, "", "/");
+  window.history.replaceState(null, "", "/?view=search");
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: string, init?: RequestInit) => {
@@ -59,6 +72,12 @@ beforeEach(() => {
       }
       if (path === "/search") {
         return reply(200, { events: [LAUNCH], next: null });
+      }
+      if (path === "/overview") {
+        return reply(200, OVERVIEW);
+      }
+      if (path === "/arrivals") {
+        return reply(200, { now: 1790330460000, seconds: [{ at: 1790330455000, count: 12 }] });
       }
       if (path.startsWith("/events/")) {
         return reply(200, { ...LAUNCH, source_version: 1, issues: [] });
@@ -131,6 +150,36 @@ describe("the search view", () => {
       expect(last?.body?.filters).toEqual([
         { path: "process.cmd_line", op: "contains", value: "-enc" },
       ]);
+    });
+  });
+});
+
+describe("the overview", () => {
+  it("opens by default and shows what the stored events add up to", async () => {
+    window.history.replaceState(null, "", "/");
+    show();
+    expect(await screen.findByText("ws-7")).toBeInTheDocument();
+    expect(screen.getByText("alice")).toBeInTheDocument();
+    expect(screen.getByText("Process Activity")).toBeInTheDocument();
+    const asked = calls.find((call) => call.path === "/overview");
+    expect(asked?.body).toMatchObject({ from: expect.any(String), to: expect.any(String) });
+    expect(calls.some((call) => call.path === "/search")).toBe(false);
+  });
+
+  it("asks for another range when one is picked", async () => {
+    window.history.replaceState(null, "", "/");
+    const user = userEvent.setup();
+    show();
+    await screen.findByText("ws-7");
+    await user.click(screen.getByRole("button", { name: "24 hours" }));
+    await waitFor(() => {
+      const spans = calls
+        .filter((call) => call.path === "/overview" && call.body)
+        .map((call) => {
+          const body = call.body as unknown as { from: string; to: string };
+          return Date.parse(body.to) - Date.parse(body.from);
+        });
+      expect(spans).toContain(24 * 3_600_000);
     });
   });
 });

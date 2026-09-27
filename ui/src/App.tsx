@@ -6,6 +6,7 @@ import { EventDetail } from "./components/EventDetail";
 import { Results } from "./components/Results";
 import { SearchBar } from "./components/SearchBar";
 import { TokenPrompt } from "./components/TokenPrompt";
+import { Overview } from "./Overview";
 import type { Draft } from "./query";
 import { fromParams, toParams, toSearch } from "./query";
 import { className } from "./summary";
@@ -14,12 +15,26 @@ function unauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401;
 }
 
+type View = "overview" | "search";
+
+function viewOf(params: URLSearchParams): View {
+  return params.get("view") === "search" ? "search" : "overview";
+}
+
 export function App() {
   const client = useQueryClient();
   const [draft, setDraft] = useState<Draft>(() =>
     fromParams(new URLSearchParams(window.location.search)),
   );
   const [selected, setSelected] = useState<string | null>(null);
+  const [view, setView] = useState<View>(() => viewOf(new URLSearchParams(window.location.search)));
+  const [overviewError, setOverviewError] = useState<unknown>(null);
+  const show = (next: View) => {
+    setView(next);
+    const params = new URLSearchParams(window.location.search);
+    params.set("view", next);
+    window.history.replaceState(null, "", `?${params.toString()}`);
+  };
 
   const classList = useQuery({ queryKey: ["classes"], queryFn: classes, staleTime: Infinity });
   const pathList = useQuery({
@@ -48,6 +63,7 @@ export function App() {
       search(pageParam ? { ...submitted, after: pageParam } : submitted, signal),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.next ?? undefined,
+    enabled: view === "search",
   });
   const events = useMemo(
     () => results.data?.pages.flatMap((page) => page.events) ?? [],
@@ -58,7 +74,9 @@ export function App() {
     setDraft(next);
     setSubmitted(toSearch(next, holdsText));
     setSelected(null);
-    window.history.replaceState(null, "", `?${toParams(next).toString()}`);
+    const params = toParams(next);
+    params.set("view", "search");
+    window.history.replaceState(null, "", `?${params.toString()}`);
   };
 
   const addFilter = (path: string, value: Scalar) =>
@@ -68,13 +86,14 @@ export function App() {
     void results.fetchNextPage();
   }, [results.fetchNextPage]);
 
-  const locked = [results.error, classList.error, pathList.error].some(unauthorized);
+  const locked = [results.error, classList.error, pathList.error, overviewError].some(unauthorized);
   if (locked) {
     return (
       <main className="app locked">
         <TokenPrompt
           rejected={token() !== null}
           onDone={() => {
+            setOverviewError(null);
             void client.resetQueries();
           }}
         />
@@ -86,43 +105,74 @@ export function App() {
     <main className="app">
       <header className="top">
         <h1>Goliath</h1>
-        <SearchBar
-          draft={draft}
-          classes={classList.data ?? []}
-          paths={pathList.data ?? []}
-          searching={results.isFetching && !results.isFetchingNextPage}
-          onChange={setDraft}
-          onSubmit={() => run(draft)}
-        />
+        <div className="tabs" role="tablist">
+          {(["overview", "search"] as const).map((name) => (
+            <button
+              key={name}
+              type="button"
+              role="tab"
+              aria-selected={view === name}
+              className={view === name ? "tab active" : "tab"}
+              onClick={() => show(name)}
+            >
+              {name === "overview" ? "Overview" : "Search"}
+            </button>
+          ))}
+        </div>
       </header>
-      {results.error && <p className="error banner">{results.error.message}</p>}
-      <div className={selected ? "body split" : "body"}>
-        {results.isPending ? (
-          <p className="note">Searching</p>
-        ) : events.length === 0 && !results.error ? (
-          <p className="note">No events match.</p>
-        ) : (
-          <Results
-            events={events}
-            names={names}
-            hasMore={results.hasNextPage}
-            loadingMore={results.isFetchingNextPage}
-            selected={selected}
-            onMore={loadMore}
-            onSelect={setSelected}
-          />
-        )}
-        {selected && (
-          <EventDetail
-            at={selected}
-            className={
-              names.get(events.find((found) => found.at === selected)?.class_uid ?? -1) ?? "Event"
-            }
-            onFilter={addFilter}
-            onClose={() => setSelected(null)}
-          />
-        )}
-      </div>
+      {view === "overview" ? (
+        <Overview
+          className={(uid) => names.get(Number(uid)) ?? `Class ${uid}`}
+          onError={setOverviewError}
+        />
+      ) : (
+        searchView()
+      )}
     </main>
   );
+
+  function searchView() {
+    return (
+      <>
+        <div className="searchbar">
+          <SearchBar
+            draft={draft}
+            classes={classList.data ?? []}
+            paths={pathList.data ?? []}
+            searching={results.isFetching && !results.isFetchingNextPage}
+            onChange={setDraft}
+            onSubmit={() => run(draft)}
+          />
+        </div>
+        {results.error && <p className="error banner">{results.error.message}</p>}
+        <div className={selected ? "body split" : "body"}>
+          {results.isPending ? (
+            <p className="note">Searching</p>
+          ) : events.length === 0 && !results.error ? (
+            <p className="note">No events match.</p>
+          ) : (
+            <Results
+              events={events}
+              names={names}
+              hasMore={results.hasNextPage}
+              loadingMore={results.isFetchingNextPage}
+              selected={selected}
+              onMore={loadMore}
+              onSelect={setSelected}
+            />
+          )}
+          {selected && (
+            <EventDetail
+              at={selected}
+              className={
+                names.get(events.find((found) => found.at === selected)?.class_uid ?? -1) ?? "Event"
+              }
+              onFilter={addFilter}
+              onClose={() => setSelected(null)}
+            />
+          )}
+        </div>
+      </>
+    );
+  }
 }
