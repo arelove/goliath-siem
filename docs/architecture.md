@@ -185,4 +185,5 @@ that already have users.
 - **Stateful correlation:** Flink versus our own RocksDB-backed engine. Decide
   after measuring what share of rules genuinely require sequences.
 - **Entity resolution placement:** streaming at ingest versus batch at rest.
-  Affects both latency and the enrichment staleness budget.
+  Affects both latency and the enrichment staleness budget. Decided by ADR in
+  the M4.5 entity graph milestone of the [roadmap](roadmap.md).
