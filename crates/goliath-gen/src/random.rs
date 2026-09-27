@@ -41,7 +41,7 @@ impl Random {
         // The top 53 bits, exactly representable.
         #[allow(clippy::cast_precision_loss)]
         let bits = (self.next() >> 11) as f64;
-        bits / (1_u64 << 53) as f64
+        bits / 9_007_199_254_740_992.0
     }
 
     pub(crate) fn chance(&mut self, probability: f64) -> bool {
@@ -132,7 +132,10 @@ mod tests {
         let root = Random::new(1);
         let (mut people, mut machines) = (root.fork("people"), root.fork("machines"));
         assert_ne!(people.next(), machines.next());
-        assert_eq!(root.fork("people").next(), Random::new(1).fork("people").next());
+        assert_eq!(
+            root.fork("people").next(),
+            Random::new(1).fork("people").next()
+        );
     }
 
     #[test]

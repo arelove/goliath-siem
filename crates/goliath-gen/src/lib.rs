@@ -13,7 +13,14 @@
 #![cfg_attr(test, allow(clippy::expect_used, clippy::panic, clippy::unwrap_used))]
 
 mod data;
+pub mod entra;
 mod org;
 mod random;
+mod stream;
+pub mod sysmon;
+mod time;
+mod truth;
 
 pub use org::{Host, HostKind, Office, Options, Organization, ServerRole, User};
+pub use stream::{Generator, Record};
+pub use truth::entities;

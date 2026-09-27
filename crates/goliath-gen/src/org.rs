@@ -74,7 +74,8 @@ pub struct Office {
 }
 
 /// Offices of the generated company; the first is the head office.
-const OFFICES: &[(&str, &str, &str, i64, (f64, f64))] = &[
+type OfficeSpec = (&'static str, &'static str, &'static str, i64, (f64, f64));
+const OFFICES: &[OfficeSpec] = &[
     ("New York", "US", "NYC", -5, (40.7128, -74.0060)),
     ("Chicago", "US", "CHI", -6, (41.8781, -87.6298)),
     ("London", "GB", "LON", 0, (51.5072, -0.1276)),
@@ -115,7 +116,7 @@ pub struct User {
 /// A machine.
 #[derive(Debug, Clone)]
 pub struct Host {
-    /// Its NetBIOS name: `NYC-LT4821`.
+    /// Its `NetBIOS` name: `NYC-LT4821`.
     pub name: String,
     /// Its fully qualified name, as Sysmon writes `Computer`.
     pub fqdn: String,
@@ -190,6 +191,7 @@ impl Organization {
     /// # Panics
     ///
     /// Panics if `options.users` is zero.
+    #[allow(clippy::too_many_lines)] // Keep the seeded construction order visible together.
     pub fn generate(options: &Options) -> Self {
         assert!(options.users > 0, "an organization needs people");
         let root = Random::new(options.seed);
@@ -220,24 +222,26 @@ impl Organization {
         let offices: Vec<Office> = OFFICES[..office_count]
             .iter()
             .zip(1_u8..)
-            .map(|(&(city, country, code, utc_offset, coordinates), subnet)| {
-                // Documentation ranges stand in for the company's public
-                // addresses, so none belongs to a real network.
-                let egress = format!(
-                    "{}.{}",
-                    ["198.51.100", "203.0.113", "192.0.2"][addresses.below(3)],
-                    1 + addresses.below(254)
-                );
-                Office {
-                    city,
-                    country,
-                    code,
-                    utc_offset,
-                    subnet,
-                    egress,
-                    coordinates,
-                }
-            })
+            .map(
+                |(&(city, country, code, utc_offset, coordinates), subnet)| {
+                    // Documentation ranges stand in for the company's public
+                    // addresses, so none belongs to a real network.
+                    let egress = format!(
+                        "{}.{}",
+                        ["198.51.100", "203.0.113", "192.0.2"][addresses.below(3)],
+                        1 + addresses.below(254)
+                    );
+                    Office {
+                        city,
+                        country,
+                        code,
+                        utc_offset,
+                        subnet,
+                        egress,
+                        coordinates,
+                    }
+                },
+            )
             .collect();
 
         let mut people = root.fork("people");
@@ -246,7 +250,11 @@ impl Organization {
         let departments = Weighted::new(DEPARTMENTS.iter().map(|&(_, share)| share));
         let office_weights = Weighted::new((0..offices.len()).map(|index| {
             // The head office holds about half the company.
-            if index == 0 { 1.0 } else { 1.0 / offices.len() as f64 }
+            if index == 0 {
+                1.0
+            } else {
+                1.0 / f64::from(u32::try_from(offices.len()).unwrap_or(1))
+            }
         }));
         let activity = zipf(options.users, 1.1);
 
@@ -349,9 +357,12 @@ impl Organization {
 
     /// Servers in an office with a role.
     pub fn servers(&self, office: usize, role: ServerRole) -> impl Iterator<Item = usize> + '_ {
-        self.hosts.iter().enumerate().filter_map(move |(index, host)| {
-            (host.office == office && host.kind == HostKind::Server { role }).then_some(index)
-        })
+        self.hosts
+            .iter()
+            .enumerate()
+            .filter_map(move |(index, host)| {
+                (host.office == office && host.kind == HostKind::Server { role }).then_some(index)
+            })
     }
 }
 
@@ -468,7 +479,11 @@ mod tests {
     #[test]
     fn common_names_are_common() {
         let org = organization(5_000);
-        let smiths = org.users.iter().filter(|user| user.family == "Smith").count();
+        let smiths = org
+            .users
+            .iter()
+            .filter(|user| user.family == "Smith")
+            .count();
         // Smith is about 2.6% of the 300 surnames' holders.
         assert!((70..200).contains(&smiths), "{smiths} Smiths");
         assert!(org.users.iter().any(|user| user.sam.ends_with('2')));
@@ -477,11 +492,18 @@ mod tests {
     #[test]
     fn people_in_it_have_administrative_accounts() {
         let org = organization(1_000);
-        let admins: Vec<_> = org.users.iter().filter(|user| user.admin_sam.is_some()).collect();
+        let admins: Vec<_> = org
+            .users
+            .iter()
+            .filter(|user| user.admin_sam.is_some())
+            .collect();
         assert!(!admins.is_empty());
         for user in admins {
             assert_eq!(user.department, "IT");
-            assert_eq!(user.admin_sam.as_deref(), Some(format!("adm-{}", user.sam).as_str()));
+            assert_eq!(
+                user.admin_sam.as_deref(),
+                Some(format!("adm-{}", user.sam).as_str())
+            );
         }
     }
 
@@ -490,7 +512,9 @@ mod tests {
         let org = organization(300);
         let office = &org.offices[0];
         let workstation = &org.hosts[org.users[0].workstation];
-        let addresses: HashSet<_> = (0..30).map(|day| workstation.address(office, day)).collect();
+        let addresses: HashSet<_> = (0..30)
+            .map(|day| workstation.address(office, day))
+            .collect();
         assert!(addresses.len() > 3, "{addresses:?}");
         let server = &org.hosts[org.servers(0, ServerRole::DomainController).next().unwrap()];
         assert_eq!(server.address(office, 0), server.address(office, 29));
@@ -503,7 +527,11 @@ mod tests {
         assert_eq!(first.tenant_id, second.tenant_id);
         assert_eq!(
             first.users.iter().map(|user| &user.upn).collect::<Vec<_>>(),
-            second.users.iter().map(|user| &user.upn).collect::<Vec<_>>()
+            second
+                .users
+                .iter()
+                .map(|user| &user.upn)
+                .collect::<Vec<_>>()
         );
     }
 }
