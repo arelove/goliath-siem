@@ -166,7 +166,10 @@ fn flat_sysmon_makes_the_events_nested_sysmon_does() {
         found
     };
     let nested = events(goliath_normalize::SYSMON, "sysmon/kinds.input.json");
-    let flat = events(goliath_normalize::SYSMON_FLAT, "sysmon-flat/kinds.input.json");
+    let flat = events(
+        goliath_normalize::SYSMON_FLAT,
+        "sysmon-flat/kinds.input.json",
+    );
     assert!(!nested.is_empty());
     assert_eq!(flat, nested);
 }
