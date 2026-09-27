@@ -20,6 +20,8 @@ use std::fmt::Write as _;
 use goliath_rule::{MappingSet, ResolvedRule, sigma};
 use serde_json::{Value, json};
 
+#[cfg(feature = "rig")]
+pub mod report;
 mod sysmon;
 
 pub use sysmon::{Fleet, rfc3339};
