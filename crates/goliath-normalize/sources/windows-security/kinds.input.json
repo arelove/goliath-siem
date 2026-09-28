@@ -1,0 +1,1152 @@
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4624,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:01.5123456Z"
+        }
+      },
+      "EventRecordID": 3001,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "SubjectUserSid": "S-1-5-18",
+      "SubjectUserName": "DC-01$",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x3e7",
+      "TargetUserSid": "S-1-5-21-1004336348-1177238915-682003330-1107",
+      "TargetUserName": "adam",
+      "TargetDomainName": "CORP",
+      "TargetLogonId": "0x8c3e41",
+      "LogonType": 3,
+      "LogonProcessName": "Kerberos",
+      "AuthenticationPackageName": "Kerberos",
+      "WorkstationName": "-",
+      "LogonGuid": "{6E3A4C1B-0D2F-8B7A-5C41-2F9E0A1B3C4D}",
+      "TransmittedServices": "-",
+      "LmPackageName": "-",
+      "KeyLength": 0,
+      "ProcessId": "0x0",
+      "ProcessName": "-",
+      "IpAddress": "10.20.4.17",
+      "IpPort": "51432",
+      "ImpersonationLevel": "%%1833",
+      "RestrictedAdminMode": "-",
+      "VirtualAccount": "%%1843",
+      "ElevatedToken": "%%1842"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4624,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:02.5123456Z"
+        }
+      },
+      "EventRecordID": 3002,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "WS-FINANCE-07.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "SubjectUserSid": "S-1-5-18",
+      "SubjectUserName": "DC-01$",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x3e7",
+      "TargetUserSid": "S-1-5-21-1004336348-1177238915-682003330-1107",
+      "TargetUserName": "adam",
+      "TargetDomainName": "CORP",
+      "TargetLogonId": "0x8c4f02",
+      "LogonType": 2,
+      "LogonProcessName": "User32 ",
+      "AuthenticationPackageName": "Negotiate",
+      "WorkstationName": "WS-FINANCE-07",
+      "ProcessId": "0x2a4",
+      "ProcessName": "C:\\Windows\\System32\\svchost.exe",
+      "IpAddress": "-",
+      "IpPort": "-",
+      "ElevatedToken": "%%1843"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4625,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:03.5123456Z"
+        }
+      },
+      "EventRecordID": 3003,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "SubjectUserSid": "S-1-0-0",
+      "SubjectUserName": "-",
+      "SubjectDomainName": "-",
+      "SubjectLogonId": "0x0",
+      "TargetUserSid": "S-1-0-0",
+      "TargetUserName": "adam",
+      "TargetDomainName": "CORP",
+      "Status": "0xc000006d",
+      "FailureReason": "%%2313",
+      "SubStatus": "0xc000006a",
+      "LogonType": 3,
+      "LogonProcessName": "NtLmSsp ",
+      "AuthenticationPackageName": "NTLM",
+      "WorkstationName": "LAPTOP-GUEST",
+      "ProcessId": "0x0",
+      "ProcessName": "-",
+      "IpAddress": "10.20.9.200",
+      "IpPort": "0"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4634,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:04.5123456Z"
+        }
+      },
+      "EventRecordID": 3004,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "TargetUserSid": "S-1-5-21-1004336348-1177238915-682003330-1107",
+      "TargetUserName": "adam",
+      "TargetDomainName": "CORP",
+      "TargetLogonId": "0x8c3e41",
+      "LogonType": 3
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4768,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:05.5123456Z"
+        }
+      },
+      "EventRecordID": 3005,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "TargetUserName": "adam",
+      "TargetDomainName": "CORP.EXAMPLE",
+      "TargetSid": "S-1-5-21-1004336348-1177238915-682003330-1107",
+      "ServiceName": "krbtgt",
+      "ServiceSid": "S-1-5-21-1004336348-1177238915-682003330-502",
+      "TicketOptions": "0x40810010",
+      "Status": "0x0",
+      "TicketEncryptionType": "0x12",
+      "PreAuthType": "2",
+      "IpAddress": "::ffff:10.20.4.17",
+      "IpPort": "51430",
+      "CertIssuerName": "",
+      "CertSerialNumber": "",
+      "CertThumbprint": ""
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4769,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:06.5123456Z"
+        }
+      },
+      "EventRecordID": 3006,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "TargetUserName": "adam@CORP.EXAMPLE",
+      "TargetDomainName": "CORP.EXAMPLE",
+      "ServiceName": "FS-02$",
+      "ServiceSid": "S-1-5-21-1004336348-1177238915-682003330-1602",
+      "TicketOptions": "0x40810000",
+      "TicketEncryptionType": "0x12",
+      "IpAddress": "::ffff:10.20.4.17",
+      "IpPort": "51431",
+      "Status": "0x0",
+      "LogonGuid": "{6E3A4C1B-0D2F-8B7A-5C41-2F9E0A1B3C4D}",
+      "TransmittedServices": "-"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4768,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:07.5123456Z"
+        }
+      },
+      "EventRecordID": 3007,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "TargetUserName": "svc-backup",
+      "TargetDomainName": "CORP",
+      "TargetSid": "S-1-0-0",
+      "ServiceName": "krbtgt/CORP",
+      "ServiceSid": "S-1-0-0",
+      "TicketOptions": "0x40810010",
+      "Status": "0x18",
+      "TicketEncryptionType": "0xffffffff",
+      "PreAuthType": "-",
+      "IpAddress": "::ffff:10.20.9.200",
+      "IpPort": "49811"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4688,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:08.5123456Z"
+        }
+      },
+      "EventRecordID": 3008,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "WS-FINANCE-07.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+      "SubjectUserName": "it-admin",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x5f3a21",
+      "NewProcessId": "0x1a2c",
+      "NewProcessName": "C:\\Windows\\System32\\ipconfig.exe",
+      "TokenElevationType": "%%1938",
+      "ProcessId": "0x2f10",
+      "CommandLine": "ipconfig /all",
+      "TargetUserSid": "S-1-0-0",
+      "TargetUserName": "-",
+      "TargetDomainName": "-",
+      "TargetLogonId": "0x0",
+      "ParentProcessName": "C:\\Windows\\System32\\cmd.exe",
+      "MandatoryLabel": "S-1-16-8192"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4720,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:09.5123456Z"
+        }
+      },
+      "EventRecordID": 3009,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "TargetUserName": "jdoe",
+      "TargetDomainName": "CORP",
+      "TargetSid": "S-1-5-21-1004336348-1177238915-682003330-1311",
+      "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+      "SubjectUserName": "it-admin",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x5f3a21",
+      "PrivilegeList": "-",
+      "SamAccountName": "jdoe",
+      "DisplayName": "Jane Doe",
+      "UserPrincipalName": "jdoe@corp.example",
+      "UserAccountControl": "%%2080 %%2082 %%2084",
+      "PasswordLastSet": "%%1794"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4722,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:10.5123456Z"
+        }
+      },
+      "EventRecordID": 3010,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "TargetUserName": "jdoe",
+      "TargetDomainName": "CORP",
+      "TargetSid": "S-1-5-21-1004336348-1177238915-682003330-1311",
+      "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+      "SubjectUserName": "it-admin",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x5f3a21",
+      "PrivilegeList": "-"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4723,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:11.5123456Z"
+        }
+      },
+      "EventRecordID": 3011,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "TargetUserName": "jdoe",
+      "TargetDomainName": "CORP",
+      "TargetSid": "S-1-5-21-1004336348-1177238915-682003330-1311",
+      "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+      "SubjectUserName": "it-admin",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x5f3a21",
+      "PrivilegeList": "-"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4724,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:12.5123456Z"
+        }
+      },
+      "EventRecordID": 3012,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "TargetUserName": "jdoe",
+      "TargetDomainName": "CORP",
+      "TargetSid": "S-1-5-21-1004336348-1177238915-682003330-1311",
+      "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+      "SubjectUserName": "it-admin",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x5f3a21",
+      "PrivilegeList": "-"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4725,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:13.5123456Z"
+        }
+      },
+      "EventRecordID": 3013,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "TargetUserName": "jdoe",
+      "TargetDomainName": "CORP",
+      "TargetSid": "S-1-5-21-1004336348-1177238915-682003330-1311",
+      "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+      "SubjectUserName": "it-admin",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x5f3a21",
+      "PrivilegeList": "-"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4726,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:14.5123456Z"
+        }
+      },
+      "EventRecordID": 3014,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "TargetUserName": "jdoe",
+      "TargetDomainName": "CORP",
+      "TargetSid": "S-1-5-21-1004336348-1177238915-682003330-1311",
+      "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+      "SubjectUserName": "it-admin",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x5f3a21",
+      "PrivilegeList": "-"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4740,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:15.5123456Z"
+        }
+      },
+      "EventRecordID": 3015,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "TargetUserName": "adam",
+      "TargetDomainName": "WS-FINANCE-07",
+      "TargetSid": "S-1-5-21-1004336348-1177238915-682003330-1107",
+      "SubjectUserSid": "S-1-5-18",
+      "SubjectUserName": "DC-01$",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x3e7"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4728,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:16.5123456Z"
+        }
+      },
+      "EventRecordID": 3016,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "MemberName": "CN=Jane Doe,OU=Finance,DC=corp,DC=example",
+      "MemberSid": "S-1-5-21-1004336348-1177238915-682003330-1311",
+      "TargetUserName": "Domain Users",
+      "TargetDomainName": "CORP",
+      "TargetSid": "S-1-5-21-1004336348-1177238915-682003330-513",
+      "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+      "SubjectUserName": "it-admin",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x5f3a21",
+      "PrivilegeList": "-"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4729,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:17.5123456Z"
+        }
+      },
+      "EventRecordID": 3017,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "MemberName": "CN=Jane Doe,OU=Finance,DC=corp,DC=example",
+      "MemberSid": "S-1-5-21-1004336348-1177238915-682003330-1311",
+      "TargetUserName": "Domain Users",
+      "TargetDomainName": "CORP",
+      "TargetSid": "S-1-5-21-1004336348-1177238915-682003330-513",
+      "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+      "SubjectUserName": "it-admin",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x5f3a21",
+      "PrivilegeList": "-"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4732,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:18.5123456Z"
+        }
+      },
+      "EventRecordID": 3018,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "MemberName": "CN=Jane Doe,OU=Finance,DC=corp,DC=example",
+      "MemberSid": "S-1-5-21-1004336348-1177238915-682003330-1311",
+      "TargetUserName": "Remote Desktop Users",
+      "TargetDomainName": "Builtin",
+      "TargetSid": "S-1-5-32-555",
+      "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+      "SubjectUserName": "it-admin",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x5f3a21",
+      "PrivilegeList": "-"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4733,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:19.5123456Z"
+        }
+      },
+      "EventRecordID": 3019,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "MemberName": "CN=Jane Doe,OU=Finance,DC=corp,DC=example",
+      "MemberSid": "S-1-5-21-1004336348-1177238915-682003330-1311",
+      "TargetUserName": "Remote Desktop Users",
+      "TargetDomainName": "Builtin",
+      "TargetSid": "S-1-5-32-555",
+      "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+      "SubjectUserName": "it-admin",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x5f3a21",
+      "PrivilegeList": "-"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4756,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:20.5123456Z"
+        }
+      },
+      "EventRecordID": 3020,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "MemberName": "CN=Jane Doe,OU=Finance,DC=corp,DC=example",
+      "MemberSid": "S-1-5-21-1004336348-1177238915-682003330-1311",
+      "TargetUserName": "Finance Readers",
+      "TargetDomainName": "CORP",
+      "TargetSid": "S-1-5-21-1004336348-1177238915-682003330-1720",
+      "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+      "SubjectUserName": "it-admin",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x5f3a21",
+      "PrivilegeList": "-"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4757,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:21.5123456Z"
+        }
+      },
+      "EventRecordID": 3021,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "MemberName": "CN=Jane Doe,OU=Finance,DC=corp,DC=example",
+      "MemberSid": "S-1-5-21-1004336348-1177238915-682003330-1311",
+      "TargetUserName": "Finance Readers",
+      "TargetDomainName": "CORP",
+      "TargetSid": "S-1-5-21-1004336348-1177238915-682003330-1720",
+      "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+      "SubjectUserName": "it-admin",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x5f3a21",
+      "PrivilegeList": "-"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4698,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:22.5123456Z"
+        }
+      },
+      "EventRecordID": 3022,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "WS-FINANCE-07.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+      "SubjectUserName": "it-admin",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x5f3a21",
+      "TaskName": "\\Finance\\Nightly export",
+      "TaskContent": "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Task><Actions><Exec><Command>C:\\Tools\\export.exe</Command></Exec></Actions></Task>",
+      "ClientProcessStartKey": "2251799813685300",
+      "ClientProcessId": "4120",
+      "ParentProcessId": "4032",
+      "RpcCallClientLocality": "0",
+      "FQDN": "WS-FINANCE-07.corp.example"
+    }
+  }
+}
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Eventlog",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 1102,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:23.5123456Z"
+        }
+      },
+      "EventRecordID": 3023,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "UserData": {
+      "LogFileCleared": {
+        "#attributes": {
+          "xmlns": "http://manifests.microsoft.com/win/2004/08/windows/eventlog"
+        },
+        "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+        "SubjectUserName": "it-admin",
+        "SubjectDomainName": "CORP",
+        "SubjectLogonId": "0x5f3a21"
+      }
+    }
+  }
+}

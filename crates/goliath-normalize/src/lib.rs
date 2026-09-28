@@ -73,6 +73,10 @@ pub const AUDITD: &str = include_str!("../sources/auditd.yaml");
 /// pipelines and the OTRF Security Datasets write them.
 pub const SYSMON_FLAT: &str = include_str!("../sources/sysmon-flat.yaml");
 
+/// The Windows Security event log definition shipped with this crate:
+/// logons, Kerberos, process creation, account and group changes.
+pub const WINDOWS_SECURITY: &str = include_str!("../sources/windows-security.yaml");
+
 /// Every definition shipped with this crate, by name.
 pub const BUILTIN: &[(&str, &str)] = &[
     ("auditd", AUDITD),
@@ -80,6 +84,7 @@ pub const BUILTIN: &[(&str, &str)] = &[
     ("falco", FALCO),
     ("sysmon-flat", SYSMON_FLAT),
     ("sysmon", SYSMON),
+    ("windows-security", WINDOWS_SECURITY),
 ];
 
 /// The shipped definition named `name`, if there is one.
