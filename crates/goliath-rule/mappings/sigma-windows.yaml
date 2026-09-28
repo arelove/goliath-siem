@@ -11,7 +11,7 @@
 # because OCSF allows either and producers differ.
 
 name: sigma-windows
-version: 4
+version: 5
 
 mappings:
   - logsource: { category: process_creation, product: windows }
@@ -153,8 +153,8 @@ mappings:
     # do not map it, and where a value Windows writes as `-` stays, so that
     # filters such as `IpAddress: '-'` keep working.
     #
-    # Fields of events the definition does not read, such as the share of
-    # 5140, are not listed: rules that need them fail to load, which shows
+    # Fields of events the definition does not read, such as the server of
+    # 4648, are not listed: rules that need them fail to load, which shows
     # the gap, instead of loading and never firing.
     class: { metadata.log_name: Security, device.os.type_id: 100 }
     fields:
@@ -175,6 +175,8 @@ mappings:
       LogonProcessName: [logon_process.name, unmapped.LogonProcessName]
       AuthenticationPackageName: [auth_protocol, unmapped.AuthenticationPackageName]
       WorkstationName: [src_endpoint.hostname, unmapped.WorkstationName]
+      Workstation: [src_endpoint.hostname, unmapped.Workstation]
+      PackageName: [auth_protocol, unmapped.PackageName]
       IpAddress: [src_endpoint.ip, unmapped.IpAddress]
       IpPort: [src_endpoint.port, unmapped.IpPort]
       ProcessName: [actor.process.file.path, unmapped.ProcessName]
@@ -185,11 +187,21 @@ mappings:
       ParentProcessName: process.parent_process.file.path
       Status: [status_code, unmapped.Status]
       SubStatus: [status_detail, unmapped.SubStatus]
-      ServiceName: [service.name, unmapped.ServiceName]
+      ServiceName: [service.name, win_service.name, unmapped.ServiceName]
       ServiceSid: [service.uid, unmapped.ServiceSid]
       MemberName: [user.name, unmapped.MemberName]
       MemberSid: [user.uid, unmapped.MemberSid]
       TaskName: [job.name, unmapped.TaskName]
+      ServiceFileName: win_service.cmd_line
+      ServiceAccount: [win_service.service_start_name, unmapped.ServiceAccount]
+      ObjectName: [win_resource.name, unmapped.ObjectName]
+      ObjectType: [win_resource.type, unmapped.ObjectType]
+      HandleId: [win_resource.uid, unmapped.HandleId]
+      ShareName: [share, unmapped.ShareName]
+      RelativeTargetName: [file.path, unmapped.RelativeTargetName]
+      ObjectDN: [entity.name, unmapped.ObjectDN]
+      ObjectGUID: [entity.uid, unmapped.ObjectGUID]
+      ObjectClass: [entity.type, unmapped.ObjectClass]
       # Kept as Windows writes them in every event that has them.
       FailureReason: unmapped.FailureReason
       TicketEncryptionType: unmapped.TicketEncryptionType
@@ -205,9 +217,53 @@ mappings:
       TransmittedServices: unmapped.TransmittedServices
       TokenElevationType: unmapped.TokenElevationType
       MandatoryLabel: unmapped.MandatoryLabel
-      PrivilegeList: unmapped.PrivilegeList
+      PrivilegeList: [policy.name, unmapped.PrivilegeList]
       SamAccountName: unmapped.SamAccountName
       DisplayName: unmapped.DisplayName
       UserPrincipalName: unmapped.UserPrincipalName
       UserAccountControl: unmapped.UserAccountControl
       TaskContent: unmapped.TaskContent
+      TaskContentNew: unmapped.TaskContentNew
+      ServiceType: unmapped.ServiceType
+      ServiceStartType: unmapped.ServiceStartType
+      ObjectServer: unmapped.ObjectServer
+      AccessMask: unmapped.AccessMask
+      AccessList: unmapped.AccessList
+      AccessReason: unmapped.AccessReason
+      TransactionId: unmapped.TransactionId
+      ResourceAttributes: unmapped.ResourceAttributes
+      RestrictedSidCount: unmapped.RestrictedSidCount
+      ShareLocalPath: unmapped.ShareLocalPath
+      DSName: unmapped.DSName
+      DSType: unmapped.DSType
+      AttributeLDAPDisplayName: unmapped.AttributeLDAPDisplayName
+      AttributeSyntaxOID: unmapped.AttributeSyntaxOID
+      AttributeValue: unmapped.AttributeValue
+      OperationType: unmapped.OperationType
+      OpCorrelationID: unmapped.OpCorrelationID
+      AppCorrelationID: unmapped.AppCorrelationID
+      DnsHostName: unmapped.DnsHostName
+      ServicePrincipalNames: unmapped.ServicePrincipalNames
+      Properties: unmapped.Properties
+      AdditionalInfo: unmapped.AdditionalInfo
+      AdditionalInfo2: unmapped.AdditionalInfo2
+      ObjectValueName: unmapped.ObjectValueName
+      OldValue: unmapped.OldValue
+      NewValue: unmapped.NewValue
+      OldValueType: unmapped.OldValueType
+      NewValueType: unmapped.NewValueType
+      AllowedToDelegateTo: unmapped.AllowedToDelegateTo
+      OldUacValue: unmapped.OldUacValue
+      NewUacValue: unmapped.NewUacValue
+      PasswordLastSet: unmapped.PasswordLastSet
+      AccountExpires: unmapped.AccountExpires
+      PrimaryGroupId: unmapped.PrimaryGroupId
+      HomeDirectory: unmapped.HomeDirectory
+      HomePath: unmapped.HomePath
+      ScriptPath: unmapped.ScriptPath
+      ProfilePath: unmapped.ProfilePath
+      UserWorkstations: unmapped.UserWorkstations
+      UserParameters: unmapped.UserParameters
+      SidHistory: unmapped.SidHistory
+      LogonHours: unmapped.LogonHours
+      ComputerAccountChange: unmapped.ComputerAccountChange

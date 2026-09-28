@@ -3,8 +3,10 @@
 # the Sysmon definition reads.
 #
 # Kinds cover the audit events detections lean on most: logons and their
-# failures, Kerberos tickets, process creation, changes to accounts and to
-# group membership, scheduled tasks, and the log being cleared. Every
+# failures, Kerberos tickets, process creation, changes to accounts,
+# computer accounts, rights, and group membership, scheduled tasks, services
+# installed, access to objects and network shares, directory changes, and
+# the log being cleared. Every
 # EventData member not mapped below is kept under `unmapped` by its Windows
 # name, such as `ElevatedToken` or `TicketEncryptionType`.
 #
@@ -19,7 +21,7 @@
 # for one match the other.
 
 name: windows-security
-version: 1
+version: 2
 framing: json-values
 decoding: json
 nil: ["-"]
@@ -121,6 +123,34 @@ kinds:
       logon_type_id: *logon_type
     unmapped: [Event.EventData]
 
+  - name: user_logoff
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4647
+    # Authentication: Logoff, as the user asked for it.
+    class: { class_uid: 3002, activity_id: 2 }
+    fields:
+      user.name: Event.EventData.TargetUserName
+      user.domain: Event.EventData.TargetDomainName
+      user.uid: Event.EventData.TargetUserSid
+      session.uid: Event.EventData.TargetLogonId
+    unmapped: [Event.EventData]
+
+  - name: credential_validation
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4776
+    # Authentication: Logon, as the computer holding the account checked a
+    # password with NTLM. `Status` is 0x0 when it was right.
+    class: { class_uid: 3002, activity_id: 1 }
+    fields:
+      status_code: Event.EventData.Status
+      status_id: { from: Event.EventData.Status, map: { "0x0": 1 }, otherwise: 2 }
+      user.name: Event.EventData.TargetUserName
+      auth_protocol: Event.EventData.PackageName
+      src_endpoint.hostname: Event.EventData.Workstation
+    unmapped: [Event.EventData]
+
   - name: kerberos_ticket
     when:
       Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
@@ -146,6 +176,15 @@ kinds:
       Event.System.EventID: 4769
     # Authentication: Service Ticket Request.
     class: { class_uid: 3002, activity_id: 4 }
+    fields: *kerberos
+    unmapped: [Event.EventData]
+
+  - name: kerberos_pre_authentication_failure
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4771
+    # Authentication: Preauth, which this event reports only when it failed.
+    class: { class_uid: 3002, activity_id: 6 }
     fields: *kerberos
     unmapped: [Event.EventData]
 
@@ -225,6 +264,58 @@ kinds:
     # Account Change: Delete.
     class: { class_uid: 3001, activity_id: 6 }
     fields: *account
+    unmapped: [Event.EventData]
+
+  - name: computer_account_created
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4741
+    # Account Change: Create, of a computer account such as `WS-12$`.
+    class: { class_uid: 3001, activity_id: 1 }
+    fields: *account
+    unmapped: [Event.EventData]
+
+  - name: computer_account_deleted
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4743
+    # Account Change: Delete, of a computer account.
+    class: { class_uid: 3001, activity_id: 6 }
+    fields: *account
+    unmapped: [Event.EventData]
+
+  - name: account_changed
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4738
+    # Account Change: Other. What changed, such as `UserAccountControl` or
+    # `AllowedToDelegateTo`, is kept as Windows writes it.
+    class: { class_uid: 3001, activity_id: 99 }
+    fields: *account
+    unmapped: [Event.EventData]
+
+  - name: computer_account_changed
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4742
+    # Account Change: Other, of a computer account.
+    class: { class_uid: 3001, activity_id: 99 }
+    fields: *account
+    unmapped: [Event.EventData]
+
+  - name: right_assigned
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4704
+    # Account Change: Attach Policy. The rights assigned, such as
+    # `SeDebugPrivilege`, are the policy.
+    class: { class_uid: 3001, activity_id: 7 }
+    fields:
+      user.uid: Event.EventData.TargetSid
+      policy.name: Event.EventData.PrivilegeList
+      actor.user.name: Event.EventData.SubjectUserName
+      actor.user.domain: Event.EventData.SubjectDomainName
+      actor.user.uid: Event.EventData.SubjectUserSid
     unmapped: [Event.EventData]
 
   - name: account_locked
@@ -307,6 +398,66 @@ kinds:
     fields: *member
     unmapped: [Event.EventData]
 
+  - name: global_group_created
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4727
+    # Group Management: Create.
+    class: { class_uid: 3006, activity_id: 6 }
+    fields: &group
+      group.name: Event.EventData.TargetUserName
+      group.domain: Event.EventData.TargetDomainName
+      group.uid: Event.EventData.TargetSid
+      actor.user.name: Event.EventData.SubjectUserName
+      actor.user.domain: Event.EventData.SubjectDomainName
+      actor.user.uid: Event.EventData.SubjectUserSid
+    unmapped: [Event.EventData]
+
+  - name: local_group_created
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4731
+    # Group Management: Create.
+    class: { class_uid: 3006, activity_id: 6 }
+    fields: *group
+    unmapped: [Event.EventData]
+
+  - name: universal_group_created
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4754
+    # Group Management: Create.
+    class: { class_uid: 3006, activity_id: 6 }
+    fields: *group
+    unmapped: [Event.EventData]
+
+  - name: global_group_deleted
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4730
+    # Group Management: Delete.
+    class: { class_uid: 3006, activity_id: 5 }
+    fields: *group
+    unmapped: [Event.EventData]
+
+  - name: local_group_deleted
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4734
+    # Group Management: Delete.
+    class: { class_uid: 3006, activity_id: 5 }
+    fields: *group
+    unmapped: [Event.EventData]
+
+  - name: universal_group_deleted
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4758
+    # Group Management: Delete.
+    class: { class_uid: 3006, activity_id: 5 }
+    fields: *group
+    unmapped: [Event.EventData]
+
   - name: scheduled_task_created
     when:
       Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
@@ -316,6 +467,172 @@ kinds:
     class: { class_uid: 1006, activity_id: 1 }
     fields:
       job.name: Event.EventData.TaskName
+      actor.user.name: Event.EventData.SubjectUserName
+      actor.user.domain: Event.EventData.SubjectDomainName
+      actor.user.uid: Event.EventData.SubjectUserSid
+    unmapped: [Event.EventData]
+
+  - name: scheduled_task_deleted
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4699
+    # Scheduled Job Activity: Delete.
+    class: { class_uid: 1006, activity_id: 3 }
+    fields: &task
+      job.name: Event.EventData.TaskName
+      actor.user.name: Event.EventData.SubjectUserName
+      actor.user.domain: Event.EventData.SubjectDomainName
+      actor.user.uid: Event.EventData.SubjectUserSid
+    unmapped: [Event.EventData]
+
+  - name: scheduled_task_enabled
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4700
+    # Scheduled Job Activity: Enable.
+    class: { class_uid: 1006, activity_id: 4 }
+    fields: *task
+    unmapped: [Event.EventData]
+
+  - name: scheduled_task_disabled
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4701
+    # Scheduled Job Activity: Disable.
+    class: { class_uid: 1006, activity_id: 5 }
+    fields: *task
+    unmapped: [Event.EventData]
+
+  - name: scheduled_task_updated
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4702
+    # Scheduled Job Activity: Update. The new XML is `TaskContentNew`.
+    class: { class_uid: 1006, activity_id: 2 }
+    fields: *task
+    unmapped: [Event.EventData]
+
+  - name: service_installed
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4697
+    # Windows Service Activity: Create.
+    class: { class_uid: 201004, activity_id: 1 }
+    fields:
+      win_service.name: Event.EventData.ServiceName
+      # The image and its arguments, as the service will be started.
+      win_service.cmd_line: Event.EventData.ServiceFileName
+      win_service.service_start_name: Event.EventData.ServiceAccount
+      actor.user.name: Event.EventData.SubjectUserName
+      actor.user.domain: Event.EventData.SubjectDomainName
+      actor.user.uid: Event.EventData.SubjectUserSid
+    unmapped: [Event.EventData]
+
+  - name: object_handle_requested
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4656
+    # Windows Resource Activity: Access. The rights asked for are kept as
+    # Windows writes them, `AccessMask` and `AccessList`.
+    class: { class_uid: 201003, activity_id: 1 }
+    fields: &object
+      win_resource.name: Event.EventData.ObjectName
+      win_resource.type: Event.EventData.ObjectType
+      win_resource.uid: Event.EventData.HandleId
+      actor.process.file.path: Event.EventData.ProcessName
+      actor.process.pid: { from: Event.EventData.ProcessId, as: integer }
+      actor.user.name: Event.EventData.SubjectUserName
+      actor.user.domain: Event.EventData.SubjectDomainName
+      actor.user.uid: Event.EventData.SubjectUserSid
+    unmapped: [Event.EventData]
+
+  - name: object_accessed
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4663
+    # Windows Resource Activity: Access.
+    class: { class_uid: 201003, activity_id: 1 }
+    fields: *object
+    unmapped: [Event.EventData]
+
+  - name: directory_object_operation
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4662
+    # Windows Resource Activity: Access, to an Active Directory object. The
+    # rights and properties used, `AccessMask` and `Properties`, are kept
+    # as Windows writes them: replication rights there are how a directory
+    # being copied out shows.
+    class: { class_uid: 201003, activity_id: 1 }
+    fields: *object
+    unmapped: [Event.EventData]
+
+  - name: sam_handle_requested
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4661
+    # Windows Resource Activity: Access, to a SAM object such as a user or
+    # a domain.
+    class: { class_uid: 201003, activity_id: 1 }
+    fields: *object
+    unmapped: [Event.EventData]
+
+  - name: registry_value_modified
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4657
+    # Windows Resource Activity: Access, to a registry key. The value and
+    # its data, `ObjectValueName`, `OldValue`, and `NewValue`, are kept as
+    # Windows writes them.
+    class: { class_uid: 201003, activity_id: 1 }
+    fields: *object
+    unmapped: [Event.EventData]
+
+  - name: share_accessed
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 5140
+    # SMB Activity: Other. The SMB activities OCSF names are file
+    # operations, and a share being connected to is none of them.
+    class: { class_uid: 4006, activity_id: 99 }
+    fields:
+      share: Event.EventData.ShareName
+      src_endpoint.ip: Event.EventData.IpAddress
+      src_endpoint.port: { from: Event.EventData.IpPort, as: integer }
+      actor.user.name: Event.EventData.SubjectUserName
+      actor.user.domain: Event.EventData.SubjectDomainName
+      actor.user.uid: Event.EventData.SubjectUserSid
+    unmapped: [Event.EventData]
+
+  - name: share_file_checked
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 5145
+    # SMB Activity: Other. Windows checked whether a file on a share may be
+    # accessed; the file is named relative to the share.
+    class: { class_uid: 4006, activity_id: 99 }
+    fields:
+      share: Event.EventData.ShareName
+      file.path: Event.EventData.RelativeTargetName
+      src_endpoint.ip: Event.EventData.IpAddress
+      src_endpoint.port: { from: Event.EventData.IpPort, as: integer }
+      actor.user.name: Event.EventData.SubjectUserName
+      actor.user.domain: Event.EventData.SubjectDomainName
+      actor.user.uid: Event.EventData.SubjectUserSid
+    unmapped: [Event.EventData]
+
+  - name: directory_object_modified
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 5136
+    # Entity Management: Update. Which attribute changed and how,
+    # `AttributeLDAPDisplayName`, `AttributeValue`, and `OperationType`,
+    # are kept as Windows writes them.
+    class: { class_uid: 3004, activity_id: 3 }
+    fields:
+      entity.name: Event.EventData.ObjectDN
+      entity.uid: Event.EventData.ObjectGUID
+      entity.type: Event.EventData.ObjectClass
       actor.user.name: Event.EventData.SubjectUserName
       actor.user.domain: Event.EventData.SubjectDomainName
       actor.user.uid: Event.EventData.SubjectUserSid

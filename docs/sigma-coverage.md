@@ -7,14 +7,14 @@ it parses, resolves to OCSF paths through a shipped mapping set
 evaluator.
 
 Measured against SigmaHQ commit `16eb587` (2026-09-22) with the
-`sigma-windows` mapping set, version 4.
+`sigma-windows` mapping set, version 5.
 
 ## Summary
 
 | Rule set | Rules | Parse failures | Loaded | Loaded where a mapping exists |
 | --- | ---: | ---: | ---: | ---: |
-| `rules` | 3,144 | 0 | 1,745 | 1,745 of 1,851 (94.3%) |
-| `rules-emerging-threats` | 473 | 0 | 260 | 260 of 270 (96.3%) |
+| `rules` | 3,144 | 0 | 1,825 | 1,825 of 1,851 (98.6%) |
+| `rules-emerging-threats` | 473 | 0 | 266 | 266 of 270 (98.5%) |
 | `rules-threat-hunting` | 140 | 0 | 92 | 92 of 93 (98.9%) |
 
 Every rule in all three sets parses. The rules that do not load are almost
@@ -27,21 +27,19 @@ Windows Security log.
 
 Rules for the Security log select events by `EventID`, and one Windows field
 lands on different OCSF attributes in different events, so the mapping lists
-every attribute a field is written to, and its place under `unmapped`. 40 of
-the 145 rules in `rules` load. The rest name fields of events the
-`windows-security` definition does not read yet:
+every attribute a field is written to, and its place under `unmapped`.
 
-| Field | Event | Rules |
-| --- | --- | ---: |
-| `ServiceFileName` | 4697, a service installed | 19 |
-| `ObjectName`, `AccessMask`, `AccessList` | 4656 and 4663, object access | 29 |
-| `RelativeTargetName`, `ShareName` | 5140 and 5145, network shares | 11 |
-| `AttributeLDAPDisplayName`, `ObjectClass` | 5136, directory changes | 7 |
+The `windows-security` definition reads 48 event IDs, chosen by what SigmaHQ's
+rules ask for. 120 of the 145 rules in `rules` load. The 25 that do not name
+fields of events it does not read yet, each used by three rules or fewer, such
+as `TargetServerName` of 4648 (a logon with explicit credentials) and
+`TemplateContent` of certificate services events.
 
-About half of the rules that load name events the definition does not read
-either, such as 4741 (a computer account created) or 4699 (a scheduled task
-deleted). They load and cannot fire until it does. Extending the definition
-to these events, in this order, is the next step for the Security log.
+Of the rules that load, about ten name only events the definition does not
+read, all of them rare: 4611, 4616, 4649, 4674, 4692, 4706, 4794, 4800, 4825,
+and 6423. They load and cannot fire until it does. A few more name several
+events of which it reads some, such as 4658 beside 4656 and 4663, and fire on
+those.
 
 ### Fields kept as Sysmon wrote them
 

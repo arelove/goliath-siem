@@ -26,7 +26,7 @@
           "name": "Windows Security Auditing",
           "vendor_name": "Microsoft"
         },
-        "uid": "3026",
+        "uid": "3054",
         "version": "1.5.0"
       },
       "severity_id": 1,
@@ -46,7 +46,7 @@
         "name": "adam"
       }
     },
-    "id": "2beacc204fb2291cc61bb0b42bc921a7",
+    "id": "50a5ae1afc90b91416710cd613cd3805",
     "issues": [
       {
         "reason": "`0xnope` is not a whole number",
