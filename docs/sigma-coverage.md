@@ -7,20 +7,41 @@ it parses, resolves to OCSF paths through a shipped mapping set
 evaluator.
 
 Measured against SigmaHQ commit `16eb587` (2026-09-22) with the
-`sigma-windows` mapping set, version 3.
+`sigma-windows` mapping set, version 4.
 
 ## Summary
 
 | Rule set | Rules | Parse failures | Loaded | Loaded where a mapping exists |
 | --- | ---: | ---: | ---: | ---: |
-| `rules` | 3,144 | 0 | 1,705 | 1,705 of 1,706 (99.9%) |
-| `rules-emerging-threats` | 473 | 0 | 251 | 251 of 251 (100%) |
-| `rules-threat-hunting` | 140 | 0 | 90 | 90 of 90 (100%) |
+| `rules` | 3,144 | 0 | 1,745 | 1,745 of 1,851 (94.3%) |
+| `rules-emerging-threats` | 473 | 0 | 260 | 260 of 270 (96.3%) |
+| `rules-threat-hunting` | 140 | 0 | 92 | 92 of 93 (98.9%) |
 
 Every rule in all three sets parses. The rules that do not load are almost
 entirely rules for log sources that have no mapping yet. Mapped so far are the
 five Windows log sources Sysmon produces most rules for: process creation, file
-creation, image loads, network connections, and registry value sets.
+creation, image loads, network connections, and registry value sets; and the
+Windows Security log.
+
+### The Security log
+
+Rules for the Security log select events by `EventID`, and one Windows field
+lands on different OCSF attributes in different events, so the mapping lists
+every attribute a field is written to, and its place under `unmapped`. 40 of
+the 145 rules in `rules` load. The rest name fields of events the
+`windows-security` definition does not read yet:
+
+| Field | Event | Rules |
+| --- | --- | ---: |
+| `ServiceFileName` | 4697, a service installed | 19 |
+| `ObjectName`, `AccessMask`, `AccessList` | 4656 and 4663, object access | 29 |
+| `RelativeTargetName`, `ShareName` | 5140 and 5145, network shares | 11 |
+| `AttributeLDAPDisplayName`, `ObjectClass` | 5136, directory changes | 7 |
+
+About half of the rules that load name events the definition does not read
+either, such as 4741 (a computer account created) or 4699 (a scheduled task
+deleted). They load and cannot fire until it does. Extending the definition
+to these events, in this order, is the next step for the Security log.
 
 ### Fields kept as Sysmon wrote them
 
@@ -45,7 +66,6 @@ Log sources without a mapping, by number of rules in `rules`:
 | Log source | Rules |
 | --- | ---: |
 | `ps_script`, Windows | 163 |
-| `security` service, Windows | 145 |
 | `process_creation`, Linux | 122 |
 | `process_creation`, macOS | 67 |
 | `system` service, Windows | 63 |

@@ -11,7 +11,7 @@
 # because OCSF allows either and producers differ.
 
 name: sigma-windows
-version: 3
+version: 4
 
 mappings:
   - logsource: { category: process_creation, product: windows }
@@ -138,3 +138,76 @@ mappings:
       ProcessId: actor.process.pid
       ProcessGuid: actor.process.uid
       User: [actor.user.name, actor.process.user.name]
+
+  - logsource: { product: windows, service: security }
+    # The Security event log. One log source covers events of several OCSF
+    # classes, so the class condition is the log itself, and rules select
+    # events by `EventID` as they do on Windows. Paths follow the
+    # `windows-security` source definition.
+    #
+    # A Windows field lands on different attributes in different events:
+    # `TargetUserName` is the account in a logon and the group in a group
+    # change. Each field therefore lists every attribute it is written to,
+    # and a rule's `EventID` picks which one applies. Each also lists its
+    # place under `unmapped`, where the definition keeps it in events that
+    # do not map it, and where a value Windows writes as `-` stays, so that
+    # filters such as `IpAddress: '-'` keep working.
+    #
+    # Fields of events the definition does not read, such as the share of
+    # 5140, are not listed: rules that need them fail to load, which shows
+    # the gap, instead of loading and never firing.
+    class: { metadata.log_name: Security, device.os.type_id: 100 }
+    fields:
+      EventID: metadata.event_code
+      Channel: metadata.log_name
+      Computer: device.hostname
+      SubjectUserSid: [actor.user.uid, process.user.uid, unmapped.SubjectUserSid]
+      SubjectUserName: [actor.user.name, process.user.name, unmapped.SubjectUserName]
+      SubjectDomainName: [actor.user.domain, process.user.domain, unmapped.SubjectDomainName]
+      SubjectLogonId: [process.session.uid, unmapped.SubjectLogonId]
+      TargetUserSid: [user.uid, unmapped.TargetUserSid]
+      TargetSid: [user.uid, group.uid, unmapped.TargetSid]
+      TargetUserName: [user.name, group.name, unmapped.TargetUserName]
+      TargetDomainName: [user.domain, group.domain, unmapped.TargetDomainName]
+      TargetLogonId: [session.uid, unmapped.TargetLogonId]
+      # Windows numbers logon types as OCSF does.
+      LogonType: [logon_type_id, unmapped.LogonType]
+      LogonProcessName: [logon_process.name, unmapped.LogonProcessName]
+      AuthenticationPackageName: [auth_protocol, unmapped.AuthenticationPackageName]
+      WorkstationName: [src_endpoint.hostname, unmapped.WorkstationName]
+      IpAddress: [src_endpoint.ip, unmapped.IpAddress]
+      IpPort: [src_endpoint.port, unmapped.IpPort]
+      ProcessName: [actor.process.file.path, unmapped.ProcessName]
+      ProcessId: [actor.process.pid, process.parent_process.pid, unmapped.ProcessId]
+      NewProcessName: process.file.path
+      NewProcessId: process.pid
+      CommandLine: process.cmd_line
+      ParentProcessName: process.parent_process.file.path
+      Status: [status_code, unmapped.Status]
+      SubStatus: [status_detail, unmapped.SubStatus]
+      ServiceName: [service.name, unmapped.ServiceName]
+      ServiceSid: [service.uid, unmapped.ServiceSid]
+      MemberName: [user.name, unmapped.MemberName]
+      MemberSid: [user.uid, unmapped.MemberSid]
+      TaskName: [job.name, unmapped.TaskName]
+      # Kept as Windows writes them in every event that has them.
+      FailureReason: unmapped.FailureReason
+      TicketEncryptionType: unmapped.TicketEncryptionType
+      TicketOptions: unmapped.TicketOptions
+      PreAuthType: unmapped.PreAuthType
+      ElevatedToken: unmapped.ElevatedToken
+      ImpersonationLevel: unmapped.ImpersonationLevel
+      RestrictedAdminMode: unmapped.RestrictedAdminMode
+      VirtualAccount: unmapped.VirtualAccount
+      KeyLength: unmapped.KeyLength
+      LmPackageName: unmapped.LmPackageName
+      LogonGuid: unmapped.LogonGuid
+      TransmittedServices: unmapped.TransmittedServices
+      TokenElevationType: unmapped.TokenElevationType
+      MandatoryLabel: unmapped.MandatoryLabel
+      PrivilegeList: unmapped.PrivilegeList
+      SamAccountName: unmapped.SamAccountName
+      DisplayName: unmapped.DisplayName
+      UserPrincipalName: unmapped.UserPrincipalName
+      UserAccountControl: unmapped.UserAccountControl
+      TaskContent: unmapped.TaskContent
