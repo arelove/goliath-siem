@@ -28,6 +28,11 @@ pub struct SourceDefinition {
     /// `unmapped` where the kind keeps the object it is in.
     #[serde(default)]
     pub nil: Vec<String>,
+    /// A member that holds a batch of records, such as `Records` in the log
+    /// files AWS delivers. A decoded object whose only member this is,
+    /// holding an array, is taken as the records in the array, each with
+    /// its own raw bytes; any other record is taken as it is.
+    pub unwrap: Option<String>,
     /// Fields every kind writes, such as the time and the device.
     #[serde(default)]
     pub common: BTreeMap<String, FieldSpec>,
@@ -159,6 +164,10 @@ pub enum Coercion {
     /// Seconds since the Unix epoch, with a fraction if any, such as
     /// auditd's `1727251200.123`, as milliseconds.
     UnixSeconds,
+    /// An IP address, v4 or v6, kept as written. Text that is not one, such
+    /// as the service name AWS writes where a service made a call, is
+    /// reported and kept under `unmapped`, never written as an address.
+    Ip,
 }
 
 /// A constant or a value to compare with, as YAML writes it.

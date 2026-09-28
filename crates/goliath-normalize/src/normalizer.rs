@@ -24,6 +24,7 @@ pub struct Normalizer {
     decoding: Decoding,
     kinds: Vec<Kind>,
     nil: Vec<Value>,
+    unwrap: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -401,6 +402,7 @@ impl Normalizer {
                 .iter()
                 .map(|text| Value::from(text.as_str()))
                 .collect(),
+            unwrap: definition.unwrap.clone(),
         })
     }
 
@@ -429,31 +431,31 @@ impl Normalizer {
                     if line.iter().all(u8::is_ascii_whitespace) {
                         continue;
                     }
-                    out(self.decoded(line));
+                    self.decoded(line, &mut out);
                 }
             }
             Framing::AuditEvents => {
                 for event in auditd::events(bytes) {
-                    out(match event {
-                        Ok(raw) => self.decoded(&raw),
-                        Err(line) => dead(
+                    match event {
+                        Ok(raw) => self.decoded(&raw, &mut out),
+                        Err(line) => out(dead(
                             Stage::Framing,
                             "the line names no audit event".to_owned(),
                             line,
-                        ),
-                    });
+                        )),
+                    }
                 }
             }
             Framing::Syslog => {
                 for message in syslog::messages(bytes) {
-                    out(match message {
-                        Ok(raw) => self.decoded(raw),
-                        Err(rest) => dead(
+                    match message {
+                        Ok(raw) => self.decoded(raw, &mut out),
+                        Err(rest) => out(dead(
                             Stage::Framing,
                             "the message is shorter than its octet count".to_owned(),
                             rest,
-                        ),
-                    });
+                        )),
+                    }
                 }
             }
             Framing::JsonValues => {
@@ -463,7 +465,7 @@ impl Normalizer {
                     match next {
                         Ok(record) => {
                             let end = stream.byte_offset();
-                            out(self.record(&record, trim(&bytes[start..end])));
+                            self.records(&record, trim(&bytes[start..end]), &mut out);
                             start = end;
                         }
                         Err(error) => {
@@ -483,7 +485,7 @@ impl Normalizer {
     }
 
     /// Decodes and normalizes one framed record.
-    fn decoded(&self, raw: &[u8]) -> Outcome {
+    fn decoded(&self, raw: &[u8], out: &mut impl FnMut(Outcome)) {
         let record = match self.decoding {
             Decoding::Json => {
                 serde_json::from_slice::<Value>(raw).map_err(|error| error.to_string())
@@ -495,8 +497,26 @@ impl Normalizer {
             }
         };
         match record {
-            Ok(record) => self.record(&record, raw),
-            Err(error) => dead(Stage::Decoding, error, raw),
+            Ok(record) => self.records(&record, raw, out),
+            Err(error) => out(dead(Stage::Decoding, error, raw)),
+        }
+    }
+
+    /// Normalizes a decoded record, or each record of a batch the
+    /// definition unwraps.
+    fn records(&self, record: &Value, raw: &[u8], out: &mut impl FnMut(Outcome)) {
+        let batch = self.unwrap.as_ref().and_then(|member| {
+            let object = record.as_object().filter(|object| object.len() == 1)?;
+            object.get(member)?.as_array()
+        });
+        match batch {
+            Some(items) => {
+                for item in items {
+                    let bytes = serde_json::to_vec(item).unwrap_or_default();
+                    out(self.record(item, &bytes));
+                }
+            }
+            None => out(self.record(record, raw)),
         }
     }
 
@@ -761,6 +781,7 @@ fn check_schema(
                 Writes::Integer => matches!(attribute.base(), Base::Integer | Base::Long),
                 Writes::Text => attribute.base() == Base::String,
                 Writes::Timestamp => attribute.type_name() == "timestamp_t",
+                Writes::Ip => attribute.type_name() == "ip_t",
             };
         if !fits {
             let holds = match (attribute.is_array(), attribute.base()) {
@@ -799,6 +820,7 @@ enum Writes {
     Integer,
     Text,
     Timestamp,
+    Ip,
 }
 
 impl Writes {
@@ -818,6 +840,7 @@ impl Writes {
             Self::Integer => "an integer",
             Self::Text => "text",
             Self::Timestamp => "a timestamp",
+            Self::Ip => "an IP address",
         }
     }
 }
@@ -837,6 +860,7 @@ impl Source {
                 Coercion::String => Writes::Text,
                 Coercion::Integer => Writes::Integer,
                 Coercion::Timestamp | Coercion::UnixSeconds => Writes::Timestamp,
+                Coercion::Ip => Writes::Ip,
             }),
         }
     }
@@ -921,6 +945,11 @@ fn coerce(value: &Value, coercion: Option<Coercion>) -> Result<Value, String> {
             .map(|time| Value::from(time.as_millisecond()))
             .map_err(|error| format!("`{text}` is not an RFC 3339 time: {error}")),
         (Coercion::UnixSeconds, Value::String(text)) => unix_seconds(text),
+        (Coercion::Ip, Value::String(text)) => text
+            .trim()
+            .parse::<std::net::IpAddr>()
+            .map(|_| value.clone())
+            .map_err(|_| format!("`{text}` is not an IP address")),
         (Coercion::UnixSeconds, Value::Number(number)) => unix_seconds(&number.to_string()),
         (coercion, other) => Err(format!(
             "cannot convert {} to {coercion:?}",
