@@ -9,6 +9,13 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-09-28
+
+
+### Added
+
+- Syslog framing and decodings, RFC 6587, 5424, and 3164
+
 ## [0.2.5] - 2026-09-27
 
 
