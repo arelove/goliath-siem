@@ -403,6 +403,11 @@ impl Normalizer {
         &self.name
     }
 
+    /// How the source's bytes split into records.
+    pub fn framing(&self) -> Framing {
+        self.framing
+    }
+
     /// The definition's version, to be stored with every event it produces.
     pub fn version(&self) -> u32 {
         self.version
