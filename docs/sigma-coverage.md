@@ -13,7 +13,7 @@ Measured against SigmaHQ commit `16eb587` (2026-09-22) with the
 
 | Rule set | Rules | Parse failures | Loaded | Loaded where a mapping exists |
 | --- | ---: | ---: | ---: | ---: |
-| `rules` | 3,144 | 0 | 1,825 | 1,825 of 1,851 (98.6%) |
+| `rules` | 3,144 | 0 | 1,827 | 1,827 of 1,851 (98.7%) |
 | `rules-emerging-threats` | 473 | 0 | 266 | 266 of 270 (98.5%) |
 | `rules-threat-hunting` | 140 | 0 | 92 | 92 of 93 (98.9%) |
 
@@ -29,10 +29,10 @@ Rules for the Security log select events by `EventID`, and one Windows field
 lands on different OCSF attributes in different events, so the mapping lists
 every attribute a field is written to, and its place under `unmapped`.
 
-The `windows-security` definition reads 48 event IDs, chosen by what SigmaHQ's
-rules ask for. 120 of the 145 rules in `rules` load. The 25 that do not name
+The `windows-security` definition reads 49 event IDs, chosen by what SigmaHQ's
+rules ask for. 122 of the 145 rules in `rules` load. The 23 that do not name
 fields of events it does not read yet, each used by three rules or fewer, such
-as `TargetServerName` of 4648 (a logon with explicit credentials) and
+as `TargetName` of 5379 (credentials read from the vault) and
 `TemplateContent` of certificate services events.
 
 Of the rules that load, about ten name only events the definition does not
@@ -87,22 +87,26 @@ Loading a rule proves little: a loaded rule that never fires is worse than a
 rule that refuses to load. SigmaHQ's `regression_data` holds, for many rules,
 real Windows events recorded while the attack was performed, and the number of
 times the rule must fire on them. Each case is run end to end: the events are
-normalized to OCSF by the Sysmon source definition of `goliath-normalize`,
-exactly as a deployment would, and the resolved rule is evaluated by the
-reference evaluator. All 393 Sysmon events of the loaded cases normalize with
-no value that fails to convert.
+normalized to OCSF by the Sysmon and Windows Security source definitions of
+`goliath-normalize`, each reading its own provider's records, exactly as a
+deployment would, and the resolved rule is evaluated by the reference
+evaluator. All 395 events of the loaded cases normalize with no value that
+fails to convert.
 
 | Outcome | Cases |
 | --- | ---: |
 | Regression cases in SigmaHQ | 460 |
-| Run | 357 |
-| Fired exactly as SigmaHQ expects | 357 |
+| Run | 359 |
+| Fired exactly as SigmaHQ expects | 359 |
 | Failed | 0 |
-| Skipped: no mapping for the rule's log source | 101 |
+| Skipped: no mapping for the rule's log source | 99 |
 | Skipped: events refused by antivirus software | 1 |
 | Skipped: malformed case description | 1 |
 
-Every case whose rule loads passes. To confirm the check can fail at all, it
+Every case whose rule loads passes. Two of them are Security log cases, a
+logon with explicit credentials (4648) and a scheduled task disabled (4701):
+few, since SigmaHQ records most of its regression data with Sysmon, but real
+Windows records read by the `windows-security` definition as they are. To confirm the check can fail at all, it
 was run twice with a deliberate fault:
 
 - case folding switched off in the evaluator: 129 of the 276 process creation
@@ -134,6 +138,11 @@ The regression run also compiles every loaded rule into the engine, which
 shares work across rules, and checks that it returns exactly the rules the
 reference evaluator returns for every converted event. Then it times both, each
 for at least three seconds on one core.
+
+With the Security mapping, 2,185 rules load, and the engine still agrees with
+the reference evaluator on all 395 events; a single run then measured about
+125,000 events/s on one core, in line with the table below, which was
+measured with 2,046 rules.
 
 | Measure | Value |
 | --- | ---: |

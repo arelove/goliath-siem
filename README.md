@@ -37,14 +37,14 @@ repository, with details and reproduction steps in
 [docs/sigma-coverage.md](docs/sigma-coverage.md):
 
 - all 3,757 rules parse;
-- 2,046 of 2,047 rules for the five Windows log sources mapped so far load:
+- 2,185 of 2,214 rules for the six Windows log sources mapped so far load:
   process creation, file creation, image loads, network connections, and
-  registry value sets;
-- all 357 SigmaHQ regression cases for loaded rules fire exactly as SigmaHQ
+  registry value sets from Sysmon, and the Security log;
+- all 359 SigmaHQ regression cases for loaded rules fire exactly as SigmaHQ
   expects on real recorded attack events;
-- the engine evaluates those 2,046 rules at about 129,000 events/s on one
-  core, and returns exactly what a deliberately naive reference evaluator
-  returns on every event;
+- the engine evaluates the 2,046 rules of the Sysmon log sources at about
+  129,000 events/s on one core, and returns exactly what a deliberately
+  naive reference evaluator returns on every event;
 - one engine shared by every thread of a 16-core laptop evaluates about
   2,000,000 events/s, past the 1,000,000 events/s target for detection.
 
