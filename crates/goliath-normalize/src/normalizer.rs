@@ -23,6 +23,7 @@ pub struct Normalizer {
     framing: Framing,
     decoding: Decoding,
     kinds: Vec<Kind>,
+    nil: Vec<Value>,
 }
 
 #[derive(Debug, Clone)]
@@ -395,6 +396,11 @@ impl Normalizer {
             framing: definition.framing,
             decoding: definition.decoding,
             kinds,
+            nil: definition
+                .nil
+                .iter()
+                .map(|text| Value::from(text.as_str()))
+                .collect(),
         })
     }
 
@@ -530,7 +536,10 @@ impl Normalizer {
                 }
                 Source::Path { path, .. } | Source::Translate { path, .. } => path,
             };
-            let Some(found) = path.lookup(record).filter(|value| !value.is_null()) else {
+            let Some(found) = path
+                .lookup(record)
+                .filter(|value| !value.is_null() && !self.nil.contains(value))
+            else {
                 continue;
             };
             consumed.push(path);
@@ -895,11 +904,18 @@ fn coerce(value: &Value, coercion: Option<Coercion>) -> Result<Value, String> {
             .as_i64()
             .map(Value::from)
             .ok_or_else(|| format!("{number} is not a whole number")),
-        (Coercion::Integer, Value::String(text)) => text
-            .trim()
-            .parse::<i64>()
+        (Coercion::Integer, Value::String(text)) => {
+            let trimmed = text.trim();
+            match trimmed
+                .strip_prefix("0x")
+                .or_else(|| trimmed.strip_prefix("0X"))
+            {
+                Some(digits) => i64::from_str_radix(digits, 16),
+                None => trimmed.parse::<i64>(),
+            }
             .map(Value::from)
-            .map_err(|_| format!("`{text}` is not a whole number")),
+            .map_err(|_| format!("`{text}` is not a whole number"))
+        }
         (Coercion::Timestamp, Value::String(text)) => text
             .parse::<jiff::Timestamp>()
             .map(|time| Value::from(time.as_millisecond()))

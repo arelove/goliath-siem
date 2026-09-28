@@ -22,6 +22,12 @@ pub struct SourceDefinition {
     pub framing: Framing,
     /// How a record becomes a field map.
     pub decoding: Decoding,
+    /// Values a source writes for a field it has no value for, such as
+    /// Windows' `-`. A field whose source holds one is not written, as if
+    /// the source had left it out; the value is still kept under
+    /// `unmapped` where the kind keeps the object it is in.
+    #[serde(default)]
+    pub nil: Vec<String>,
     /// Fields every kind writes, such as the time and the device.
     #[serde(default)]
     pub common: BTreeMap<String, FieldSpec>,
@@ -144,7 +150,8 @@ pub enum FieldSpec {
 pub enum Coercion {
     /// Text; a number becomes its decimal text.
     String,
-    /// A whole number, from a number or its decimal text.
+    /// A whole number, from a number, its decimal text, or its hexadecimal
+    /// text after `0x`, as Windows writes process and logon identifiers.
     Integer,
     /// An RFC 3339 time, such as `2025-12-25T14:30:27.369114Z`, as the
     /// milliseconds since the Unix epoch OCSF stores.

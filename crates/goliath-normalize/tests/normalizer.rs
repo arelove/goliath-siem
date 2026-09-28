@@ -607,3 +607,35 @@ fn syslog_framing_needs_a_syslog_decoding() {
     };
     assert_eq!(normalized.event["message"], "hi");
 }
+
+#[test]
+fn integers_read_from_hexadecimal_text_as_windows_writes_them() {
+    let Outcome::Event(normalized) = one(MINIMAL, r#"{"type": "login", "port": "0x1F90"}"#) else {
+        panic!("not an event");
+    };
+    assert!(normalized.issues.is_empty(), "{:?}", normalized.issues);
+    assert_eq!(normalized.event["src_endpoint"]["port"], 8080);
+    let Outcome::Event(normalized) = one(MINIMAL, r#"{"type": "login", "port": "0xZZ"}"#) else {
+        panic!("not an event");
+    };
+    assert_eq!(normalized.issues.len(), 1);
+}
+
+#[test]
+fn a_nil_value_leaves_its_field_out_and_is_kept_unmapped() {
+    let definition = MINIMAL.replace("common:", "nil: [\"-\"]\ncommon:");
+    let input = r#"{"type": "login", "who": "-", "port": "-", "extra": {"tty": "-"}}"#;
+    let Outcome::Event(normalized) = one(&definition, input) else {
+        panic!("not an event");
+    };
+    assert!(normalized.issues.is_empty(), "{:?}", normalized.issues);
+    assert!(normalized.event.get("user").is_none());
+    assert!(normalized.event.get("src_endpoint").is_none());
+    assert_eq!(normalized.event["unmapped"]["tty"], "-");
+    // Without `nil`, the port does not convert, and is reported.
+    let Outcome::Event(normalized) = one(MINIMAL, input) else {
+        panic!("not an event");
+    };
+    assert_eq!(normalized.event["user"]["name"], "-");
+    assert_eq!(normalized.issues.len(), 1);
+}
