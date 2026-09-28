@@ -15,6 +15,7 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 ### Added
 
 - Sigma rules for the Windows Security log resolve to OCSF
+- The Security mapping covers the events of Windows Security definition version 2; 120 of 145 SigmaHQ Security rules load
 
 ## [0.2.0] - 2026-09-25
 
