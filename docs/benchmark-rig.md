@@ -97,6 +97,60 @@ The driver calls `report::write(&run, &clickhouse, &output_directory).await`.
 The ClickHouse client selects the isolated database. Report code should bound
 its server requests and preserve unavailable measurements explicitly.
 
+## Replaying real datasets
+
+Stream B of ADR-0017 is real telemetry, replayed as if it were happening now.
+`replay` reads a recording in its source's own format, moves every record's
+times so that the first is the moment it starts, keeps the gaps between them
+divided by `--speed`, and writes what has come due into a collector's inbox
+every quarter second. Clocks are defined for `sysmon`, `sysmon-flat`,
+`entra`, `falco`, and `auditd`.
+
+```sh
+cargo run --release -p goliath-bench --bin replay -- \
+    --source sysmon-flat --recording bench/datasets/otrf/SDWIN-190301125905/sysmon.jsonl \
+    --out inbox/sysmon-flat --speed 10 --times 3
+```
+
+The first real datasets are the Windows atomic datasets of the [OTRF Security
+Datasets](https://github.com/OTRF/Security-Datasets), MIT licensed: each is one
+technique recorded on a lab network, with its ATT&CK mapping. They are
+recordings of real attack tools, and security software may quarantine them, so
+they are downloaded by a script, never committed, into `bench/datasets/`,
+which git ignores. Run the script on a machine meant for it, not a workstation
+whose antivirus you would rather not argue with:
+
+```sh
+python3 scripts/datasets.py                         # all 100 Windows atomic datasets
+python3 scripts/datasets.py --only SDWIN-190301125905
+```
+
+The script is pinned to one commit of the datasets. It writes each dataset's
+Sysmon events to `sysmon.jsonl`, flat JSON lines that the `sysmon-flat`
+definition reads, its other channels to `other.jsonl`, and a `label.json`
+naming the dataset, its techniques, licence, and commit.
+
+### Injecting labelled attacks
+
+A labelled recording replayed beside generated activity is an injected
+attack whose every event is known. With `--labels`, replay writes one line of
+ground truth per event its records become, carrying the identity the
+source's normalizer gives the record, which is the identity the platform
+stores it under, when it was released, and the members of `--label`:
+
+```sh
+cargo run --release -p goliath-bench --bin replay -- \
+    --source sysmon-flat --recording bench/datasets/otrf/SDWIN-190301125905/sysmon.jsonl \
+    --out inbox/sysmon-flat --labels bench/out/labels.jsonl \
+    --label bench/datasets/otrf/SDWIN-190301125905/label.json
+```
+
+A test holds a record's identity alone to its identity in a file of records,
+so labels find the events the platform stores. Precision and recall against
+them wait for detections, in M5. Generated attack chains bound to the
+generator's entities, the scenario files ADR-0017 describes, are still to
+come; real recordings cover the injector until then.
+
 ## Driver validation on 2026-09-27
 
 The `ci` workload was run against local Redpanda and ClickHouse 25.8.33.6:
