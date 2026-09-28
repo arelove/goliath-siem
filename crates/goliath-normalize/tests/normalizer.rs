@@ -639,3 +639,68 @@ fn a_nil_value_leaves_its_field_out_and_is_kept_unmapped() {
     assert_eq!(normalized.event["user"]["name"], "-");
     assert_eq!(normalized.issues.len(), 1);
 }
+
+#[test]
+fn a_batch_under_the_unwrap_member_becomes_one_record_per_element() {
+    let definition = MINIMAL
+        .replace("framing: lines", "framing: json-values")
+        .replace("common:", "unwrap: Records\ncommon:");
+    let input = r#"{"Records": [{"type": "login", "who": "adam"}, {"type": "login", "who": "eve"}, {"type": "other"}]}
+{"type": "login", "who": "bob"}
+{"Records": [{"type": "login"}], "extra": 1}"#;
+    let all = outcomes(&definition, input);
+    let names: Vec<_> = all
+        .iter()
+        .map(|outcome| match outcome {
+            Outcome::Event(normalized) => normalized.event["user"]["name"]
+                .as_str()
+                .unwrap_or("-")
+                .to_owned(),
+            Outcome::DeadLetter(dead) => format!("dead: {}", String::from_utf8_lossy(&dead.raw)),
+            other => panic!("{other:?}"),
+        })
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "adam",
+            "eve",
+            r#"dead: {"type":"other"}"#,
+            "bob",
+            // Not a batch alone: taken as one record, which no kind accepts.
+            r#"dead: {"Records": [{"type": "login"}], "extra": 1}"#,
+        ]
+    );
+}
+
+#[test]
+fn an_ip_address_is_written_only_when_it_is_one() {
+    let definition = MINIMAL.replace(
+        "user.name: who",
+        "user.name: who\n      src_endpoint.ip: { from: address, as: ip }",
+    );
+    let Outcome::Event(normalized) = one(
+        &definition,
+        r#"{"type": "login", "address": "fe80:0:0:0:1:2:3:4"}"#,
+    ) else {
+        panic!("not an event");
+    };
+    assert!(normalized.issues.is_empty());
+    assert_eq!(
+        normalized.event["src_endpoint"]["ip"], "fe80:0:0:0:1:2:3:4",
+        "kept as written"
+    );
+    let Outcome::Event(normalized) = one(
+        &definition,
+        r#"{"type": "login", "address": "ec2.amazonaws.com"}"#,
+    ) else {
+        panic!("not an event");
+    };
+    assert!(normalized.event["src_endpoint"].get("ip").is_none());
+    assert_eq!(normalized.issues.len(), 1);
+    assert_eq!(normalized.event["unmapped"]["address"], "ec2.amazonaws.com");
+    assert!(matches!(
+        error(&MINIMAL.replace("user.name: who", "user.name: { from: who, as: ip }")),
+        DefinitionError::Type { .. }
+    ));
+}
