@@ -359,6 +359,95 @@ max_delay_ms = 100
         .unwrap();
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn syslog_over_tcp_reaches_clickhouse() {
+    let Some(url) = clickhouse_url() else {
+        return;
+    };
+    let user = clickhouse_user();
+    let database = format!("goliath_test_syslog_{}", std::process::id());
+    let directory = tempfile::tempdir().unwrap();
+    std::fs::write(
+        directory.path().join("ssh.yaml"),
+        r"
+name: ssh
+version: 1
+framing: syslog
+decoding: syslog
+common:
+  time: { from: timestamp, as: timestamp }
+  device.hostname: hostname
+  message: message
+kinds:
+  - name: login
+    when: { app_name: sshd }
+    class: { class_uid: 3002, activity_id: 1 }
+    fields:
+      src_endpoint.port: { from: proc_id, as: integer }
+",
+    )
+    .unwrap();
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let path = directory.path().join("goliath.toml");
+    std::fs::write(
+        &path,
+        format!(
+            r#"
+roles = ["receiver", "normalizer", "writer"]
+data = "data"
+
+[[sources]]
+definition = "ssh.yaml"
+syslog = {{ listen = "127.0.0.1:{port}" }}
+
+[store]
+url = "{url}"
+database = "{database}"
+user = "{user}"
+password_env = "GOLIATH_CLICKHOUSE_PASSWORD"
+
+[writer]
+max_rows = 1000
+max_delay_ms = 100
+"#
+        ),
+    )
+    .unwrap();
+
+    let (stop, running) = start(Config::load(&path).unwrap());
+    let deadline = Instant::now() + Duration::from_secs(30);
+    let mut sender = loop {
+        if let Ok(stream) = tokio::net::TcpStream::connect(("127.0.0.1", port)).await {
+            break stream;
+        }
+        assert!(Instant::now() < deadline, "the receiver did not listen");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    };
+    let counted = "<38>1 2026-09-28T10:00:01Z bastion sshd 2222 - - Accepted\npublickey";
+    let stream = format!(
+        "<38>Sep 28 10:00:00 bastion sshd[22]: Accepted password\n{} {counted}<78>Sep 28 10:00:02 bastion CRON[1]: tick\n",
+        counted.len()
+    );
+    tokio::io::AsyncWriteExt::write_all(&mut sender, stream.as_bytes())
+        .await
+        .unwrap();
+    let client = connect(&url).with_database(&database);
+    eventually(&client, "SELECT count() FROM events", 2).await;
+
+    drop(sender);
+    stop.send(()).unwrap();
+    running.await.unwrap().unwrap();
+    connect(&url)
+        .query(&format!("DROP DATABASE IF EXISTS {database}"))
+        .execute()
+        .await
+        .unwrap();
+}
+
 /// The value of the sample `name` on the platform's metrics endpoint.
 async fn metric(port: u16, name: &str) -> Option<f64> {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};

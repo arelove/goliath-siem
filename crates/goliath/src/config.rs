@@ -209,6 +209,20 @@ pub struct SourceConfig {
     /// Whether, and with what token, the receiver takes this source's
     /// records over HTTP.
     pub http: Option<HttpSourceConfig>,
+    /// Whether, and where, the receiver takes this source's records as
+    /// syslog over TCP.
+    pub syslog: Option<SyslogSourceConfig>,
+}
+
+/// How a source takes syslog over TCP: a port of its own, since syslog
+/// names no source in its messages.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SyslogSourceConfig {
+    /// The address to listen on. An address beyond loopback needs `tls`.
+    pub listen: SocketAddr,
+    /// The certificate to serve TLS with; plain TCP if left out.
+    pub tls: Option<TlsConfig>,
 }
 
 /// Kafka, or a service with its API such as Redpanda.
@@ -376,6 +390,14 @@ impl Config {
             if let Some(http) = &mut source.http {
                 http.token_file = base.join(&http.token_file);
             }
+            if let Some(tls) = source
+                .syslog
+                .as_mut()
+                .and_then(|syslog| syslog.tls.as_mut())
+            {
+                tls.certificate = base.join(&tls.certificate);
+                tls.key = base.join(&tls.key);
+            }
             if !is_builtin(&source.definition) {
                 source.definition = base.join(&source.definition).to_string_lossy().into_owned();
             }
@@ -462,9 +484,20 @@ impl Config {
     }
 
     /// Checks the receiver: something to receive, tokens that each name one
-    /// source, and TLS for an address beyond loopback.
+    /// source, an address for each listener, and TLS for any beyond
+    /// loopback.
     fn check_receiver(&self) -> Result<(), RunError> {
+        let exposed = |listen: SocketAddr, tls: bool, what: &str| {
+            if listen.ip().is_loopback() || tls {
+                Ok(())
+            } else {
+                Err(RunError::Config(format!(
+                    "{what} listens on {listen}, beyond this host, so it needs `tls = {{ certificate = ..., key = ... }}`"
+                )))
+            }
+        };
         let mut tokens = BTreeSet::new();
+        let mut addresses = BTreeSet::new();
         for source in &self.sources {
             if let Some(http) = &source.http
                 && !tokens.insert(http.token()?)
@@ -474,17 +507,35 @@ impl Config {
                         .to_owned(),
                 ));
             }
+            if let Some(syslog) = &source.syslog {
+                let what = format!("the syslog listener of `{}`", source.definition);
+                exposed(syslog.listen, syslog.tls.is_some(), &what)?;
+                if !addresses.insert(syslog.listen) {
+                    return Err(RunError::Config(format!(
+                        "two syslog listeners share {}; syslog names no source, so each source needs its own port",
+                        syslog.listen
+                    )));
+                }
+            }
         }
-        if tokens.is_empty() {
+        if tokens.is_empty() && addresses.is_empty() {
             return Err(RunError::Config(
-                "the receiver role needs a source with `http = { token_file = ... }`".to_owned(),
+                "the receiver role needs a source with `http = { token_file = ... }` or `syslog = { listen = ... }`"
+                    .to_owned(),
             ));
         }
-        if !self.receiver.listen.ip().is_loopback() && self.receiver.tls.is_none() {
-            return Err(RunError::Config(format!(
-                "the receiver listens on {}, beyond this host, so [receiver] needs `tls = {{ certificate = ..., key = ... }}`",
-                self.receiver.listen
-            )));
+        if !tokens.is_empty() {
+            exposed(
+                self.receiver.listen,
+                self.receiver.tls.is_some(),
+                "[receiver]",
+            )?;
+            if addresses.contains(&self.receiver.listen) {
+                return Err(RunError::Config(format!(
+                    "a syslog listener and [receiver] share {}",
+                    self.receiver.listen
+                )));
+            }
         }
         Ok(())
     }
@@ -794,5 +845,54 @@ data = \"data\"
         .to_string();
         assert!(nothing.contains("needs a source"), "{nothing}");
         std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn a_syslog_listener_needs_a_port_of_its_own_and_tls_beyond_loopback() {
+        let config = |first: &str, second: &str| {
+            format!(
+                r#"
+roles = ["receiver", "normalizer"]
+data = "data"
+
+[[sources]]
+definition = "falco"
+syslog = {{ {first} }}
+
+[[sources]]
+definition = "auditd"
+syslog = {{ {second} }}
+"#
+            )
+        };
+        let loaded = parse(&config(
+            "listen = '127.0.0.1:6514'",
+            "listen = '0.0.0.0:6515', tls = { certificate = 'c.pem', key = 'k.pem' }",
+        ))
+        .unwrap();
+        assert!(loaded.has_pipeline());
+        let tls = loaded.sources[1]
+            .syslog
+            .as_ref()
+            .unwrap()
+            .tls
+            .as_ref()
+            .unwrap();
+        assert!(tls.certificate.ends_with("c.pem"));
+
+        let shared = parse(&config(
+            "listen = '127.0.0.1:6514'",
+            "listen = '127.0.0.1:6514'",
+        ))
+        .unwrap_err()
+        .to_string();
+        assert!(shared.contains("its own port"), "{shared}");
+        let exposed = parse(&config(
+            "listen = '127.0.0.1:6514'",
+            "listen = '0.0.0.0:6515'",
+        ))
+        .unwrap_err()
+        .to_string();
+        assert!(exposed.contains("needs `tls"), "{exposed}");
     }
 }

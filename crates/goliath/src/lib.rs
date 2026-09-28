@@ -16,6 +16,7 @@ mod metrics;
 pub mod raw;
 mod receiver;
 mod roles;
+mod syslog;
 mod tls;
 mod topics;
 
@@ -193,6 +194,13 @@ async fn start_pipeline<T: Topics>(
             ));
         }
         if config.roles.contains(&Role::Receiver)
+            && let Some(syslog) = &source.syslog
+        {
+            let listener =
+                listen_syslog(&normalizer, syslog, T::sender(&raw), metrics.clone()).await?;
+            roles.spawn(listener.serve(stopped.clone()));
+        }
+        if config.roles.contains(&Role::Receiver)
             && let Some(http) = &source.http
         {
             over_http.insert(
@@ -204,7 +212,7 @@ async fn start_pipeline<T: Topics>(
             );
         }
     }
-    if config.roles.contains(&Role::Receiver) {
+    if config.roles.contains(&Role::Receiver) && !over_http.is_empty() {
         let tls = match &config.receiver.tls {
             Some(tls) => Some(tls::acceptor(tls, &[b"http/1.1"])?),
             None => None,
@@ -214,6 +222,33 @@ async fn start_pipeline<T: Topics>(
         roles.spawn(server.serve(stopped.clone()));
     }
     Ok(())
+}
+
+/// Binds the syslog listener of the source `normalizer` reads.
+async fn listen_syslog<S: goliath_pipe::Sender + Send + Sync + 'static>(
+    normalizer: &goliath_normalize::Normalizer,
+    syslog: &config::SyslogSourceConfig,
+    raw: S,
+    metrics: Metrics,
+) -> Result<syslog::Listener<S>, RunError> {
+    if normalizer.framing() != goliath_normalize::definition::Framing::Syslog {
+        return Err(RunError::Config(format!(
+            "source `{}` takes syslog, so its definition needs `framing: syslog`",
+            normalizer.name()
+        )));
+    }
+    let tls = match &syslog.tls {
+        Some(tls) => Some(tls::acceptor(tls, &[])?),
+        None => None,
+    };
+    syslog::Listener::bind(
+        normalizer.name().to_owned(),
+        syslog.listen,
+        tls,
+        raw,
+        metrics,
+    )
+    .await
 }
 
 fn connect(settings: &config::StoreConfig) -> Result<Store, RunError> {
