@@ -142,11 +142,13 @@ pub(crate) fn string_matches(test: &StringTest, candidate: &str) -> bool {
     }
 }
 
-/// A value as text: strings as they are, numbers in decimal.
+/// A value as text: strings as they are, numbers in decimal, booleans as
+/// `true` or `false`.
 pub(crate) fn text(value: &Value) -> Option<String> {
     match value {
         Value::String(text) => Some(text.clone()),
         Value::Number(number) => Some(number.to_string()),
+        Value::Bool(flag) => Some(flag.to_string()),
         _ => None,
     }
 }

@@ -164,6 +164,21 @@ fn numbers_match_as_numbers_and_as_text() {
 }
 
 #[test]
+fn booleans_match_as_booleans_and_as_text() {
+    // Rules quote what JSON sources write as booleans, as SigmaHQ's Okta
+    // rules do with `securityContext.isProxy: 'true'`.
+    let quoted = rule("  sel:\n    User: 'true'\n  condition: sel\n");
+    assert!(quoted.matches(&launch(&json!({ "user": { "name": true } }))));
+    assert!(quoted.matches(&launch(&json!({ "user": { "name": "TRUE" } }))));
+    assert!(!quoted.matches(&launch(&json!({ "user": { "name": false } }))));
+    let plain = rule("  sel:\n    User: true\n  condition: sel\n");
+    assert!(plain.matches(&launch(&json!({ "user": { "name": true } }))));
+    assert!(plain.matches(&launch(&json!({ "user": { "name": "true" } }))));
+    let null = rule("  sel:\n    User: 'null'\n  condition: sel\n");
+    assert!(!null.matches(&launch(&json!({ "user": { "name": null } }))));
+}
+
+#[test]
 fn null_and_exists_ask_about_presence() {
     let null = rule("  sel:\n    CurrentDirectory: null\n  condition: sel\n");
     assert!(null.matches(&launch(&json!({}))));
