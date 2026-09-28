@@ -9,6 +9,14 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-09-28
+
+
+### Added
+
+- Integers from 0x hexadecimal text, and nil values a definition names
+- A Windows Security definition, logons, Kerberos, processes, accounts, groups
+
 ## [0.2.7] - 2026-09-28
 
 
