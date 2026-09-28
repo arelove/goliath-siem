@@ -2560,5 +2560,63 @@
     "id": "3a96aa7e5bd81a3c1658cabdf8c7957d",
     "issues": [],
     "kind": "registry_value_modified"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "process": {
+          "file": {
+            "path": "C:\\Windows\\System32\\runas.exe"
+          },
+          "pid": 6700
+        },
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3002,
+      "device": {
+        "hostname": "WS-FINANCE-07.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "dst_endpoint": {
+        "hostname": "FS-02.corp.example"
+      },
+      "metadata": {
+        "event_code": "4648",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3052",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790586052512,
+      "type_uid": 300201,
+      "unmapped": {
+        "IpAddress": "-",
+        "IpPort": "-",
+        "LogonGuid": "{00000000-0000-0000-0000-000000000000}",
+        "SubjectLogonId": "0x5f3a21",
+        "TargetInfo": "FS-02.corp.example",
+        "TargetLogonGuid": "{00000000-0000-0000-0000-000000000000}"
+      },
+      "user": {
+        "domain": "CORP",
+        "name": "svc-backup"
+      }
+    },
+    "id": "8bb9cf482d79d36503a9863c5cf1adfe",
+    "issues": [],
+    "kind": "explicit_credentials"
   }
 ]

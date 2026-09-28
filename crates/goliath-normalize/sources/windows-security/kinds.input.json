@@ -2558,3 +2558,56 @@
     }
   }
 }
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4648,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:52.5123456Z"
+        }
+      },
+      "EventRecordID": 3052,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "WS-FINANCE-07.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "SubjectUserSid": "S-1-5-21-1004336348-1177238915-682003330-1105",
+      "SubjectUserName": "it-admin",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x5f3a21",
+      "LogonGuid": "{00000000-0000-0000-0000-000000000000}",
+      "TargetUserName": "svc-backup",
+      "TargetDomainName": "CORP",
+      "TargetLogonGuid": "{00000000-0000-0000-0000-000000000000}",
+      "TargetServerName": "FS-02.corp.example",
+      "TargetInfo": "FS-02.corp.example",
+      "ProcessId": "0x1a2c",
+      "ProcessName": "C:\\Windows\\System32\\runas.exe",
+      "IpAddress": "-",
+      "IpPort": "-"
+    }
+  }
+}
