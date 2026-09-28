@@ -76,3 +76,11 @@ max_delay_ms = 1000
 # [[sources]]
 # definition = "falco"
 # http = { token_file = "/run/secrets/falco_token" }
+#
+# A source may take syslog over TCP instead, or as well, on a port of its
+# own, framed by length or by line as RFC 6587 describes. Its definition
+# reads it with `framing: syslog`. A port beyond loopback needs TLS.
+#
+# [[sources]]
+# definition = "/etc/goliath/sources/linux.yaml"
+# syslog = { listen = "0.0.0.0:6514", tls = { certificate = "/etc/goliath/receiver.crt", key = "/etc/goliath/receiver.key" } }
