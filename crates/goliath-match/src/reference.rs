@@ -11,9 +11,10 @@
 //!
 //! A predicate pools the values all its paths reach. Then:
 //!
-//! - **String tests** read strings, and numbers as their decimal text, so
-//!   `EventID|startswith: 46` works whether the event stores `4688` or
-//!   `"4688"`. Booleans and nulls never match a string test.
+//! - **String tests** read strings, numbers as their decimal text, and
+//!   booleans as `true` or `false`, so `EventID|startswith: 46` works
+//!   whether the event stores `4688` or `"4688"`, and `isProxy: 'true'`
+//!   whether it stores `true` or `"true"`. Nulls never match a string test.
 //! - **Number tests** read numbers, and strings that parse as numbers.
 //! - **Absence is not a match**, so `not selection` holds for an event that
 //!   lacks the field: a filter on a field the event does not have filters

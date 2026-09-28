@@ -1,0 +1,63 @@
+# Sigma field names for the Okta System Log, resolved to OCSF 1.5.0 paths.
+#
+# Paths follow the `okta` source definition of goliath-normalize. It keeps
+# every top-level member of an event it does not map under `unmapped`,
+# whole, so a field such as `debugContext.debugData.requestUri` is read
+# there as Okta wrote it; a field it maps lists its place under `unmapped`
+# too, since the objects it comes from are kept whole beside it. See
+# docs/adr/0012-sigma-field-mapping.md.
+
+name: sigma-okta
+version: 1
+
+mappings:
+  - logsource: { product: okta, service: okta }
+    # Okta events are of several OCSF classes, so the class condition is the
+    # product; rules select events by `eventType`, as they do on Okta.
+    class: { metadata.product.name: Okta }
+    fields:
+      eventType: metadata.event_code
+      legacyEventType: unmapped.legacyEventType
+      displayMessage: message
+      severity: severity
+      published: time
+      uuid: metadata.uid
+      version: unmapped.version
+      outcome.result: [status, unmapped.outcome.result]
+      outcome.reason: [status_detail, unmapped.outcome.reason]
+      actor.id: [actor.user.uid, unmapped.actor.id]
+      actor.type: [actor.user.type, unmapped.actor.type]
+      actor.alternateId: [actor.user.name, unmapped.actor.alternateId]
+      actor.displayName: [actor.user.full_name, unmapped.actor.displayName]
+      # Every target, whichever its place in the array.
+      target.id: unmapped.target.id
+      target.type: unmapped.target.type
+      target.alternateId: unmapped.target.alternateId
+      target.displayName: unmapped.target.displayName
+      client.ipAddress: [src_endpoint.ip, unmapped.client.ipAddress]
+      client.userAgent.rawUserAgent: [http_request.user_agent, unmapped.client.userAgent.rawUserAgent]
+      client.userAgent.os: unmapped.client.userAgent.os
+      client.userAgent.browser: unmapped.client.userAgent.browser
+      client.zone: unmapped.client.zone
+      client.device: unmapped.client.device
+      client.geographicalContext.city: [src_endpoint.location.city, unmapped.client.geographicalContext.city]
+      client.geographicalContext.state: [src_endpoint.location.region, unmapped.client.geographicalContext.state]
+      client.geographicalContext.country: [src_endpoint.location.country, unmapped.client.geographicalContext.country]
+      authenticationContext.credentialType: unmapped.authenticationContext.credentialType
+      authenticationContext.credentialProvider: unmapped.authenticationContext.credentialProvider
+      authenticationContext.authenticationProvider: unmapped.authenticationContext.authenticationProvider
+      authenticationContext.externalSessionId: [actor.session.uid, unmapped.authenticationContext.externalSessionId]
+      securityContext.isProxy: unmapped.securityContext.isProxy
+      securityContext.asOrg: unmapped.securityContext.asOrg
+      securityContext.isp: unmapped.securityContext.isp
+      securityContext.domain: unmapped.securityContext.domain
+      debugContext.debugData.requestId: unmapped.debugContext.debugData.requestId
+      debugContext.debugData.requestUri: unmapped.debugContext.debugData.requestUri
+      debugContext.debugData.url: unmapped.debugContext.debugData.url
+      debugContext.debugData.behaviors: unmapped.debugContext.debugData.behaviors
+      debugContext.debugData.risk: unmapped.debugContext.debugData.risk
+      debugContext.debugData.threatSuspected: unmapped.debugContext.debugData.threatSuspected
+      debugContext.debugData.logOnlySecurityData: unmapped.debugContext.debugData.logOnlySecurityData
+      debugContext.debugData.privilegeGranted: unmapped.debugContext.debugData.privilegeGranted
+      transaction.id: [metadata.correlation_uid, unmapped.transaction.id]
+      transaction.type: unmapped.transaction.type

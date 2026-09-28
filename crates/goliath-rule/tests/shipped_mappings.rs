@@ -141,3 +141,27 @@ fn cloudtrail_is_selected_and_restricted_to_its_product() {
         assert!(entry.fields.contains_key(field), "{field} is not mapped");
     }
 }
+
+#[test]
+fn okta_is_selected_and_restricted_to_its_product() {
+    let set = MappingSet::from_yaml(goliath_rule::SIGMA_OKTA).expect("shipped mapping set loads");
+    assert_eq!(set.name, "sigma-okta");
+    let okta = LogSourceSelector {
+        category: None,
+        product: Some("okta".to_owned()),
+        service: Some("okta".to_owned()),
+    };
+    let entry = set.select(&okta).expect("selected");
+    assert_eq!(
+        entry.class[&FieldPath::parse("metadata.product.name").expect("valid path")],
+        ClassValue::String("Okta".to_owned())
+    );
+    for field in [
+        "eventType",
+        "target.displayName",
+        "outcome.result",
+        "securityContext.isProxy",
+    ] {
+        assert!(entry.fields.contains_key(field), "{field} is not mapped");
+    }
+}

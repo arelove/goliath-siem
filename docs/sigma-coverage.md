@@ -72,6 +72,20 @@ them, so each such field is one line of the mapping. SigmaHQ has no
 regression data for AWS; the fixtures of the definition are checked against
 rules written the same way in `goliath-match`.
 
+### Okta
+
+The `sigma-okta` mapping set, version 1, maps Okta rules to what the `okta`
+source definition writes. All 23 Okta rules in the three sets load. Rules
+select events by `eventType`, and the definition gives every event its type
+in `metadata.event_code`, including the hundreds of types without a kind of
+their own, so none of them loads without being able to fire. Targets are
+compared whatever their place in Okta's `target` array.
+
+SigmaHQ's Okta rules compare `securityContext.isProxy` with `'true'`, quoted,
+where Okta writes a JSON boolean. String tests read booleans as `true` or
+`false`, as they read numbers as their decimal text, so these rules fire as
+their authors meant.
+
 ## What stops the rest
 
 Log sources without a mapping, by number of rules in `rules`:

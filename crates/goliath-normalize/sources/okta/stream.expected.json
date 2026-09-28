@@ -1,0 +1,288 @@
+[
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "session": {
+          "uid": "102bZ3kZyExampleSession01"
+        },
+        "user": {
+          "full_name": "IT Admin",
+          "name": "it-admin@contoso.com",
+          "type": "User",
+          "uid": "00u1adminEXAMPL0h7"
+        }
+      },
+      "api": {
+        "operation": "system.api_token.create",
+        "request": {
+          "uid": "Zf3aExampleRequest0024"
+        }
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "http_request": {
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0"
+      },
+      "message": "Create API token",
+      "metadata": {
+        "correlation_uid": "Zf3aExampleTxn0024",
+        "event_code": "system.api_token.create",
+        "product": {
+          "name": "Okta",
+          "vendor_name": "Okta"
+        },
+        "uid": "5a1b2c3d-0000-11ef-8000-000000000024",
+        "version": "1.5.0"
+      },
+      "severity": "INFO",
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "203.0.113.24",
+        "location": {
+          "city": "Berlin",
+          "country": "Germany",
+          "lat": 52.5244,
+          "long": 13.4105,
+          "region": "Land Berlin"
+        }
+      },
+      "status": "SUCCESS",
+      "status_id": 1,
+      "time": 1790596824123,
+      "type_uid": 600399,
+      "unmapped": {
+        "actor": {
+          "alternateId": "it-admin@contoso.com",
+          "detailEntry": null,
+          "displayName": "IT Admin",
+          "id": "00u1adminEXAMPL0h7",
+          "type": "User"
+        },
+        "authenticationContext": {
+          "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+          "authenticationStep": 0,
+          "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+          "credentialType": "PASSWORD",
+          "externalSessionId": "102bZ3kZyExampleSession01",
+          "interface": null,
+          "issuer": null
+        },
+        "client": {
+          "device": "Computer",
+          "geographicalContext": {
+            "city": "Berlin",
+            "country": "Germany",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            },
+            "postalCode": "10115",
+            "state": "Land Berlin"
+          },
+          "id": null,
+          "ipAddress": "203.0.113.24",
+          "userAgent": {
+            "browser": "FIREFOX",
+            "os": "Windows 10",
+            "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0"
+          },
+          "zone": "null"
+        },
+        "debugContext": {
+          "debugData": {
+            "requestId": "Zf3aExampleRequest0024",
+            "requestUri": "/api/v1/authn",
+            "url": "/api/v1/authn?"
+          }
+        },
+        "outcome": {
+          "reason": null,
+          "result": "SUCCESS"
+        },
+        "request": {
+          "ipChain": [
+            {
+              "geographicalContext": {
+                "city": "Berlin",
+                "country": "Germany",
+                "geolocation": {
+                  "lat": 52.5244,
+                  "lon": 13.4105
+                },
+                "postalCode": "10115",
+                "state": "Land Berlin"
+              },
+              "ip": "203.0.113.24",
+              "source": null,
+              "version": "V4"
+            }
+          ]
+        },
+        "securityContext": {
+          "asNumber": 3320,
+          "asOrg": "deutsche telekom ag",
+          "domain": "t-ipconnect.de",
+          "isProxy": false,
+          "isp": "deutsche telekom ag"
+        },
+        "target": [
+          {
+            "alternateId": "unknown",
+            "detailEntry": null,
+            "displayName": "reporting",
+            "id": "00T1ExampleToken0h7",
+            "type": "Token"
+          }
+        ],
+        "transaction": {
+          "detail": {},
+          "id": "Zf3aExampleTxn0024",
+          "type": "WEB"
+        },
+        "version": "0"
+      }
+    },
+    "id": "4f1d3912e8b31fc3b54a27263b6a58c8",
+    "issues": [],
+    "kind": "other"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "session": {
+          "uid": "102bZ3kZyExampleSession01"
+        },
+        "user": {
+          "full_name": "Jane Doe",
+          "name": "jane@contoso.com",
+          "type": "User",
+          "uid": "00u1janeEXAMPLE0h7"
+        }
+      },
+      "auth_protocol": "PASSWORD",
+      "category_uid": 3,
+      "class_uid": 3002,
+      "http_request": {
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0"
+      },
+      "message": "User login to Okta",
+      "metadata": {
+        "correlation_uid": "Zf3aExampleTxn0025",
+        "event_code": "user.session.start",
+        "product": {
+          "name": "Okta",
+          "vendor_name": "Okta"
+        },
+        "uid": "5a1b2c3d-0000-11ef-8000-000000000025",
+        "version": "1.5.0"
+      },
+      "severity": "INFO",
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "203.0.113.24",
+        "location": {
+          "city": "Berlin",
+          "country": "Germany",
+          "lat": 52.5244,
+          "long": 13.4105,
+          "region": "Land Berlin"
+        }
+      },
+      "status": "SUCCESS",
+      "status_id": 1,
+      "time": 1790596825123,
+      "type_uid": 300201,
+      "unmapped": {
+        "actor": {
+          "alternateId": "jane@contoso.com",
+          "detailEntry": null,
+          "displayName": "Jane Doe",
+          "id": "00u1janeEXAMPLE0h7",
+          "type": "User"
+        },
+        "authenticationContext": {
+          "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+          "authenticationStep": 0,
+          "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+          "credentialType": "PASSWORD",
+          "externalSessionId": "102bZ3kZyExampleSession01",
+          "interface": null,
+          "issuer": null
+        },
+        "client": {
+          "device": "Computer",
+          "geographicalContext": {
+            "city": "Berlin",
+            "country": "Germany",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            },
+            "postalCode": "10115",
+            "state": "Land Berlin"
+          },
+          "id": null,
+          "ipAddress": "203.0.113.24",
+          "userAgent": {
+            "browser": "FIREFOX",
+            "os": "Windows 10",
+            "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0"
+          },
+          "zone": "null"
+        },
+        "debugContext": {
+          "debugData": {
+            "requestId": "Zf3aExampleRequest0025",
+            "requestUri": "/api/v1/authn",
+            "url": "/api/v1/authn?"
+          }
+        },
+        "outcome": {
+          "reason": null,
+          "result": "SUCCESS"
+        },
+        "request": {
+          "ipChain": [
+            {
+              "geographicalContext": {
+                "city": "Berlin",
+                "country": "Germany",
+                "geolocation": {
+                  "lat": 52.5244,
+                  "lon": 13.4105
+                },
+                "postalCode": "10115",
+                "state": "Land Berlin"
+              },
+              "ip": "203.0.113.24",
+              "source": null,
+              "version": "V4"
+            }
+          ]
+        },
+        "securityContext": {
+          "asNumber": 3320,
+          "asOrg": "deutsche telekom ag",
+          "domain": "t-ipconnect.de",
+          "isProxy": false,
+          "isp": "deutsche telekom ag"
+        },
+        "transaction": {
+          "detail": {},
+          "id": "Zf3aExampleTxn0025",
+          "type": "WEB"
+        },
+        "version": "0"
+      },
+      "user": {
+        "name": "jane@contoso.com",
+        "uid": "00u1janeEXAMPLE0h7"
+      }
+    },
+    "id": "a28f450cbc23774fceb7877aebfda473",
+    "issues": [],
+    "kind": "sign_in"
+  }
+]

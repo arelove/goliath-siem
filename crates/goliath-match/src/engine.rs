@@ -421,7 +421,7 @@ impl Source {
     /// Collects this source's texts from `event`, folded unless cased.
     ///
     /// Reads the same values, in the same order, as the reference evaluator:
-    /// strings and numbers for paths, strings only for keywords.
+    /// strings, numbers, and booleans for paths, strings only for keywords.
     fn gather(&self, event: &Value, texts: &mut Texts) {
         texts.clear();
         let cased = self.cased;
@@ -433,6 +433,9 @@ impl Source {
                         // Written in place: a number's decimal text has
                         // nothing for folding to change.
                         Value::Number(number) => write_number(number, texts.next()),
+                        Value::Bool(flag) => {
+                            texts.push(if *flag { "true" } else { "false" }, cased);
+                        }
                         _ => {}
                     });
                 }
