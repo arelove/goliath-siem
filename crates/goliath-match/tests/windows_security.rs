@@ -98,9 +98,71 @@ fn process_creation_rules_fire_on_4688_as_on_sysmon() {
 fn a_field_of_an_event_the_definition_does_not_read_fails_to_load() {
     let error = resolve(
         "{ product: windows, service: security }",
-        "  selection:\n    EventID: 5140\n    ShareName: '\\\\*\\C$'\n  condition: selection",
+        "  selection:\n    EventID: 4648\n    TargetServerName: localhost\n  condition: selection",
     )
     .map(|_| ())
-    .expect_err("ShareName is not mapped");
-    assert!(error.contains("ShareName"), "{error}");
+    .expect_err("TargetServerName is not mapped");
+    assert!(error.contains("TargetServerName"), "{error}");
+}
+
+#[test]
+fn a_service_installed_is_found_by_its_image() {
+    let rule = "  selection:\n    EventID: 4697\n    ServiceFileName|contains: '\\FinanceSync\\'\n    ServiceAccount: LocalSystem\n  condition: selection";
+    assert_eq!(fired(rule), ["3033"]);
+}
+
+#[test]
+fn object_access_is_found_by_name_and_access_mask() {
+    let rule = "  selection:\n    EventID:\n      - 4656\n      - 4663\n    ObjectType: File\n    ObjectName|endswith: '\\ledger.xlsx'\n    AccessMask: '0x1'\n  condition: selection";
+    assert_eq!(fired(rule), ["3034", "3035"]);
+}
+
+#[test]
+fn a_file_on_a_share_is_found_by_share_and_relative_name() {
+    let rule = "  selection:\n    EventID: 5145\n    ShareName: '\\\\*\\Finance'\n    RelativeTargetName|endswith: '.xlsx'\n  condition: selection";
+    assert_eq!(fired(rule), ["3037"]);
+    let rule = "  selection:\n    EventID: 5140\n    IpAddress: 10.20.4.17\n  condition: selection";
+    assert_eq!(fired(rule), ["3036"]);
+}
+
+#[test]
+fn directory_computer_task_and_right_changes_are_found() {
+    let rule = "  selection:\n    EventID: 5136\n    ObjectClass: group\n    AttributeLDAPDisplayName: description\n  condition: selection";
+    assert_eq!(fired(rule), ["3038"]);
+    let rule =
+        "  selection:\n    EventID: 4741\n    TargetUserName|endswith: '$'\n  condition: selection";
+    assert_eq!(fired(rule), ["3026"]);
+    let rule = "  selection:\n    EventID:\n      - 4699\n      - 4701\n    TaskName|contains: Finance\n  condition: selection";
+    assert_eq!(fired(rule), ["3029", "3031"]);
+    let rule = "  selection:\n    EventID: 4704\n    PrivilegeList|contains: SeBackupPrivilege\n  condition: selection";
+    assert_eq!(fired(rule), ["3028"]);
+    let rule = "  selection:\n    EventID: 4771\n    Status: '0x18'\n  condition: selection";
+    assert_eq!(fired(rule), ["3025"]);
+}
+
+#[test]
+fn a_wrong_password_checked_with_ntlm_is_found() {
+    let rule = "  selection:\n    EventID: 4776\n    Status: '0xC000006A'\n    Workstation: LAPTOP-GUEST\n  condition: selection";
+    assert_eq!(fired(rule), ["3040"]);
+}
+
+#[test]
+fn directory_sam_and_registry_access_are_found() {
+    let rule = "  selection:\n    EventID: 4662\n    AccessMask: '0x20'\n    Properties|contains: 'bf967950-0de6-11d0-a285-00aa003049e2'\n  condition: selection";
+    assert_eq!(fired(rule), ["3049"]);
+    let rule =
+        "  selection:\n    EventID: 4661\n    ObjectType: SAM_DOMAIN\n  condition: selection";
+    assert_eq!(fired(rule), ["3050"]);
+    let rule = "  selection:\n    EventID: 4657\n    ObjectValueName: SyncInterval\n    NewValue: '30'\n  condition: selection";
+    assert_eq!(fired(rule), ["3051"]);
+}
+
+#[test]
+fn account_and_group_lifecycle_is_found() {
+    let rule = "  selection:\n    EventID: 4742\n    AllowedToDelegateTo|contains: 'cifs/'\n  condition: selection";
+    assert_eq!(fired(rule), ["3042"]);
+    let rule = "  selection:\n    EventID: 4738\n    NewUacValue: '0x210'\n  condition: selection";
+    assert_eq!(fired(rule), ["3041"]);
+    let rule = "  selection:\n    EventID:\n      - 4727\n      - 4730\n    TargetUserName: Finance Auditors\n  condition: selection";
+    assert_eq!(fired(rule), ["3043", "3046"]);
 }
