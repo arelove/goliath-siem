@@ -31,7 +31,9 @@ pub struct SourceDefinition {
     /// A member that holds a batch of records, such as `Records` in the log
     /// files AWS delivers. A decoded object whose only member this is,
     /// holding an array, is taken as the records in the array, each with
-    /// its own raw bytes; any other record is taken as it is.
+    /// its own raw bytes; any other record is taken as it is. `.` names the
+    /// record itself: a record that is an array, as many APIs answer with,
+    /// is taken as its elements.
     pub unwrap: Option<String>,
     /// Fields every kind writes, such as the time and the device.
     #[serde(default)]
