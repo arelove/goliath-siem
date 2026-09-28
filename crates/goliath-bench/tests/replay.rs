@@ -63,3 +63,37 @@ fn every_source_replays_into_the_same_events_at_the_time_they_are_released() {
         assert_eq!(classes, expected, "{source}");
     }
 }
+
+/// Labels name each event by the identity its record gets alone; the
+/// platform normalizes a whole file of records at once. Both must agree, or
+/// ground truth would not find the events it labels.
+#[test]
+fn a_record_has_the_same_identity_alone_as_in_a_file_of_records() {
+    let flat = include_str!("../../goliath-normalize/sources/sysmon-flat/kinds.input.json");
+    let sources =
+        SOURCES
+            .iter()
+            .copied()
+            .chain([("sysmon-flat", goliath_normalize::SYSMON_FLAT, flat)]);
+    for (source, definition, sample) in sources {
+        let normalizer = Normalizer::from_yaml(definition).unwrap();
+        let recording = Recording::read(Clock::of(source).unwrap(), sample.as_bytes()).unwrap();
+        let ids = |bytes: &[u8]| {
+            let mut ids = Vec::new();
+            normalizer.normalize(bytes, |outcome| {
+                if let Outcome::Event(event) = outcome {
+                    ids.push(event.id.to_string());
+                }
+            });
+            ids
+        };
+        let mut file = Vec::new();
+        let mut alone = Vec::new();
+        for (_, bytes) in recording.schedule(1_800_000_000_000, 1.0) {
+            alone.extend(ids(&bytes));
+            file.extend_from_slice(&bytes);
+        }
+        assert!(!alone.is_empty(), "{source}");
+        assert_eq!(ids(&file), alone, "{source}");
+    }
+}

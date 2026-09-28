@@ -32,6 +32,7 @@ impl Clock {
                 "/Event/System/TimeCreated/#attributes/SystemTime",
                 "/Event/EventData/UtcTime",
             ])),
+            "sysmon-flat" => Some(Self::Json(&["/@timestamp", "/TimeCreated", "/UtcTime"])),
             "entra" => Some(Self::Json(&["/time", "/properties/createdDateTime"])),
             "falco" => Some(Self::Json(&["/time"])),
             "auditd" => Some(Self::Audit),
@@ -367,7 +368,7 @@ type=EXECVE msg=audit(1727251200.123:4521): argc=1 a0=\"ls\"
 
     #[test]
     fn every_shipped_source_has_a_clock() {
-        for source in ["sysmon", "entra", "falco", "auditd"] {
+        for source in ["sysmon", "sysmon-flat", "entra", "falco", "auditd"] {
             assert!(Clock::of(source).is_some(), "{source}");
         }
         assert_eq!(Clock::of("syslog"), None);

@@ -11,6 +11,14 @@
 //! come due is written as one file, under a temporary name and then renamed,
 //! as a collector expects. `--times` plays the recording again after it ends,
 //! each pass continuing the clock. See `goliath_bench::replay`.
+//!
+//! With `--labels`, every released record that becomes an event is also
+//! written to that file as ground truth: the identity the source's
+//! normalizer gives it, which is how the platform stores it, when it was
+//! released, and the members of the JSON object in `--label`, such as the
+//! dataset and its ATT&CK techniques. A labelled recording replayed into a
+//! stream of generated activity is an injected attack whose every event is
+//! known.
 
 use std::env;
 use std::error::Error;
@@ -22,6 +30,8 @@ use std::thread::sleep;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use goliath_bench::replay::{Clock, Recording};
+use goliath_normalize::{Normalizer, Outcome};
+use serde_json::{Map, Value};
 
 /// How often what has come due is written.
 const TICK: i64 = 250;
@@ -43,6 +53,7 @@ fn main() -> ExitCode {
 fn run() -> Result<(), Failure> {
     let (mut source, mut recording, mut out) = (None, None, None);
     let (mut speed, mut times) = (1.0_f64, 1_u32);
+    let (mut labels, mut label) = (None, None);
     let mut arguments = env::args().skip(1);
     while let Some(flag) = arguments.next() {
         let value = arguments
@@ -54,6 +65,8 @@ fn run() -> Result<(), Failure> {
             "--out" => out = Some(PathBuf::from(value)),
             "--speed" => speed = value.parse()?,
             "--times" => times = value.parse()?,
+            "--labels" => labels = Some(PathBuf::from(value)),
+            "--label" => label = Some(PathBuf::from(value)),
             _ => return Err(format!("unknown option {flag}").into()),
         }
     }
@@ -79,6 +92,12 @@ fn run() -> Result<(), Failure> {
         recording.span() / 1000,
     );
 
+    let mut truth = match labels {
+        Some(path) => Some(Truth::new(&source, &path, label.as_deref())?),
+        None if label.is_some() => return Err("--label needs --labels".into()),
+        None => None,
+    };
+
     let start = now()?;
     let mut writer = Batches::new(out);
     for round in 0..i64::from(times) {
@@ -88,12 +107,71 @@ fn run() -> Result<(), Failure> {
                 writer.flush()?;
                 sleep(Duration::from_millis(TICK.unsigned_abs()));
             }
+            if let Some(truth) = &mut truth {
+                truth.label(due, &bytes)?;
+            }
             writer.push(&bytes)?;
         }
     }
     writer.flush()?;
     eprintln!("wrote {} records in {} files", writer.records, writer.files);
+    if let Some(truth) = truth {
+        eprintln!("labelled {} events", truth.events);
+    }
     Ok(())
+}
+
+/// Ground truth for a replay: one line per event its records become.
+struct Truth {
+    normalizer: Normalizer,
+    fields: Map<String, Value>,
+    file: std::io::BufWriter<fs::File>,
+    events: u64,
+}
+
+impl Truth {
+    fn new(source: &str, path: &Path, label: Option<&Path>) -> Result<Self, Failure> {
+        let definition = goliath_normalize::builtin(source)
+            .ok_or_else(|| format!("no shipped definition named {source}"))?;
+        let fields = match label {
+            Some(label) => match serde_json::from_slice(&fs::read(label)?)? {
+                Value::Object(fields) => fields,
+                _ => return Err(format!("{} is not a JSON object", label.display()).into()),
+            },
+            None => Map::new(),
+        };
+        Ok(Self {
+            normalizer: Normalizer::from_yaml(definition)?,
+            fields,
+            file: std::io::BufWriter::new(fs::File::create(path)?),
+            events: 0,
+        })
+    }
+
+    /// Writes a line for each event `record`, released at `due`, becomes.
+    fn label(&mut self, due: i64, record: &[u8]) -> Result<(), Failure> {
+        let mut ids = Vec::new();
+        self.normalizer.normalize(record, |outcome| {
+            if let Outcome::Event(event) = outcome {
+                ids.push(event.id.to_string());
+            }
+        });
+        for id in ids {
+            let mut line = self.fields.clone();
+            line.insert("id".to_owned(), Value::from(id));
+            line.insert("released".to_owned(), Value::from(due));
+            serde_json::to_writer(&mut self.file, &line)?;
+            self.file.write_all(b"\n")?;
+            self.events += 1;
+        }
+        Ok(())
+    }
+}
+
+impl Drop for Truth {
+    fn drop(&mut self) {
+        let _ = self.file.flush();
+    }
 }
 
 /// Records gathered into files, each written under a temporary name and

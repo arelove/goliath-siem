@@ -178,6 +178,22 @@ developer machine, with the lag of every reader bounded.
   statement in architecture.md that precision cannot use synthetic data needs
   this qualification before the M4.5 evaluation is specified.
 
+**Status (2026-09-28):** built, and waiting for the exit run.
+
+- The rig, its report, platform metrics, and `goliath-gen` with Sysmon and
+  Entra ID. The auditd and Falco formatters are still to write.
+- Throughput, after parallel normalization, acknowledged and concurrent
+  inserts, and parallel decoding in the writer: a 5-minute probe at 100,000
+  records/s stored 99,300 events/s on 4.5 cores, receipt to stored p50 1.0 s
+  and p99 4.8 s, with nothing lost; its verdict was not sustained by a margin,
+  backlog growth of 1,153 records/s against 1,000 allowed. The 30-minute run
+  is to be made on a separate machine.
+- Replay of real recordings for every shipped source, the OTRF Windows atomic
+  datasets through a pinned download script and a flat Sysmon definition, and
+  ground truth for the events a replayed recording becomes, matched by the
+  identity the platform stores. Generated attack chains bound to the
+  generator's entities are still to come.
+
 ## M3.5 - Collection
 
 Files dropped in an inbox prove the path; companies send logs over the
