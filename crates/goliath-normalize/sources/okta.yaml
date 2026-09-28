@@ -1,0 +1,262 @@
+# The Okta System Log, as its API answers, `[...]`, which the definition
+# unwraps, or as log streaming delivers it, one event after another.
+#
+# Sign-ins become OCSF Authentication; changes to an account, its password,
+# and its factors, Account Change; group membership, Group Management; and
+# admin privileges, User Access Management. Okta has hundreds of other event
+# types; each becomes an API Activity whose operation is the event type, so
+# that none is lost for having no kind of its own.
+#
+# The actor is who acted. What was acted on is Okta's `target` array, in an
+# order fixed per event type: the user first, then the group, application,
+# or role. The whole array is kept under `unmapped`, as are `client`,
+# `authenticationContext`, `securityContext`, `debugContext`, `outcome`, and
+# `transaction`, which rules compare as Okta writes them.
+
+name: okta
+version: 1
+framing: json-values
+decoding: json
+unwrap: "."
+
+common:
+  time: { from: published, as: timestamp }
+  metadata.version: { value: "1.5.0" }
+  metadata.product.name: { value: Okta }
+  metadata.product.vendor_name: { value: Okta }
+  metadata.uid: uuid
+  metadata.event_code: eventType
+  metadata.correlation_uid: transaction.id
+  message: displayMessage
+  severity: severity
+  severity_id:
+    from: severity
+    map: { DEBUG: 1, INFO: 1, WARN: 3, ERROR: 4 }
+    otherwise: 99
+  status: outcome.result
+  status_id:
+    from: outcome.result
+    map: { SUCCESS: 1, ALLOW: 1, FAILURE: 2, DENY: 2 }
+    otherwise: 99
+  status_detail: outcome.reason
+  actor.user.uid: actor.id
+  actor.user.name: actor.alternateId
+  actor.user.full_name: actor.displayName
+  actor.user.type: actor.type
+  actor.session.uid: authenticationContext.externalSessionId
+  src_endpoint.ip: { from: client.ipAddress, as: ip }
+  src_endpoint.location.city: client.geographicalContext.city
+  src_endpoint.location.region: client.geographicalContext.state
+  src_endpoint.location.country: client.geographicalContext.country
+  src_endpoint.location.lat: client.geographicalContext.geolocation.lat
+  src_endpoint.location.long: client.geographicalContext.geolocation.lon
+  http_request.user_agent: client.userAgent.rawUserAgent
+
+kinds:
+  - name: sign_in
+    when:
+      eventType: user.session.start
+    # Authentication: Logon.
+    class: { class_uid: 3002, activity_id: 1 }
+    fields: &sign_in
+      user.uid: actor.id
+      user.name: actor.alternateId
+      auth_protocol: authenticationContext.credentialType
+    unmapped: ["."]
+
+  - name: sign_in_with_factor
+    when:
+      eventType: user.authentication.auth_via_mfa
+    # Authentication: Logon, with a second factor.
+    class: { class_uid: 3002, activity_id: 1 }
+    fields:
+      user.uid: actor.id
+      user.name: actor.alternateId
+      auth_protocol: authenticationContext.credentialType
+      is_mfa: { value: true }
+    unmapped: ["."]
+
+  - name: single_sign_on
+    when:
+      eventType: user.authentication.sso
+    # Authentication: Logon, to the application in the first target.
+    class: { class_uid: 3002, activity_id: 1 }
+    fields:
+      user.uid: actor.id
+      user.name: actor.alternateId
+      service.name: target.0.displayName
+      service.uid: target.0.id
+    unmapped: ["."]
+
+  - name: sign_out
+    when:
+      eventType: user.session.end
+    # Authentication: Logoff.
+    class: { class_uid: 3002, activity_id: 2 }
+    fields: *sign_in
+    unmapped: ["."]
+
+  - name: account_created
+    when:
+      eventType: user.lifecycle.create
+    # Account Change: Create, of the user in the first target.
+    class: { class_uid: 3001, activity_id: 1 }
+    fields: &target_user
+      user.uid: target.0.id
+      user.name: target.0.alternateId
+      user.full_name: target.0.displayName
+    unmapped: ["."]
+
+  - name: account_activated
+    when:
+      eventType: user.lifecycle.activate
+    # Account Change: Enable.
+    class: { class_uid: 3001, activity_id: 2 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: account_reactivated
+    when:
+      eventType: user.lifecycle.reactivate
+    # Account Change: Enable.
+    class: { class_uid: 3001, activity_id: 2 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: account_deactivated
+    when:
+      eventType: user.lifecycle.deactivate
+    # Account Change: Disable.
+    class: { class_uid: 3001, activity_id: 5 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: account_suspended
+    when:
+      eventType: user.lifecycle.suspend
+    # Account Change: Disable.
+    class: { class_uid: 3001, activity_id: 5 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: account_deleted
+    when:
+      eventType: user.lifecycle.delete.initiated
+    # Account Change: Delete.
+    class: { class_uid: 3001, activity_id: 6 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: password_changed
+    when:
+      eventType: user.account.update_password
+    # Account Change: Password Change.
+    class: { class_uid: 3001, activity_id: 3 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: password_reset
+    when:
+      eventType: user.account.reset_password
+    # Account Change: Password Reset.
+    class: { class_uid: 3001, activity_id: 4 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: account_locked
+    when:
+      eventType: user.account.lock
+    # Account Change: Lock. Okta locks the account that failed to sign in,
+    # which is the actor.
+    class: { class_uid: 3001, activity_id: 9 }
+    fields:
+      user.uid: actor.id
+      user.name: actor.alternateId
+      user.full_name: actor.displayName
+    unmapped: ["."]
+
+  - name: account_unlocked
+    when:
+      eventType: user.account.unlock_by_admin
+    # Account Change: Unlock.
+    class: { class_uid: 3001, activity_id: 12 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: factor_activated
+    when:
+      eventType: user.mfa.factor.activate
+    # Account Change: MFA Factor Enable.
+    class: { class_uid: 3001, activity_id: 10 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: factor_deactivated
+    when:
+      eventType: user.mfa.factor.deactivate
+    # Account Change: MFA Factor Disable.
+    class: { class_uid: 3001, activity_id: 11 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: factors_reset
+    when:
+      eventType: user.mfa.factor.reset_all
+    # Account Change: MFA Factor Disable, of every factor.
+    class: { class_uid: 3001, activity_id: 11 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: group_member_added
+    when:
+      eventType: group.user_membership.add
+    # Group Management: Add User; the user is the first target, the group
+    # the second.
+    class: { class_uid: 3006, activity_id: 3 }
+    fields: &member
+      user.uid: target.0.id
+      user.name: target.0.alternateId
+      user.full_name: target.0.displayName
+      group.uid: target.1.id
+      group.name: target.1.displayName
+    unmapped: ["."]
+
+  - name: group_member_removed
+    when:
+      eventType: group.user_membership.remove
+    # Group Management: Remove User.
+    class: { class_uid: 3006, activity_id: 4 }
+    fields: *member
+    unmapped: ["."]
+
+  - name: privilege_granted
+    when:
+      eventType: user.account.privilege.grant
+    # User Access Management: Assign Privileges, to the user in the first
+    # target. The role is in the event's `debugContext`, kept as written.
+    class: { class_uid: 3005, activity_id: 1 }
+    fields: &privilege
+      user.uid: target.0.id
+      user.name: target.0.alternateId
+      user.full_name: target.0.displayName
+    unmapped: ["."]
+
+  - name: privilege_revoked
+    when:
+      eventType: user.account.privilege.revoke
+    # User Access Management: Revoke Privileges.
+    class: { class_uid: 3005, activity_id: 2 }
+    fields: *privilege
+    unmapped: ["."]
+
+  - name: other
+    when:
+      # Every System Log event is of version 0, so this kind takes each
+      # event of a type no kind above names.
+      version: "0"
+    # API Activity: Other, the operation being the event type.
+    class: { class_uid: 6003, activity_id: 99 }
+    fields:
+      api.operation: eventType
+      api.request.uid: debugContext.debugData.requestId
+    unmapped: ["."]

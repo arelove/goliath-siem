@@ -81,12 +81,17 @@ pub const WINDOWS_SECURITY: &str = include_str!("../sources/windows-security.yam
 /// and API calls.
 pub const CLOUDTRAIL: &str = include_str!("../sources/cloudtrail.yaml");
 
+/// The Okta System Log definition shipped with this crate: sign-ins,
+/// accounts, factors, groups, privileges, and every other event type.
+pub const OKTA: &str = include_str!("../sources/okta.yaml");
+
 /// Every definition shipped with this crate, by name.
 pub const BUILTIN: &[(&str, &str)] = &[
     ("auditd", AUDITD),
     ("cloudtrail", CLOUDTRAIL),
     ("entra", ENTRA),
     ("falco", FALCO),
+    ("okta", OKTA),
     ("sysmon-flat", SYSMON_FLAT),
     ("sysmon", SYSMON),
     ("windows-security", WINDOWS_SECURITY),

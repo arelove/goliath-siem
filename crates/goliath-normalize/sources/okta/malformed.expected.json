@@ -1,0 +1,160 @@
+[
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "session": {
+          "uid": "102bZ3kZyExampleSession01"
+        },
+        "user": {
+          "full_name": "Adam Smith",
+          "name": "adam@contoso.com",
+          "type": "User",
+          "uid": "00u1adamEXAMPLE0h7"
+        }
+      },
+      "auth_protocol": "PASSWORD",
+      "category_uid": 3,
+      "class_uid": 3002,
+      "http_request": {
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0"
+      },
+      "message": "User login to Okta",
+      "metadata": {
+        "correlation_uid": "Zf3aExampleTxn0026",
+        "event_code": "user.session.start",
+        "product": {
+          "name": "Okta",
+          "vendor_name": "Okta"
+        },
+        "uid": "5a1b2c3d-0000-11ef-8000-000000000026",
+        "version": "1.5.0"
+      },
+      "severity": "NOTICE",
+      "severity_id": 99,
+      "src_endpoint": {
+        "location": {
+          "city": "Berlin",
+          "country": "Germany",
+          "lat": 52.5244,
+          "long": 13.4105,
+          "region": "Land Berlin"
+        }
+      },
+      "status": "SUCCESS",
+      "status_id": 1,
+      "time": 1790596826123,
+      "type_uid": 300201,
+      "unmapped": {
+        "actor": {
+          "alternateId": "adam@contoso.com",
+          "detailEntry": null,
+          "displayName": "Adam Smith",
+          "id": "00u1adamEXAMPLE0h7",
+          "type": "User"
+        },
+        "authenticationContext": {
+          "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+          "authenticationStep": 0,
+          "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+          "credentialType": "PASSWORD",
+          "externalSessionId": "102bZ3kZyExampleSession01",
+          "interface": null,
+          "issuer": null
+        },
+        "client": {
+          "device": "Computer",
+          "geographicalContext": {
+            "city": "Berlin",
+            "country": "Germany",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            },
+            "postalCode": "10115",
+            "state": "Land Berlin"
+          },
+          "id": null,
+          "ipAddress": "unknown",
+          "userAgent": {
+            "browser": "FIREFOX",
+            "os": "Windows 10",
+            "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0"
+          },
+          "zone": "null"
+        },
+        "client.ipAddress": "unknown",
+        "debugContext": {
+          "debugData": {
+            "requestId": "Zf3aExampleRequest0026",
+            "requestUri": "/api/v1/authn",
+            "url": "/api/v1/authn?"
+          }
+        },
+        "outcome": {
+          "reason": null,
+          "result": "SUCCESS"
+        },
+        "request": {
+          "ipChain": [
+            {
+              "geographicalContext": {
+                "city": "Berlin",
+                "country": "Germany",
+                "geolocation": {
+                  "lat": 52.5244,
+                  "lon": 13.4105
+                },
+                "postalCode": "10115",
+                "state": "Land Berlin"
+              },
+              "ip": "203.0.113.24",
+              "source": null,
+              "version": "V4"
+            }
+          ]
+        },
+        "securityContext": {
+          "asNumber": 3320,
+          "asOrg": "deutsche telekom ag",
+          "domain": "t-ipconnect.de",
+          "isProxy": false,
+          "isp": "deutsche telekom ag"
+        },
+        "transaction": {
+          "detail": {},
+          "id": "Zf3aExampleTxn0026",
+          "type": "WEB"
+        },
+        "version": "0"
+      },
+      "user": {
+        "name": "adam@contoso.com",
+        "uid": "00u1adamEXAMPLE0h7"
+      }
+    },
+    "id": "45393591cec3a1436a00f6781f2bf44d",
+    "issues": [
+      {
+        "reason": "`unknown` is not an IP address",
+        "source": "client.ipAddress",
+        "target": "src_endpoint.ip"
+      }
+    ],
+    "kind": "sign_in"
+  },
+  {
+    "dead_letter": {
+      "error": "no kind of source `okta` accepts the record",
+      "raw": "{\"actor\":{\"alternateId\":\"adam@contoso.com\",\"detailEntry\":null,\"displayName\":\"Adam Smith\",\"id\":\"00u1adamEXAMPLE0h7\",\"type\":\"User\"},\"authenticationContext\":{\"authenticationProvider\":\"OKTA_AUTHENTICATION_PROVIDER\",\"authenticationStep\":0,\"credentialProvider\":\"OKTA_CREDENTIAL_PROVIDER\",\"credentialType\":\"PASSWORD\",\"externalSessionId\":\"102bZ3kZyExampleSession01\",\"interface\":null,\"issuer\":null},\"client\":{\"device\":\"Computer\",\"geographicalContext\":{\"city\":\"Berlin\",\"country\":\"Germany\",\"geolocation\":{\"lat\":52.5244,\"lon\":13.4105},\"postalCode\":\"10115\",\"state\":\"Land Berlin\"},\"id\":null,\"ipAddress\":\"203.0.113.24\",\"userAgent\":{\"browser\":\"FIREFOX\",\"os\":\"Windows 10\",\"rawUserAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0\"},\"zone\":\"null\"},\"debugContext\":{\"debugData\":{\"requestId\":\"Zf3aExampleRequest0027\",\"requestUri\":\"/api/v1/authn\",\"url\":\"/api/v1/authn?\"}},\"device\":null,\"displayMessage\":\"User login to Okta\",\"legacyEventType\":null,\"outcome\":{\"reason\":null,\"result\":\"SUCCESS\"},\"published\":\"2026-09-28T12:00:27.123Z\",\"request\":{\"ipChain\":[{\"geographicalContext\":{\"city\":\"Berlin\",\"country\":\"Germany\",\"geolocation\":{\"lat\":52.5244,\"lon\":13.4105},\"postalCode\":\"10115\",\"state\":\"Land Berlin\"},\"ip\":\"203.0.113.24\",\"source\":null,\"version\":\"V4\"}]},\"securityContext\":{\"asNumber\":3320,\"asOrg\":\"deutsche telekom ag\",\"domain\":\"t-ipconnect.de\",\"isProxy\":false,\"isp\":\"deutsche telekom ag\"},\"severity\":\"INFO\",\"target\":null,\"transaction\":{\"detail\":{},\"id\":\"Zf3aExampleTxn0027\",\"type\":\"WEB\"},\"uuid\":\"5a1b2c3d-0000-11ef-8000-000000000027\",\"version\":\"1\"}",
+      "stage": "mapping"
+    }
+  },
+  {
+    "dead_letter": {
+      "error": "EOF while parsing an object at line 183 column 0",
+      "raw": "[{\"eventType\": \"user.session.start\", \"version\": \"0\"",
+      "stage": "framing"
+    }
+  }
+]

@@ -28,6 +28,7 @@ produce.
 
 | Definition | Covers |
 | --- | --- |
+| `sources/okta.yaml` | The Okta System Log, as its API answers, `[...]`, or one event after another: sign-ins, account, password, and factor changes, group membership, and admin privileges as their OCSF classes, and every other event type as API Activity |
 | `sources/sysmon.yaml` | Sysmon process creation, network connections, image loads, file creation, and registry value sets, as `evtx_dump` writes them |
 | `sources/auditd.yaml` | Linux audit program executions on x86_64 and arm64, and logins, with the lines of each event gathered, as OCSF Process Activity and Authentication |
 | `sources/entra.yaml` | Microsoft Entra ID interactive, non-interactive, and service principal sign-ins, as Azure Monitor diagnostic settings write them, as OCSF Authentication |

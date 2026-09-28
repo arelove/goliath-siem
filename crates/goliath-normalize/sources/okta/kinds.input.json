@@ -1,0 +1,2244 @@
+[
+  {
+    "actor": {
+      "id": "00u1adamEXAMPLE0h7",
+      "type": "User",
+      "alternateId": "adam@contoso.com",
+      "displayName": "Adam Smith",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "User login to Okta",
+    "eventType": "user.session.start",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:01.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0001",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0001",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000001",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": null
+  },
+  {
+    "actor": {
+      "id": "00u1adamEXAMPLE0h7",
+      "type": "User",
+      "alternateId": "adam@contoso.com",
+      "displayName": "Adam Smith",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "198.51.100.77",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "User login to Okta",
+    "eventType": "user.session.start",
+    "outcome": {
+      "result": "FAILURE",
+      "reason": "INVALID_CREDENTIALS"
+    },
+    "published": "2026-09-28T12:00:02.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "WARN",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0002",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0002",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000002",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": null
+  },
+  {
+    "actor": {
+      "id": "00u1adamEXAMPLE0h7",
+      "type": "User",
+      "alternateId": "adam@contoso.com",
+      "displayName": "Adam Smith",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "OTP",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Authentication of user via MFA",
+    "eventType": "user.authentication.auth_via_mfa",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:03.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0003",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0003",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000003",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "mfa1ExampleFactor0h7",
+        "type": "AuthenticatorEnrollment",
+        "alternateId": "unknown",
+        "displayName": "Google Authenticator",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adamEXAMPLE0h7",
+      "type": "User",
+      "alternateId": "adam@contoso.com",
+      "displayName": "Adam Smith",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "User single sign on to app",
+    "eventType": "user.authentication.sso",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:04.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0004",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0004",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000004",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "0oa1salesforceEX0h7",
+        "type": "AppInstance",
+        "alternateId": "Salesforce",
+        "displayName": "Salesforce",
+        "detailEntry": {
+          "signOnModeType": "SAML_2_0"
+        }
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adamEXAMPLE0h7",
+      "type": "User",
+      "alternateId": "adam@contoso.com",
+      "displayName": "Adam Smith",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "User logout from Okta",
+    "eventType": "user.session.end",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:05.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0005",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0005",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000005",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": null
+  },
+  {
+    "actor": {
+      "id": "00u1adminEXAMPL0h7",
+      "type": "User",
+      "alternateId": "it-admin@contoso.com",
+      "displayName": "IT Admin",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Create okta user",
+    "eventType": "user.lifecycle.create",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:06.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0006",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0006",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000006",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1janeEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "jane@contoso.com",
+        "displayName": "Jane Doe",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adminEXAMPL0h7",
+      "type": "User",
+      "alternateId": "it-admin@contoso.com",
+      "displayName": "IT Admin",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Activate Okta user",
+    "eventType": "user.lifecycle.activate",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:07.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0007",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0007",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000007",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1janeEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "jane@contoso.com",
+        "displayName": "Jane Doe",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adminEXAMPL0h7",
+      "type": "User",
+      "alternateId": "it-admin@contoso.com",
+      "displayName": "IT Admin",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Reactivate Okta user",
+    "eventType": "user.lifecycle.reactivate",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:08.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0008",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0008",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000008",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1janeEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "jane@contoso.com",
+        "displayName": "Jane Doe",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adminEXAMPL0h7",
+      "type": "User",
+      "alternateId": "it-admin@contoso.com",
+      "displayName": "IT Admin",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Deactivate Okta user",
+    "eventType": "user.lifecycle.deactivate",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:09.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0009",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0009",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000009",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1janeEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "jane@contoso.com",
+        "displayName": "Jane Doe",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adminEXAMPL0h7",
+      "type": "User",
+      "alternateId": "it-admin@contoso.com",
+      "displayName": "IT Admin",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Suspend Okta user",
+    "eventType": "user.lifecycle.suspend",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:10.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0010",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0010",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000010",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1janeEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "jane@contoso.com",
+        "displayName": "Jane Doe",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adminEXAMPL0h7",
+      "type": "User",
+      "alternateId": "it-admin@contoso.com",
+      "displayName": "IT Admin",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Delete Okta user",
+    "eventType": "user.lifecycle.delete.initiated",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:11.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0011",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0011",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000011",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1janeEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "jane@contoso.com",
+        "displayName": "Jane Doe",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1janeEXAMPLE0h7",
+      "type": "User",
+      "alternateId": "jane@contoso.com",
+      "displayName": "Jane Doe",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "User update password for Okta",
+    "eventType": "user.account.update_password",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:12.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0012",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0012",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000012",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1janeEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "jane@contoso.com",
+        "displayName": "Jane Doe",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adminEXAMPL0h7",
+      "type": "User",
+      "alternateId": "it-admin@contoso.com",
+      "displayName": "IT Admin",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Fired when the user's Okta password is reset",
+    "eventType": "user.account.reset_password",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:13.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0013",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0013",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000013",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1janeEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "jane@contoso.com",
+        "displayName": "Jane Doe",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adamEXAMPLE0h7",
+      "type": "User",
+      "alternateId": "adam@contoso.com",
+      "displayName": "Adam Smith",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Max sign in attempts exceeded",
+    "eventType": "user.account.lock",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": "LOCKED_OUT"
+    },
+    "published": "2026-09-28T12:00:14.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "WARN",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0014",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0014",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000014",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": null
+  },
+  {
+    "actor": {
+      "id": "00u1adminEXAMPL0h7",
+      "type": "User",
+      "alternateId": "it-admin@contoso.com",
+      "displayName": "IT Admin",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Unlock user account by admin",
+    "eventType": "user.account.unlock_by_admin",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:15.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0015",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0015",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000015",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1adamEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "adam@contoso.com",
+        "displayName": "Adam Smith",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1janeEXAMPLE0h7",
+      "type": "User",
+      "alternateId": "jane@contoso.com",
+      "displayName": "Jane Doe",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "User set up MFA factor",
+    "eventType": "user.mfa.factor.activate",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:16.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0016",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0016",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000016",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1janeEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "jane@contoso.com",
+        "displayName": "Jane Doe",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adminEXAMPL0h7",
+      "type": "User",
+      "alternateId": "it-admin@contoso.com",
+      "displayName": "IT Admin",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Reset factor for user",
+    "eventType": "user.mfa.factor.deactivate",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:17.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0017",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0017",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000017",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1janeEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "jane@contoso.com",
+        "displayName": "Jane Doe",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adminEXAMPL0h7",
+      "type": "User",
+      "alternateId": "it-admin@contoso.com",
+      "displayName": "IT Admin",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Reset all factors for user",
+    "eventType": "user.mfa.factor.reset_all",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:18.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0018",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0018",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000018",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1janeEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "jane@contoso.com",
+        "displayName": "Jane Doe",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adminEXAMPL0h7",
+      "type": "User",
+      "alternateId": "it-admin@contoso.com",
+      "displayName": "IT Admin",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Add user to group membership",
+    "eventType": "group.user_membership.add",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:19.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0019",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0019",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000019",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1janeEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "jane@contoso.com",
+        "displayName": "Jane Doe",
+        "detailEntry": null
+      },
+      {
+        "id": "00g1financeEXAMP0h7",
+        "type": "UserGroup",
+        "alternateId": "unknown",
+        "displayName": "Finance",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adminEXAMPL0h7",
+      "type": "User",
+      "alternateId": "it-admin@contoso.com",
+      "displayName": "IT Admin",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Remove user from group membership",
+    "eventType": "group.user_membership.remove",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:20.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0020",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0020",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000020",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1janeEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "jane@contoso.com",
+        "displayName": "Jane Doe",
+        "detailEntry": null
+      },
+      {
+        "id": "00g1financeEXAMP0h7",
+        "type": "UserGroup",
+        "alternateId": "unknown",
+        "displayName": "Finance",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adminEXAMPL0h7",
+      "type": "User",
+      "alternateId": "it-admin@contoso.com",
+      "displayName": "IT Admin",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Grant user privilege",
+    "eventType": "user.account.privilege.grant",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:21.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0021",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?",
+        "privilegeGranted": "Help Desk administrator"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0021",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000021",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1janeEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "jane@contoso.com",
+        "displayName": "Jane Doe",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adminEXAMPL0h7",
+      "type": "User",
+      "alternateId": "it-admin@contoso.com",
+      "displayName": "IT Admin",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Revoke user privilege",
+    "eventType": "user.account.privilege.revoke",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:22.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0022",
+        "requestUri": "/api/v1/authn",
+        "url": "/api/v1/authn?",
+        "privilegeRevoked": "Help Desk administrator"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0022",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000022",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00u1janeEXAMPLE0h7",
+        "type": "User",
+        "alternateId": "jane@contoso.com",
+        "displayName": "Jane Doe",
+        "detailEntry": null
+      }
+    ]
+  },
+  {
+    "actor": {
+      "id": "00u1adminEXAMPL0h7",
+      "type": "User",
+      "alternateId": "it-admin@contoso.com",
+      "displayName": "IT Admin",
+      "detailEntry": null
+    },
+    "client": {
+      "userAgent": {
+        "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "os": "Windows 10",
+        "browser": "FIREFOX"
+      },
+      "zone": "null",
+      "device": "Computer",
+      "id": null,
+      "ipAddress": "203.0.113.24",
+      "geographicalContext": {
+        "city": "Berlin",
+        "state": "Land Berlin",
+        "country": "Germany",
+        "postalCode": "10115",
+        "geolocation": {
+          "lat": 52.5244,
+          "lon": 13.4105
+        }
+      }
+    },
+    "device": null,
+    "authenticationContext": {
+      "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+      "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+      "credentialType": "PASSWORD",
+      "issuer": null,
+      "interface": null,
+      "authenticationStep": 0,
+      "externalSessionId": "102bZ3kZyExampleSession01"
+    },
+    "displayMessage": "Update policy",
+    "eventType": "policy.lifecycle.update",
+    "outcome": {
+      "result": "SUCCESS",
+      "reason": null
+    },
+    "published": "2026-09-28T12:00:23.123Z",
+    "securityContext": {
+      "asNumber": 3320,
+      "asOrg": "deutsche telekom ag",
+      "isp": "deutsche telekom ag",
+      "domain": "t-ipconnect.de",
+      "isProxy": false
+    },
+    "severity": "INFO",
+    "debugContext": {
+      "debugData": {
+        "requestId": "Zf3aExampleRequest0023",
+        "requestUri": "/api/v1/policies/00p1ExamplePolicy0h7",
+        "url": "/api/v1/authn?"
+      }
+    },
+    "legacyEventType": null,
+    "transaction": {
+      "type": "WEB",
+      "id": "Zf3aExampleTxn0023",
+      "detail": {}
+    },
+    "uuid": "5a1b2c3d-0000-11ef-8000-000000000023",
+    "version": "0",
+    "request": {
+      "ipChain": [
+        {
+          "ip": "203.0.113.24",
+          "geographicalContext": {
+            "city": "Berlin",
+            "state": "Land Berlin",
+            "country": "Germany",
+            "postalCode": "10115",
+            "geolocation": {
+              "lat": 52.5244,
+              "lon": 13.4105
+            }
+          },
+          "version": "V4",
+          "source": null
+        }
+      ]
+    },
+    "target": [
+      {
+        "id": "00p1ExamplePolicy0h7",
+        "type": "PolicyEntity",
+        "alternateId": "unknown",
+        "displayName": "Default Policy",
+        "detailEntry": {
+          "policyType": "OktaSignOn"
+        }
+      }
+    ]
+  }
+]
