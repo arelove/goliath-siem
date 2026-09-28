@@ -40,6 +40,7 @@ repository, with details and reproduction steps in
 - 2,185 of 2,214 rules for the six Windows log sources mapped so far load:
   process creation, file creation, image loads, network connections, and
   registry value sets from Sysmon, and the Security log;
+- 56 of 57 AWS CloudTrail rules load;
 - all 359 SigmaHQ regression cases for loaded rules fire exactly as SigmaHQ
   expects on real recorded attack events;
 - the engine evaluates the 2,046 rules of the Sysmon log sources at about
