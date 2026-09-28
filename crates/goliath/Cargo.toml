@@ -13,6 +13,7 @@ publish = false
 [dependencies]
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "matched-path", "tokio"] }
 clap = { version = "4.6", features = ["derive"] }
+flate2 = "1"
 goliath-normalize = { path = "../goliath-normalize", version = "0.2.5" }
 goliath-ocsf = { path = "../goliath-ocsf", version = "0.1.2" }
 goliath-pipe = { path = "../goliath-pipe", version = "0.1.0" }
@@ -38,7 +39,7 @@ kafka = ["goliath-pipe/kafka"]
 clickhouse = { version = "0.15.2", default-features = false, features = ["lz4"] }
 http-body-util = "0.1"
 tempfile = "3"
-tokio = { version = "1", features = ["io-util"] }
+tokio = { version = "1", features = ["io-util", "test-util"] }
 tower = { version = "0.5", features = ["util"] }
 
 [lints]

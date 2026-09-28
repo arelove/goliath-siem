@@ -53,6 +53,12 @@ struct Answer {
     answer: &'static str,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, EncodeLabelSet)]
+struct Request {
+    source: String,
+    answer: &'static str,
+}
+
 /// The metrics of one process, cheap to clone.
 #[derive(Clone)]
 pub(crate) struct Metrics(Arc<Inner>);
@@ -71,6 +77,24 @@ struct Inner {
     flush_seconds: Histogram,
     searches: Family<Answer, Counter>,
     search_seconds: Histogram,
+    received_requests: Family<Request, Counter>,
+    received_bytes: Family<Source, Counter>,
+    receive_wait_seconds: Histogram,
+}
+
+/// How the receiver answered a request, as the `answer` label counts it.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Received {
+    /// The batch is in the raw topic.
+    Taken,
+    /// The token was missing or wrong.
+    Unauthorized,
+    /// The body was empty, too large, or badly encoded.
+    Refused,
+    /// The topic stayed full; the sender was asked to come back.
+    Busy,
+    /// The pipe failed.
+    Failed,
 }
 
 /// How a search was answered, as the `answer` label counts it.
@@ -85,6 +109,10 @@ pub(crate) enum Searched {
 }
 
 impl Metrics {
+    #[allow(
+        clippy::too_many_lines,
+        reason = "one registration per metric, in one place"
+    )]
     pub(crate) fn new() -> Self {
         let mut registry = Registry::with_prefix("goliath");
         let collected_files = Family::default();
@@ -101,6 +129,24 @@ impl Metrics {
         let flush_seconds = Histogram::new(exponential_buckets(0.001, 2.0, 16));
         let searches = Family::default();
         let search_seconds = Histogram::new(exponential_buckets(0.001, 2.0, 16));
+        let received_requests = Family::default();
+        let received_bytes = Family::default();
+        let receive_wait_seconds = Histogram::new(exponential_buckets(0.001, 2.0, 15));
+        registry.register(
+            "received_requests",
+            "Requests the receiver answered, by source and how",
+            received_requests.clone(),
+        );
+        registry.register(
+            "received_bytes",
+            "Bytes of the batches the receiver took into a raw topic",
+            received_bytes.clone(),
+        );
+        registry.register(
+            "receive_wait_seconds",
+            "Time a request waited for its raw topic to take its batch",
+            receive_wait_seconds.clone(),
+        );
         registry.register(
             "collected_files",
             "Files the collector sent to a source's raw topic",
@@ -175,7 +221,39 @@ impl Metrics {
             flush_seconds,
             searches,
             search_seconds,
+            received_requests,
+            received_bytes,
+            receive_wait_seconds,
         }))
+    }
+
+    pub(crate) fn received(&self, source: &str, answer: Received, bytes: usize) {
+        let answer = match answer {
+            Received::Taken => "taken",
+            Received::Unauthorized => "unauthorized",
+            Received::Refused => "refused",
+            Received::Busy => "busy",
+            Received::Failed => "failed",
+        };
+        self.0
+            .received_requests
+            .get_or_create(&Request {
+                source: source.to_owned(),
+                answer,
+            })
+            .inc();
+        if bytes > 0 {
+            self.0
+                .received_bytes
+                .get_or_create(&Source {
+                    source: source.to_owned(),
+                })
+                .inc_by(u64::try_from(bytes).unwrap_or(u64::MAX));
+        }
+    }
+
+    pub(crate) fn waited(&self, took: Duration) {
+        self.0.receive_wait_seconds.observe(took.as_secs_f64());
     }
 
     pub(crate) fn collected(&self, source: &str, bytes: u64) {

@@ -14,6 +14,7 @@ mod api;
 pub mod config;
 mod metrics;
 pub mod raw;
+mod receiver;
 mod roles;
 mod topics;
 
@@ -161,6 +162,7 @@ async fn start_pipeline<T: Topics>(
             stopped.clone(),
         ));
     }
+    let mut over_http = std::collections::BTreeMap::new();
     for source in &config.sources {
         let normalizer = source.normalizer()?;
         let raw = topics
@@ -189,6 +191,22 @@ async fn start_pipeline<T: Topics>(
                 stopped.clone(),
             ));
         }
+        if config.roles.contains(&Role::Receiver)
+            && let Some(http) = &source.http
+        {
+            over_http.insert(
+                normalizer.name().to_owned(),
+                receiver::Source {
+                    token: http.token()?,
+                    raw: T::sender(&raw),
+                },
+            );
+        }
+    }
+    if config.roles.contains(&Role::Receiver) {
+        let server =
+            receiver::Server::bind(config.receiver.listen, over_http, metrics.clone()).await?;
+        roles.spawn(server.serve(stopped.clone()));
     }
     Ok(())
 }
