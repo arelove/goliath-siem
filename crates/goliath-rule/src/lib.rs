@@ -57,6 +57,10 @@ pub const SIGMA_WINDOWS: &str = include_str!("../mappings/sigma-windows.yaml");
 /// The mapping set for Sigma's AWS log sources shipped with this crate,
 /// ready for [`MappingSet::from_yaml`].
 pub const SIGMA_AWS: &str = include_str!("../mappings/sigma-aws.yaml");
+
+/// The mapping set for Sigma's Okta log source shipped with this crate,
+/// ready for [`MappingSet::from_yaml`].
+pub const SIGMA_OKTA: &str = include_str!("../mappings/sigma-okta.yaml");
 pub use mapping::{ClassValue, LogSourceSelector, MappingSet, SourceMapping};
 pub use path::FieldPath;
 pub use resolved::{
