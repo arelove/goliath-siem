@@ -53,6 +53,10 @@ pub use fold::{fold, fold_into};
 /// The mapping set for Sigma's Windows log sources shipped with this crate,
 /// ready for [`MappingSet::from_yaml`].
 pub const SIGMA_WINDOWS: &str = include_str!("../mappings/sigma-windows.yaml");
+
+/// The mapping set for Sigma's AWS log sources shipped with this crate,
+/// ready for [`MappingSet::from_yaml`].
+pub const SIGMA_AWS: &str = include_str!("../mappings/sigma-aws.yaml");
 pub use mapping::{ClassValue, LogSourceSelector, MappingSet, SourceMapping};
 pub use path::FieldPath;
 pub use resolved::{

@@ -1,0 +1,68 @@
+# Sigma field names for AWS log sources, resolved to OCSF 1.5.0 paths.
+#
+# Paths follow the `cloudtrail` source definition of goliath-normalize. It
+# keeps every top-level CloudTrail member it does not map under `unmapped`,
+# whole, so a field such as `requestParameters.bucketName` is read there as
+# CloudTrail wrote it; and a field it maps lists its place under `unmapped`
+# too wherever one of its kinds leaves it there, as the console sign-in does
+# with `eventName`. See docs/adr/0012-sigma-field-mapping.md.
+
+name: sigma-aws
+version: 1
+
+mappings:
+  - logsource: { product: aws, service: cloudtrail }
+    # CloudTrail events are Authentication or API Activity, so the class
+    # condition is the product; rules select events by `eventSource` and
+    # `eventName`, as they do on CloudTrail.
+    class: { metadata.product.name: AWS CloudTrail }
+    fields:
+      eventName: [api.operation, unmapped.eventName]
+      eventSource: [api.service.name, service.name]
+      eventType: metadata.event_code
+      eventCategory: metadata.log_name
+      eventID: metadata.uid
+      eventTime: time
+      eventVersion: unmapped.eventVersion
+      awsRegion: cloud.region
+      recipientAccountId: cloud.account.uid
+      requestID: [api.request.uid, unmapped.requestID]
+      readOnly: unmapped.readOnly
+      managementEvent: unmapped.managementEvent
+      sharedEventID: unmapped.sharedEventID
+      # An address, or the name of the AWS service that made the call.
+      sourceIPAddress: [src_endpoint.ip, src_endpoint.domain, unmapped.sourceIPAddress]
+      userAgent: http_request.user_agent
+      errorCode: api.response.error
+      errorMessage: [api.response.message, status_detail]
+      userIdentity.type: actor.user.type
+      userIdentity.principalId: actor.user.uid
+      userIdentity.arn: actor.user.uid_alt
+      userIdentity.userName: actor.user.name
+      userIdentity.accountId: actor.user.account.uid
+      userIdentity.accessKeyId: actor.user.credential_uid
+      userIdentity.invokedBy: actor.invoked_by
+      userIdentity.sessionContext.sessionIssuer.arn: actor.session.issuer
+      userIdentity.sessionContext.sessionIssuer.type: unmapped.userIdentity.sessionContext.sessionIssuer.type
+      userIdentity.sessionContext.sessionIssuer.userName: unmapped.userIdentity.sessionContext.sessionIssuer.userName
+      userIdentity.sessionContext.sessionIssuer.principalId: unmapped.userIdentity.sessionContext.sessionIssuer.principalId
+      userIdentity.sessionContext.attributes.mfaAuthenticated: unmapped.userIdentity.sessionContext.attributes.mfaAuthenticated
+      # The request, the response, and what else CloudTrail recorded, as
+      # CloudTrail wrote them.
+      requestParameters: unmapped.requestParameters
+      requestParameters.attribute: unmapped.requestParameters.attribute
+      requestParameters.bucketName: unmapped.requestParameters.bucketName
+      requestParameters.containerDefinitions.command: unmapped.requestParameters.containerDefinitions.command
+      requestParameters.enable: unmapped.requestParameters.enable
+      requestParameters.layers: unmapped.requestParameters.layers
+      requestParameters.userName: unmapped.requestParameters.userName
+      requestParameters.roleName: unmapped.requestParameters.roleName
+      requestParameters.policyArn: unmapped.requestParameters.policyArn
+      responseElements: unmapped.responseElements
+      responseElements.ConsoleLogin: [status, unmapped.responseElements.ConsoleLogin]
+      responseElements.accessKey.userName: unmapped.responseElements.accessKey.userName
+      responseElements.publiclyAccessible: unmapped.responseElements.publiclyAccessible
+      responseElements.pendingModifiedValues.masterUserPassword: unmapped.responseElements.pendingModifiedValues.masterUserPassword
+      additionalEventData: unmapped.additionalEventData
+      additionalEventData.MFAUsed: unmapped.additionalEventData.MFAUsed
+      resources: unmapped.resources
