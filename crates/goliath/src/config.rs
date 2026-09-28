@@ -200,7 +200,7 @@ impl ApiConfig {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SourceConfig {
-    /// The source definition: the name of a built-in one, `sysmon`, `falco`, `entra`, or `auditd`,
+    /// The source definition: the name of a built-in one, such as `sysmon` or `windows-security`,
     /// or the path of a YAML file.
     pub definition: String,
     /// A directory the collector takes files from; needed by the collector

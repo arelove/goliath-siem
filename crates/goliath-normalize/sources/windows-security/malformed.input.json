@@ -1,0 +1,50 @@
+{
+  "Event": {
+    "#attributes": {
+      "xmlns": "http://schemas.microsoft.com/win/2004/08/events/event"
+    },
+    "System": {
+      "Provider": {
+        "#attributes": {
+          "Name": "Microsoft-Windows-Security-Auditing",
+          "Guid": "54849625-5478-4994-A5BA-3E3B0328C30D"
+        }
+      },
+      "EventID": 4624,
+      "Version": 2,
+      "Level": 0,
+      "Task": 12544,
+      "Opcode": 0,
+      "Keywords": "0x8020000000000000",
+      "TimeCreated": {
+        "#attributes": {
+          "SystemTime": "2026-09-28T09:00:40.5123456Z"
+        }
+      },
+      "EventRecordID": 3026,
+      "Correlation": null,
+      "Execution": {
+        "#attributes": {
+          "ProcessID": 780,
+          "ThreadID": 1204
+        }
+      },
+      "Channel": "Security",
+      "Computer": "DC-01.corp.example",
+      "Security": null
+    },
+    "EventData": {
+      "SubjectUserSid": "S-1-5-18",
+      "SubjectUserName": "DC-01$",
+      "SubjectDomainName": "CORP",
+      "SubjectLogonId": "0x3e7",
+      "TargetUserName": "adam",
+      "TargetDomainName": "CORP",
+      "LogonType": 3,
+      "ProcessId": "0xnope",
+      "IpAddress": "10.20.4.17",
+      "IpPort": "fifty"
+    }
+  }
+}
+{"Event": {"System": {"EventID": 4624, "Computer": "DC-01"

@@ -1,0 +1,71 @@
+[
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "DC-01$",
+          "uid": "S-1-5-18"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3002,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "logon_type_id": 3,
+      "metadata": {
+        "event_code": "4624",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3026",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.4.17"
+      },
+      "status_id": 1,
+      "time": 1790586040512,
+      "type_uid": 300201,
+      "unmapped": {
+        "IpPort": "fifty",
+        "ProcessId": "0xnope",
+        "SubjectLogonId": "0x3e7"
+      },
+      "user": {
+        "domain": "CORP",
+        "name": "adam"
+      }
+    },
+    "id": "2beacc204fb2291cc61bb0b42bc921a7",
+    "issues": [
+      {
+        "reason": "`0xnope` is not a whole number",
+        "source": "Event.EventData.ProcessId",
+        "target": "actor.process.pid"
+      },
+      {
+        "reason": "`fifty` is not a whole number",
+        "source": "Event.EventData.IpPort",
+        "target": "src_endpoint.port"
+      }
+    ],
+    "kind": "logon"
+  },
+  {
+    "dead_letter": {
+      "error": "EOF while parsing an object at line 51 column 0",
+      "raw": "{\"Event\": {\"System\": {\"EventID\": 4624, \"Computer\": \"DC-01\"",
+      "stage": "framing"
+    }
+  }
+]

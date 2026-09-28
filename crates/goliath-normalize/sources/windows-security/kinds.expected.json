@@ -1,0 +1,1173 @@
+[
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "process": {
+          "pid": 0
+        },
+        "user": {
+          "domain": "CORP",
+          "name": "DC-01$",
+          "uid": "S-1-5-18"
+        }
+      },
+      "auth_protocol": "Kerberos",
+      "category_uid": 3,
+      "class_uid": 3002,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "logon_process": {
+        "name": "Kerberos"
+      },
+      "logon_type_id": 3,
+      "metadata": {
+        "event_code": "4624",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3001",
+        "version": "1.5.0"
+      },
+      "session": {
+        "uid": "0x8c3e41"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.4.17",
+        "port": 51432
+      },
+      "status_id": 1,
+      "time": 1790586001512,
+      "type_uid": 300201,
+      "unmapped": {
+        "ElevatedToken": "%%1842",
+        "ImpersonationLevel": "%%1833",
+        "KeyLength": 0,
+        "LmPackageName": "-",
+        "LogonGuid": "{6E3A4C1B-0D2F-8B7A-5C41-2F9E0A1B3C4D}",
+        "ProcessName": "-",
+        "RestrictedAdminMode": "-",
+        "SubjectLogonId": "0x3e7",
+        "TransmittedServices": "-",
+        "VirtualAccount": "%%1843",
+        "WorkstationName": "-"
+      },
+      "user": {
+        "domain": "CORP",
+        "name": "adam",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1107"
+      }
+    },
+    "id": "9cbd69b20d86a99b68e8ef8963341e63",
+    "issues": [],
+    "kind": "logon"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "process": {
+          "file": {
+            "path": "C:\\Windows\\System32\\svchost.exe"
+          },
+          "pid": 676
+        },
+        "user": {
+          "domain": "CORP",
+          "name": "DC-01$",
+          "uid": "S-1-5-18"
+        }
+      },
+      "auth_protocol": "Negotiate",
+      "category_uid": 3,
+      "class_uid": 3002,
+      "device": {
+        "hostname": "WS-FINANCE-07.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "logon_process": {
+        "name": "User32 "
+      },
+      "logon_type_id": 2,
+      "metadata": {
+        "event_code": "4624",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3002",
+        "version": "1.5.0"
+      },
+      "session": {
+        "uid": "0x8c4f02"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "hostname": "WS-FINANCE-07"
+      },
+      "status_id": 1,
+      "time": 1790586002512,
+      "type_uid": 300201,
+      "unmapped": {
+        "ElevatedToken": "%%1843",
+        "IpAddress": "-",
+        "IpPort": "-",
+        "SubjectLogonId": "0x3e7"
+      },
+      "user": {
+        "domain": "CORP",
+        "name": "adam",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1107"
+      }
+    },
+    "id": "9839ffde61b4538eb2041bd8fed7b48b",
+    "issues": [],
+    "kind": "logon"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "process": {
+          "pid": 0
+        },
+        "user": {
+          "uid": "S-1-0-0"
+        }
+      },
+      "auth_protocol": "NTLM",
+      "category_uid": 3,
+      "class_uid": 3002,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "logon_process": {
+        "name": "NtLmSsp "
+      },
+      "logon_type_id": 3,
+      "metadata": {
+        "event_code": "4625",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3003",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "hostname": "LAPTOP-GUEST",
+        "ip": "10.20.9.200",
+        "port": 0
+      },
+      "status_code": "0xc000006d",
+      "status_detail": "0xc000006a",
+      "status_id": 2,
+      "time": 1790586003512,
+      "type_uid": 300201,
+      "unmapped": {
+        "FailureReason": "%%2313",
+        "ProcessName": "-",
+        "SubjectDomainName": "-",
+        "SubjectLogonId": "0x0",
+        "SubjectUserName": "-"
+      },
+      "user": {
+        "domain": "CORP",
+        "name": "adam",
+        "uid": "S-1-0-0"
+      }
+    },
+    "id": "5d7d32d991a9f95719eab8f7ce738fa8",
+    "issues": [],
+    "kind": "logon_failure"
+  },
+  {
+    "event": {
+      "activity_id": 2,
+      "category_uid": 3,
+      "class_uid": 3002,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "logon_type_id": 3,
+      "metadata": {
+        "event_code": "4634",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3004",
+        "version": "1.5.0"
+      },
+      "session": {
+        "uid": "0x8c3e41"
+      },
+      "severity_id": 1,
+      "time": 1790586004512,
+      "type_uid": 300202,
+      "user": {
+        "domain": "CORP",
+        "name": "adam",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1107"
+      }
+    },
+    "id": "881fd128be4bea56b5ede077124cb619",
+    "issues": [],
+    "kind": "logoff"
+  },
+  {
+    "event": {
+      "activity_id": 3,
+      "category_uid": 3,
+      "class_uid": 3002,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "event_code": "4768",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3005",
+        "version": "1.5.0"
+      },
+      "service": {
+        "name": "krbtgt",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-502"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "::ffff:10.20.4.17",
+        "port": 51430
+      },
+      "status_code": "0x0",
+      "status_id": 1,
+      "time": 1790586005512,
+      "type_uid": 300203,
+      "unmapped": {
+        "CertIssuerName": "",
+        "CertSerialNumber": "",
+        "CertThumbprint": "",
+        "PreAuthType": "2",
+        "TicketEncryptionType": "0x12",
+        "TicketOptions": "0x40810010"
+      },
+      "user": {
+        "domain": "CORP.EXAMPLE",
+        "name": "adam",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1107"
+      }
+    },
+    "id": "0e473646cc4839f759c3e339c2df2b62",
+    "issues": [],
+    "kind": "kerberos_ticket"
+  },
+  {
+    "event": {
+      "activity_id": 4,
+      "category_uid": 3,
+      "class_uid": 3002,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "event_code": "4769",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3006",
+        "version": "1.5.0"
+      },
+      "service": {
+        "name": "FS-02$",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1602"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "::ffff:10.20.4.17",
+        "port": 51431
+      },
+      "status_code": "0x0",
+      "status_id": 1,
+      "time": 1790586006512,
+      "type_uid": 300204,
+      "unmapped": {
+        "LogonGuid": "{6E3A4C1B-0D2F-8B7A-5C41-2F9E0A1B3C4D}",
+        "TicketEncryptionType": "0x12",
+        "TicketOptions": "0x40810000",
+        "TransmittedServices": "-"
+      },
+      "user": {
+        "domain": "CORP.EXAMPLE",
+        "name": "adam@CORP.EXAMPLE"
+      }
+    },
+    "id": "cc403534b97bbad106383f607be70a73",
+    "issues": [],
+    "kind": "kerberos_service_ticket"
+  },
+  {
+    "event": {
+      "activity_id": 3,
+      "category_uid": 3,
+      "class_uid": 3002,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "event_code": "4768",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3007",
+        "version": "1.5.0"
+      },
+      "service": {
+        "name": "krbtgt/CORP",
+        "uid": "S-1-0-0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "::ffff:10.20.9.200",
+        "port": 49811
+      },
+      "status_code": "0x18",
+      "status_id": 2,
+      "time": 1790586007512,
+      "type_uid": 300203,
+      "unmapped": {
+        "PreAuthType": "-",
+        "TicketEncryptionType": "0xffffffff",
+        "TicketOptions": "0x40810010"
+      },
+      "user": {
+        "domain": "CORP",
+        "name": "svc-backup",
+        "uid": "S-1-0-0"
+      }
+    },
+    "id": "241692f8682d92cb52e7b23ef30202cb",
+    "issues": [],
+    "kind": "kerberos_ticket"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "category_uid": 1,
+      "class_uid": 1007,
+      "device": {
+        "hostname": "WS-FINANCE-07.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "event_code": "4688",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3008",
+        "version": "1.5.0"
+      },
+      "process": {
+        "cmd_line": "ipconfig /all",
+        "file": {
+          "path": "C:\\Windows\\System32\\ipconfig.exe"
+        },
+        "parent_process": {
+          "file": {
+            "path": "C:\\Windows\\System32\\cmd.exe"
+          },
+          "pid": 12048
+        },
+        "pid": 6700,
+        "session": {
+          "uid": "0x5f3a21"
+        },
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "severity_id": 1,
+      "time": 1790586008512,
+      "type_uid": 100701,
+      "unmapped": {
+        "MandatoryLabel": "S-1-16-8192",
+        "TargetDomainName": "-",
+        "TargetLogonId": "0x0",
+        "TargetUserName": "-",
+        "TargetUserSid": "S-1-0-0",
+        "TokenElevationType": "%%1938"
+      }
+    },
+    "id": "dd61e2d3b303b78fbdc965438380b563",
+    "issues": [],
+    "kind": "process_creation"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3001,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "event_code": "4720",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3009",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790586009512,
+      "type_uid": 300101,
+      "unmapped": {
+        "DisplayName": "Jane Doe",
+        "PasswordLastSet": "%%1794",
+        "PrivilegeList": "-",
+        "SamAccountName": "jdoe",
+        "SubjectLogonId": "0x5f3a21",
+        "UserAccountControl": "%%2080 %%2082 %%2084",
+        "UserPrincipalName": "jdoe@corp.example"
+      },
+      "user": {
+        "domain": "CORP",
+        "name": "jdoe",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1311"
+      }
+    },
+    "id": "d95108e386590200767787c3036a46cf",
+    "issues": [],
+    "kind": "account_created"
+  },
+  {
+    "event": {
+      "activity_id": 2,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3001,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "event_code": "4722",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3010",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790586010512,
+      "type_uid": 300102,
+      "unmapped": {
+        "PrivilegeList": "-",
+        "SubjectLogonId": "0x5f3a21"
+      },
+      "user": {
+        "domain": "CORP",
+        "name": "jdoe",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1311"
+      }
+    },
+    "id": "41aaf91421ce1c1ce842f3fe3ef1d3b6",
+    "issues": [],
+    "kind": "account_enabled"
+  },
+  {
+    "event": {
+      "activity_id": 3,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3001,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "event_code": "4723",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3011",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790586011512,
+      "type_uid": 300103,
+      "unmapped": {
+        "PrivilegeList": "-",
+        "SubjectLogonId": "0x5f3a21"
+      },
+      "user": {
+        "domain": "CORP",
+        "name": "jdoe",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1311"
+      }
+    },
+    "id": "10c6904b57019d6c56a674e3bc184e05",
+    "issues": [],
+    "kind": "password_changed"
+  },
+  {
+    "event": {
+      "activity_id": 4,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3001,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "event_code": "4724",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3012",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790586012512,
+      "type_uid": 300104,
+      "unmapped": {
+        "PrivilegeList": "-",
+        "SubjectLogonId": "0x5f3a21"
+      },
+      "user": {
+        "domain": "CORP",
+        "name": "jdoe",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1311"
+      }
+    },
+    "id": "abdf4bf6cb3ce72ad98d386cade2e5c5",
+    "issues": [],
+    "kind": "password_reset"
+  },
+  {
+    "event": {
+      "activity_id": 5,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3001,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "event_code": "4725",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3013",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790586013512,
+      "type_uid": 300105,
+      "unmapped": {
+        "PrivilegeList": "-",
+        "SubjectLogonId": "0x5f3a21"
+      },
+      "user": {
+        "domain": "CORP",
+        "name": "jdoe",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1311"
+      }
+    },
+    "id": "34df7142c6af77017d1741c99082db02",
+    "issues": [],
+    "kind": "account_disabled"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3001,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "event_code": "4726",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3014",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790586014512,
+      "type_uid": 300106,
+      "unmapped": {
+        "PrivilegeList": "-",
+        "SubjectLogonId": "0x5f3a21"
+      },
+      "user": {
+        "domain": "CORP",
+        "name": "jdoe",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1311"
+      }
+    },
+    "id": "738e3326277645b64d5c4b6c0e8f6beb",
+    "issues": [],
+    "kind": "account_deleted"
+  },
+  {
+    "event": {
+      "activity_id": 9,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "DC-01$",
+          "uid": "S-1-5-18"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3001,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "event_code": "4740",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3015",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "hostname": "WS-FINANCE-07"
+      },
+      "time": 1790586015512,
+      "type_uid": 300109,
+      "unmapped": {
+        "SubjectLogonId": "0x3e7"
+      },
+      "user": {
+        "name": "adam",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1107"
+      }
+    },
+    "id": "6fab6ee1af6a26d8f2748db6976467b4",
+    "issues": [],
+    "kind": "account_locked"
+  },
+  {
+    "event": {
+      "activity_id": 3,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3006,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "group": {
+        "domain": "CORP",
+        "name": "Domain Users",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-513"
+      },
+      "metadata": {
+        "event_code": "4728",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3016",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790586016512,
+      "type_uid": 300603,
+      "unmapped": {
+        "PrivilegeList": "-",
+        "SubjectLogonId": "0x5f3a21"
+      },
+      "user": {
+        "name": "CN=Jane Doe,OU=Finance,DC=corp,DC=example",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1311"
+      }
+    },
+    "id": "a27270e1a4b22d27492c1b07d93f746f",
+    "issues": [],
+    "kind": "global_group_member_added"
+  },
+  {
+    "event": {
+      "activity_id": 4,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3006,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "group": {
+        "domain": "CORP",
+        "name": "Domain Users",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-513"
+      },
+      "metadata": {
+        "event_code": "4729",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3017",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790586017512,
+      "type_uid": 300604,
+      "unmapped": {
+        "PrivilegeList": "-",
+        "SubjectLogonId": "0x5f3a21"
+      },
+      "user": {
+        "name": "CN=Jane Doe,OU=Finance,DC=corp,DC=example",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1311"
+      }
+    },
+    "id": "bdbb46e3fba1db8f54c02dbe76e843c7",
+    "issues": [],
+    "kind": "global_group_member_removed"
+  },
+  {
+    "event": {
+      "activity_id": 3,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3006,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "group": {
+        "domain": "Builtin",
+        "name": "Remote Desktop Users",
+        "uid": "S-1-5-32-555"
+      },
+      "metadata": {
+        "event_code": "4732",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3018",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790586018512,
+      "type_uid": 300603,
+      "unmapped": {
+        "PrivilegeList": "-",
+        "SubjectLogonId": "0x5f3a21"
+      },
+      "user": {
+        "name": "CN=Jane Doe,OU=Finance,DC=corp,DC=example",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1311"
+      }
+    },
+    "id": "447e553a8d87abd23d39fcf2ee9f0bf9",
+    "issues": [],
+    "kind": "local_group_member_added"
+  },
+  {
+    "event": {
+      "activity_id": 4,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3006,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "group": {
+        "domain": "Builtin",
+        "name": "Remote Desktop Users",
+        "uid": "S-1-5-32-555"
+      },
+      "metadata": {
+        "event_code": "4733",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3019",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790586019512,
+      "type_uid": 300604,
+      "unmapped": {
+        "PrivilegeList": "-",
+        "SubjectLogonId": "0x5f3a21"
+      },
+      "user": {
+        "name": "CN=Jane Doe,OU=Finance,DC=corp,DC=example",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1311"
+      }
+    },
+    "id": "0d8252af136f087cd342580ea3f945bb",
+    "issues": [],
+    "kind": "local_group_member_removed"
+  },
+  {
+    "event": {
+      "activity_id": 3,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3006,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "group": {
+        "domain": "CORP",
+        "name": "Finance Readers",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1720"
+      },
+      "metadata": {
+        "event_code": "4756",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3020",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790586020512,
+      "type_uid": 300603,
+      "unmapped": {
+        "PrivilegeList": "-",
+        "SubjectLogonId": "0x5f3a21"
+      },
+      "user": {
+        "name": "CN=Jane Doe,OU=Finance,DC=corp,DC=example",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1311"
+      }
+    },
+    "id": "a49fdfd50680ac7ea5d07dcf893dc100",
+    "issues": [],
+    "kind": "universal_group_member_added"
+  },
+  {
+    "event": {
+      "activity_id": 4,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3006,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "group": {
+        "domain": "CORP",
+        "name": "Finance Readers",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1720"
+      },
+      "metadata": {
+        "event_code": "4757",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3021",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790586021512,
+      "type_uid": 300604,
+      "unmapped": {
+        "PrivilegeList": "-",
+        "SubjectLogonId": "0x5f3a21"
+      },
+      "user": {
+        "name": "CN=Jane Doe,OU=Finance,DC=corp,DC=example",
+        "uid": "S-1-5-21-1004336348-1177238915-682003330-1311"
+      }
+    },
+    "id": "bd248325b933d6dbad2e7406b416f12c",
+    "issues": [],
+    "kind": "universal_group_member_removed"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "category_uid": 1,
+      "class_uid": 1006,
+      "device": {
+        "hostname": "WS-FINANCE-07.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "job": {
+        "name": "\\Finance\\Nightly export"
+      },
+      "metadata": {
+        "event_code": "4698",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3022",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790586022512,
+      "type_uid": 100601,
+      "unmapped": {
+        "ClientProcessId": "4120",
+        "ClientProcessStartKey": "2251799813685300",
+        "FQDN": "WS-FINANCE-07.corp.example",
+        "ParentProcessId": "4032",
+        "RpcCallClientLocality": "0",
+        "SubjectLogonId": "0x5f3a21",
+        "TaskContent": "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Task><Actions><Exec><Command>C:\\Tools\\export.exe</Command></Exec></Actions></Task>"
+      }
+    },
+    "id": "f7481f0f55fe49c22c578375530f1634",
+    "issues": [],
+    "kind": "scheduled_task_created"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "user": {
+          "domain": "CORP",
+          "name": "it-admin",
+          "uid": "S-1-5-21-1004336348-1177238915-682003330-1105"
+        }
+      },
+      "category_uid": 1,
+      "class_uid": 1008,
+      "device": {
+        "hostname": "DC-01.corp.example",
+        "os": {
+          "name": "Windows",
+          "type_id": 100
+        }
+      },
+      "metadata": {
+        "event_code": "1102",
+        "log_name": "Security",
+        "product": {
+          "name": "Windows Security Auditing",
+          "vendor_name": "Microsoft"
+        },
+        "uid": "3023",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790586023512,
+      "type_uid": 100801,
+      "unmapped": {
+        "#attributes": {
+          "xmlns": "http://manifests.microsoft.com/win/2004/08/windows/eventlog"
+        },
+        "SubjectLogonId": "0x5f3a21"
+      }
+    },
+    "id": "f5a49b2fd512577a7ee8062862d9cf65",
+    "issues": [],
+    "kind": "log_cleared"
+  }
+]

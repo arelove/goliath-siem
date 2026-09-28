@@ -1,0 +1,334 @@
+# The Windows Security event log, as `evtx_dump -o json` writes it: one JSON
+# object per record, `Event.System` and `Event.EventData`, the same shape as
+# the Sysmon definition reads.
+#
+# Kinds cover the audit events detections lean on most: logons and their
+# failures, Kerberos tickets, process creation, changes to accounts and to
+# group membership, scheduled tasks, and the log being cleared. Every
+# EventData member not mapped below is kept under `unmapped` by its Windows
+# name, such as `ElevatedToken` or `TicketEncryptionType`.
+#
+# Windows writes `-` where a field has no value, such as the address of a
+# local logon; such a field is left out rather than stored as `-`. Process
+# and logon identifiers, written as `0x1a2c`, are read as numbers where OCSF
+# holds a number.
+#
+# In process creation (4688), the subject is the account that started the
+# process, which is the account the process runs as unless the event names
+# another; it is written where Sysmon writes `User`, so that rules written
+# for one match the other.
+
+name: windows-security
+version: 1
+framing: json-values
+decoding: json
+nil: ["-"]
+
+common:
+  time: { from: Event.System.TimeCreated.#attributes.SystemTime, as: timestamp }
+  severity_id: { value: 1 }
+  metadata.version: { value: "1.5.0" }
+  metadata.product.name: { value: Windows Security Auditing }
+  metadata.product.vendor_name: { value: Microsoft }
+  metadata.log_name: Event.System.Channel
+  metadata.uid: { from: Event.System.EventRecordID, as: string }
+  metadata.event_code: { from: Event.System.EventID, as: string }
+  device.hostname: Event.System.Computer
+  device.os.type_id: { value: 100 }
+  device.os.name: { value: Windows }
+
+kinds:
+  - name: logon
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4624
+    # Authentication: Logon.
+    class: { class_uid: 3002, activity_id: 1 }
+    fields:
+      status_id: { value: 1 }
+      user.name: Event.EventData.TargetUserName
+      user.domain: Event.EventData.TargetDomainName
+      user.uid: Event.EventData.TargetUserSid
+      actor.user.name: Event.EventData.SubjectUserName
+      actor.user.domain: Event.EventData.SubjectDomainName
+      actor.user.uid: Event.EventData.SubjectUserSid
+      actor.process.file.path: Event.EventData.ProcessName
+      actor.process.pid: { from: Event.EventData.ProcessId, as: integer }
+      session.uid: Event.EventData.TargetLogonId
+      logon_type_id: &logon_type
+        from: Event.EventData.LogonType
+        # Windows numbers logon types as OCSF does.
+        map:
+          "0": 1
+          "2": 2
+          "3": 3
+          "4": 4
+          "5": 5
+          "7": 7
+          "8": 8
+          "9": 9
+          "10": 10
+          "11": 11
+          "12": 12
+          "13": 13
+        otherwise: 99
+      logon_process.name: Event.EventData.LogonProcessName
+      auth_protocol: Event.EventData.AuthenticationPackageName
+      src_endpoint.hostname: Event.EventData.WorkstationName
+      src_endpoint.ip: Event.EventData.IpAddress
+      src_endpoint.port: { from: Event.EventData.IpPort, as: integer }
+    unmapped: [Event.EventData]
+
+  - name: logon_failure
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4625
+    # Authentication: Logon.
+    class: { class_uid: 3002, activity_id: 1 }
+    fields:
+      status_id: { value: 2 }
+      # NTSTATUS codes, such as 0xC000006D; the sub-status says which check
+      # failed, such as 0xC000006A for a wrong password.
+      status_code: Event.EventData.Status
+      status_detail: Event.EventData.SubStatus
+      user.name: Event.EventData.TargetUserName
+      user.domain: Event.EventData.TargetDomainName
+      user.uid: Event.EventData.TargetUserSid
+      actor.user.name: Event.EventData.SubjectUserName
+      actor.user.domain: Event.EventData.SubjectDomainName
+      actor.user.uid: Event.EventData.SubjectUserSid
+      actor.process.file.path: Event.EventData.ProcessName
+      actor.process.pid: { from: Event.EventData.ProcessId, as: integer }
+      logon_type_id: *logon_type
+      logon_process.name: Event.EventData.LogonProcessName
+      auth_protocol: Event.EventData.AuthenticationPackageName
+      src_endpoint.hostname: Event.EventData.WorkstationName
+      src_endpoint.ip: Event.EventData.IpAddress
+      src_endpoint.port: { from: Event.EventData.IpPort, as: integer }
+    unmapped: [Event.EventData]
+
+  - name: logoff
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4634
+    # Authentication: Logoff.
+    class: { class_uid: 3002, activity_id: 2 }
+    fields:
+      user.name: Event.EventData.TargetUserName
+      user.domain: Event.EventData.TargetDomainName
+      user.uid: Event.EventData.TargetUserSid
+      session.uid: Event.EventData.TargetLogonId
+      logon_type_id: *logon_type
+    unmapped: [Event.EventData]
+
+  - name: kerberos_ticket
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4768
+    # Authentication: Authentication Ticket.
+    class: { class_uid: 3002, activity_id: 3 }
+    fields: &kerberos
+      # A Kerberos result code: 0x0 is success.
+      status_code: Event.EventData.Status
+      status_id: { from: Event.EventData.Status, map: { "0x0": 1 }, otherwise: 2 }
+      user.name: Event.EventData.TargetUserName
+      user.domain: Event.EventData.TargetDomainName
+      user.uid: Event.EventData.TargetSid
+      service.name: Event.EventData.ServiceName
+      service.uid: Event.EventData.ServiceSid
+      src_endpoint.ip: Event.EventData.IpAddress
+      src_endpoint.port: { from: Event.EventData.IpPort, as: integer }
+    unmapped: [Event.EventData]
+
+  - name: kerberos_service_ticket
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4769
+    # Authentication: Service Ticket Request.
+    class: { class_uid: 3002, activity_id: 4 }
+    fields: *kerberos
+    unmapped: [Event.EventData]
+
+  - name: process_creation
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4688
+    # Process Activity: Launch.
+    class: { class_uid: 1007, activity_id: 1 }
+    fields:
+      process.file.path: Event.EventData.NewProcessName
+      process.cmd_line: Event.EventData.CommandLine
+      process.pid: { from: Event.EventData.NewProcessId, as: integer }
+      process.user.name: Event.EventData.SubjectUserName
+      process.user.domain: Event.EventData.SubjectDomainName
+      process.user.uid: Event.EventData.SubjectUserSid
+      process.session.uid: Event.EventData.SubjectLogonId
+      process.parent_process.file.path: Event.EventData.ParentProcessName
+      process.parent_process.pid: { from: Event.EventData.ProcessId, as: integer }
+    unmapped: [Event.EventData]
+
+  - name: account_created
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4720
+    # Account Change: Create.
+    class: { class_uid: 3001, activity_id: 1 }
+    fields: &account
+      user.name: Event.EventData.TargetUserName
+      user.domain: Event.EventData.TargetDomainName
+      user.uid: Event.EventData.TargetSid
+      actor.user.name: Event.EventData.SubjectUserName
+      actor.user.domain: Event.EventData.SubjectDomainName
+      actor.user.uid: Event.EventData.SubjectUserSid
+    unmapped: [Event.EventData]
+
+  - name: account_enabled
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4722
+    # Account Change: Enable.
+    class: { class_uid: 3001, activity_id: 2 }
+    fields: *account
+    unmapped: [Event.EventData]
+
+  - name: password_changed
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4723
+    # Account Change: Password Change.
+    class: { class_uid: 3001, activity_id: 3 }
+    fields: *account
+    unmapped: [Event.EventData]
+
+  - name: password_reset
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4724
+    # Account Change: Password Reset.
+    class: { class_uid: 3001, activity_id: 4 }
+    fields: *account
+    unmapped: [Event.EventData]
+
+  - name: account_disabled
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4725
+    # Account Change: Disable.
+    class: { class_uid: 3001, activity_id: 5 }
+    fields: *account
+    unmapped: [Event.EventData]
+
+  - name: account_deleted
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4726
+    # Account Change: Delete.
+    class: { class_uid: 3001, activity_id: 6 }
+    fields: *account
+    unmapped: [Event.EventData]
+
+  - name: account_locked
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4740
+    # Account Change: Lock.
+    class: { class_uid: 3001, activity_id: 9 }
+    fields:
+      user.name: Event.EventData.TargetUserName
+      user.uid: Event.EventData.TargetSid
+      # In this event, `TargetDomainName` is the computer the failed logons
+      # came from, not the account's domain.
+      src_endpoint.hostname: Event.EventData.TargetDomainName
+      actor.user.name: Event.EventData.SubjectUserName
+      actor.user.domain: Event.EventData.SubjectDomainName
+      actor.user.uid: Event.EventData.SubjectUserSid
+    unmapped: [Event.EventData]
+
+  - name: global_group_member_added
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4728
+    # Group Management: Add User.
+    class: { class_uid: 3006, activity_id: 3 }
+    fields: &member
+      # The member's distinguished name, or `-` for a local account.
+      user.name: Event.EventData.MemberName
+      user.uid: Event.EventData.MemberSid
+      group.name: Event.EventData.TargetUserName
+      group.domain: Event.EventData.TargetDomainName
+      group.uid: Event.EventData.TargetSid
+      actor.user.name: Event.EventData.SubjectUserName
+      actor.user.domain: Event.EventData.SubjectDomainName
+      actor.user.uid: Event.EventData.SubjectUserSid
+    unmapped: [Event.EventData]
+
+  - name: local_group_member_added
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4732
+    # Group Management: Add User.
+    class: { class_uid: 3006, activity_id: 3 }
+    fields: *member
+    unmapped: [Event.EventData]
+
+  - name: universal_group_member_added
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4756
+    # Group Management: Add User.
+    class: { class_uid: 3006, activity_id: 3 }
+    fields: *member
+    unmapped: [Event.EventData]
+
+  - name: global_group_member_removed
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4729
+    # Group Management: Remove User.
+    class: { class_uid: 3006, activity_id: 4 }
+    fields: *member
+    unmapped: [Event.EventData]
+
+  - name: local_group_member_removed
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4733
+    # Group Management: Remove User.
+    class: { class_uid: 3006, activity_id: 4 }
+    fields: *member
+    unmapped: [Event.EventData]
+
+  - name: universal_group_member_removed
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4757
+    # Group Management: Remove User.
+    class: { class_uid: 3006, activity_id: 4 }
+    fields: *member
+    unmapped: [Event.EventData]
+
+  - name: scheduled_task_created
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4698
+    # Scheduled Job Activity: Create. The task's XML, with its actions and
+    # triggers, is kept under `unmapped` as `TaskContent`.
+    class: { class_uid: 1006, activity_id: 1 }
+    fields:
+      job.name: Event.EventData.TaskName
+      actor.user.name: Event.EventData.SubjectUserName
+      actor.user.domain: Event.EventData.SubjectDomainName
+      actor.user.uid: Event.EventData.SubjectUserSid
+    unmapped: [Event.EventData]
+
+  - name: log_cleared
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Eventlog
+      Event.System.EventID: 1102
+    # Event Log Activity: Clear.
+    class: { class_uid: 1008, activity_id: 1 }
+    fields:
+      actor.user.name: Event.UserData.LogFileCleared.SubjectUserName
+      actor.user.domain: Event.UserData.LogFileCleared.SubjectDomainName
+      actor.user.uid: Event.UserData.LogFileCleared.SubjectUserSid
+    unmapped: [Event.UserData.LogFileCleared]
