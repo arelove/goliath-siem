@@ -43,6 +43,10 @@ pub enum Framing {
     /// `msg=audit(time:serial)`, whether or not they are adjacent. Needs
     /// `auditd` decoding.
     AuditEvents,
+    /// Syslog messages framed as RFC 6587 describes, each either preceded by
+    /// its length in bytes and a space or ending at its line's end, as
+    /// senders over TCP write them. Needs a `syslog` decoding.
+    Syslog,
 }
 
 /// How a record becomes a field map.
@@ -55,6 +59,13 @@ pub enum Decoding {
     /// Linux audit records, `key=value` fields per line, as one object with
     /// each record under its type, such as `SYSCALL.exe` or `PATH.0.name`.
     Auditd,
+    /// A syslog message, RFC 5424 or RFC 3164, as one object with its
+    /// header's fields, such as `hostname` and `app_name`, and the text
+    /// after the header as `message`.
+    Syslog,
+    /// A syslog message whose text after the header is JSON, decoded under
+    /// `message`, for applications that log JSON over syslog.
+    SyslogJson,
 }
 
 /// One kind of record, and how it maps to an OCSF class.

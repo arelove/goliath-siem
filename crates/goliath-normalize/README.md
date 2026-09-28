@@ -33,6 +33,12 @@ produce.
 | `sources/entra.yaml` | Microsoft Entra ID interactive, non-interactive, and service principal sign-ins, as Azure Monitor diagnostic settings write them, as OCSF Authentication |
 | `sources/falco.yaml` | Falco alerts on system calls and the Kubernetes audit log, as `json_output` writes them, as OCSF Detection Findings |
 
+A definition for a source carried by syslog uses `framing: syslog`, which
+reads messages framed by length or by line as RFC 6587 describes, and
+`decoding: syslog`, which gives the RFC 5424 or RFC 3164 header as fields such
+as `hostname` and `app_name` and the rest as `message`; `syslog-json` decodes
+that rest as JSON.
+
 The Sysmon definition feeds the SigmaHQ regression run in `goliath-match`, so
 every one of its 357 cases also tests this crate on real recorded attacks.
 
