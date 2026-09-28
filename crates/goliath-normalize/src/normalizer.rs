@@ -65,6 +65,9 @@ enum Source {
 /// named by writing it out: `output_fields.proc.cmdline`. At each object a
 /// member named by the next segment alone is tried first, then by the next
 /// two joined with a dot, and so on.
+///
+/// In an array, a segment that is a number names the element at that index,
+/// counted from 0: `target.1.displayName` is the name of the second target.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct SourcePath {
     text: String,
@@ -103,6 +106,10 @@ impl SourcePath {
 fn find<'a>(value: &'a Value, segments: &[String]) -> Option<&'a Value> {
     if segments.is_empty() {
         return Some(value);
+    }
+    if let Some(items) = value.as_array() {
+        let index: usize = segments[0].parse().ok()?;
+        return find(items.get(index)?, &segments[1..]);
     }
     let object = value.as_object()?;
     let mut name = String::new();
@@ -506,6 +513,9 @@ impl Normalizer {
     /// definition unwraps.
     fn records(&self, record: &Value, raw: &[u8], out: &mut impl FnMut(Outcome)) {
         let batch = self.unwrap.as_ref().and_then(|member| {
+            if member == "." {
+                return record.as_array();
+            }
             let object = record.as_object().filter(|object| object.len() == 1)?;
             object.get(member)?.as_array()
         });

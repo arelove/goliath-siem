@@ -704,3 +704,45 @@ fn an_ip_address_is_written_only_when_it_is_one() {
         DefinitionError::Type { .. }
     ));
 }
+
+#[test]
+fn a_number_in_a_path_names_an_element_of_an_array() {
+    let definition = MINIMAL
+        .replace(
+            "when: { type: login }",
+            "when: { type: login, targets.1.kind: group }",
+        )
+        .replace("user.name: who", "user.name: targets.0.name");
+    let Outcome::Event(normalized) = one(
+        &definition,
+        r#"{"type": "login", "targets": [{"kind": "user", "name": "adam"}, {"kind": "group", "name": "admins"}]}"#,
+    ) else {
+        panic!("not an event");
+    };
+    assert_eq!(normalized.event["user"]["name"], "adam");
+    let Outcome::DeadLetter(_) = one(
+        &definition,
+        r#"{"type": "login", "targets": [{"name": "adam"}]}"#,
+    ) else {
+        panic!("a missing element matches no kind");
+    };
+}
+
+#[test]
+fn a_record_that_is_an_array_is_unwrapped_by_dot() {
+    let definition = MINIMAL
+        .replace("framing: lines", "framing: json-values")
+        .replace("common:", "unwrap: \".\"\ncommon:");
+    let all = outcomes(
+        &definition,
+        r#"[{"type": "login", "who": "adam"}, {"type": "login", "who": "eve"}] {"type": "login", "who": "bob"}"#,
+    );
+    let names: Vec<_> = all
+        .iter()
+        .map(|outcome| match outcome {
+            Outcome::Event(normalized) => normalized.event["user"]["name"].clone(),
+            other => panic!("{other:?}"),
+        })
+        .collect();
+    assert_eq!(names, ["adam", "eve", "bob"]);
+}
