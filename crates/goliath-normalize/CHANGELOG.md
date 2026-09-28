@@ -9,6 +9,15 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.10] - 2026-09-28
+
+
+### Added
+
+- Unwrap a batch of records, and IP addresses checked as such
+- Entra unwraps Event Hub batches
+- An AWS CloudTrail definition, console sign-ins and API calls
+
 ## [0.2.9] - 2026-09-28
 
 
