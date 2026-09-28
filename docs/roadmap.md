@@ -198,6 +198,7 @@ developer machine, with the lag of every reader bounded.
 
 Files dropped in an inbox prove the path; companies send logs over the
 network, from sources they already run.
+Designed in [ADR-0018](adr/0018-collection.md).
 
 | Deliverable | Detail |
 | --- | --- |
