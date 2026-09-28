@@ -9,6 +9,13 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.11] - 2026-09-28
+
+
+### Added
+
+- Array elements by index in paths, and records that are arrays unwrapped
+
 ## [0.2.10] - 2026-09-28
 
 
