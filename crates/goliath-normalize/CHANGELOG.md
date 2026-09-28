@@ -9,6 +9,13 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-09-28
+
+
+### Added
+
+- A normalizer tells its definition's framing
+
 ## [0.2.6] - 2026-09-28
 
 
