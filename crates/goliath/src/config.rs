@@ -74,23 +74,35 @@ pub enum Role {
     Receiver,
 }
 
-/// The receiver: where it listens.
+/// The receiver: where it listens, and with what certificate.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ReceiverConfig {
-    /// The address to listen on; `127.0.0.1:8514` by default. Until the
-    /// receiver serves TLS itself, only a loopback address is accepted:
-    /// put a proxy that terminates TLS in front of it.
+    /// The address to listen on; `127.0.0.1:8514` by default. An address
+    /// beyond loopback needs `tls`.
     #[serde(default = "default_receiver_listen")]
     pub listen: SocketAddr,
+    /// The certificate to serve HTTPS with; plain HTTP if left out.
+    pub tls: Option<TlsConfig>,
 }
 
 impl Default for ReceiverConfig {
     fn default() -> Self {
         Self {
             listen: default_receiver_listen(),
+            tls: None,
         }
     }
+}
+
+/// A certificate and its private key, each a PEM file.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TlsConfig {
+    /// The certificate chain, the listener's own certificate first.
+    pub certificate: PathBuf,
+    /// The certificate's private key.
+    pub key: PathBuf,
 }
 
 fn default_receiver_listen() -> SocketAddr {
@@ -353,6 +365,10 @@ impl Config {
         for file in files.into_iter().flatten() {
             *file = base.join(&*file);
         }
+        if let Some(tls) = &mut config.receiver.tls {
+            tls.certificate = base.join(&tls.certificate);
+            tls.key = base.join(&tls.key);
+        }
         for source in &mut config.sources {
             if let Some(inbox) = &mut source.inbox {
                 *inbox = base.join(&*inbox);
@@ -446,7 +462,7 @@ impl Config {
     }
 
     /// Checks the receiver: something to receive, tokens that each name one
-    /// source, and an address it may listen on without TLS.
+    /// source, and TLS for an address beyond loopback.
     fn check_receiver(&self) -> Result<(), RunError> {
         let mut tokens = BTreeSet::new();
         for source in &self.sources {
@@ -464,9 +480,9 @@ impl Config {
                 "the receiver role needs a source with `http = { token_file = ... }`".to_owned(),
             ));
         }
-        if !self.receiver.listen.ip().is_loopback() {
+        if !self.receiver.listen.ip().is_loopback() && self.receiver.tls.is_none() {
             return Err(RunError::Config(format!(
-                "the receiver does not serve TLS yet, so it listens on loopback only, not {}; put a proxy that terminates TLS in front of it",
+                "the receiver listens on {}, beyond this host, so [receiver] needs `tls = {{ certificate = ..., key = ... }}`",
                 self.receiver.listen
             )));
         }
@@ -710,7 +726,7 @@ database = "goliath"
     }
 
     #[test]
-    fn a_receiver_needs_a_source_it_can_receive_distinct_tokens_and_loopback() {
+    fn a_receiver_needs_a_source_distinct_tokens_and_tls_beyond_loopback() {
         let directory =
             std::env::temp_dir().join(format!("goliath-receiver-{}", std::process::id()));
         std::fs::create_dir_all(&directory).unwrap();
@@ -762,7 +778,13 @@ http = {{ token_file = '{}' }}
         let exposed = parse(&config(&one, &two, "0.0.0.0:8514"))
             .unwrap_err()
             .to_string();
-        assert!(exposed.contains("loopback"), "{exposed}");
+        assert!(exposed.contains("needs `tls"), "{exposed}");
+        let served = parse(&config(&one, &two, "0.0.0.0:8514").replace(
+            "[receiver]",
+            "[receiver]\ntls = { certificate = 'cert.pem', key = 'key.pem' }",
+        ))
+        .unwrap();
+        assert!(served.receiver.tls.unwrap().key.ends_with("key.pem"));
         let nothing = parse(
             "roles = [\"receiver\"]
 data = \"data\"

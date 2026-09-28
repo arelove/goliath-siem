@@ -16,6 +16,7 @@ mod metrics;
 pub mod raw;
 mod receiver;
 mod roles;
+mod tls;
 mod topics;
 
 use std::future::Future;
@@ -204,8 +205,12 @@ async fn start_pipeline<T: Topics>(
         }
     }
     if config.roles.contains(&Role::Receiver) {
+        let tls = match &config.receiver.tls {
+            Some(tls) => Some(tls::acceptor(tls, &[b"http/1.1"])?),
+            None => None,
+        };
         let server =
-            receiver::Server::bind(config.receiver.listen, over_http, metrics.clone()).await?;
+            receiver::Server::bind(config.receiver.listen, tls, over_http, metrics.clone()).await?;
         roles.spawn(server.serve(stopped.clone()));
     }
     Ok(())

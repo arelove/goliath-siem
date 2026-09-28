@@ -9,6 +9,8 @@
 //!   with `Retry-After` if the topic stayed full for 10 seconds.
 //! - `GET /health`: whether the receiver is up; needs no token.
 //!
+//! With a certificate, the routes are served over HTTPS only.
+//!
 //! A batch becomes one raw record, stamped with when it was received, as a
 //! file the collector takes does.
 
@@ -29,10 +31,12 @@ use serde_json::json;
 use subtle::ConstantTimeEq;
 use tokio::net::TcpListener;
 use tokio::sync::watch;
+use tokio_rustls::TlsAcceptor;
 use tracing::{info, warn};
 
 use crate::RunError;
 use crate::metrics::{Metrics, Received};
+use crate::tls::TlsListener;
 
 /// Bytes a request body may hold, as sent.
 pub(crate) const MAX_BODY: usize = 16 << 20;
@@ -57,24 +61,35 @@ struct Shared<S> {
 
 /// The receiver, bound to its address and ready to serve.
 pub(crate) struct Server {
-    listener: TcpListener,
+    listener: Listener,
     app: Router,
 }
 
+enum Listener {
+    Plain(TcpListener),
+    Tls(TlsListener),
+}
+
 impl Server {
-    /// Binds `listen`, so that a port in use fails at start.
+    /// Binds `listen`, so that a port in use fails at start, serving HTTPS
+    /// if `tls` is given.
     ///
     /// # Errors
     ///
     /// Returns [`RunError::Io`] if the address cannot be bound.
     pub(crate) async fn bind<S: Sender + Send + Sync + 'static>(
         listen: SocketAddr,
+        tls: Option<TlsAcceptor>,
         sources: BTreeMap<String, Source<S>>,
         metrics: Metrics,
     ) -> Result<Self, RunError> {
-        let listener = TcpListener::bind(listen)
-            .await
-            .map_err(|error| RunError::Io(format!("listening on {listen}: {error}")))?;
+        let failed =
+            |error: std::io::Error| RunError::Io(format!("listening on {listen}: {error}"));
+        let listener = TcpListener::bind(listen).await.map_err(failed)?;
+        let listener = match tls {
+            Some(acceptor) => Listener::Tls(TlsListener::new(listener, acceptor).map_err(failed)?),
+            None => Listener::Plain(listener),
+        };
         Ok(Self {
             listener,
             app: app(Shared { sources, metrics }),
@@ -87,21 +102,31 @@ impl Server {
     ///
     /// Returns [`RunError::Io`] if serving fails.
     pub(crate) async fn serve(self, mut stop: watch::Receiver<bool>) -> Result<(), RunError> {
-        let address = self
-            .listener
-            .local_addr()
-            .map_err(|error| RunError::Io(error.to_string()))?;
-        info!(%address, "receiver listening");
-        axum::serve(self.listener, self.app)
-            .with_graceful_shutdown(async move {
-                while !*stop.borrow_and_update() {
-                    if stop.changed().await.is_err() {
-                        break;
-                    }
+        let stopped = async move {
+            while !*stop.borrow_and_update() {
+                if stop.changed().await.is_err() {
+                    break;
                 }
-            })
-            .await
-            .map_err(|error| RunError::Io(format!("serving the receiver: {error}")))
+            }
+        };
+        let served = match self.listener {
+            Listener::Plain(listener) => {
+                let address = listener
+                    .local_addr()
+                    .map_err(|error| RunError::Io(error.to_string()))?;
+                info!(%address, "receiver listening");
+                axum::serve(listener, self.app)
+                    .with_graceful_shutdown(stopped)
+                    .await
+            }
+            Listener::Tls(listener) => {
+                info!(address = %listener.address(), "receiver listening with TLS");
+                axum::serve(listener, self.app)
+                    .with_graceful_shutdown(stopped)
+                    .await
+            }
+        };
+        served.map_err(|error| RunError::Io(format!("serving the receiver: {error}")))
     }
 }
 
@@ -417,5 +442,85 @@ mod tests {
                 .len(),
             1
         );
+    }
+
+    #[tokio::test]
+    async fn with_a_certificate_it_serves_https_only() {
+        use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+        use tokio_rustls::rustls::pki_types::{CertificateDer, ServerName};
+        use tokio_rustls::rustls::{ClientConfig, RootCertStore};
+
+        let issued = rcgen::generate_simple_self_signed(vec!["localhost".to_owned()]).unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let tls = crate::config::TlsConfig {
+            certificate: directory.path().join("cert.pem"),
+            key: directory.path().join("key.pem"),
+        };
+        std::fs::write(&tls.certificate, issued.cert.pem()).unwrap();
+        std::fs::write(&tls.key, issued.signing_key.serialize_pem()).unwrap();
+        let acceptor = crate::tls::acceptor(&tls, &[b"http/1.1"]).unwrap();
+
+        let topic = MemoryTopic::new(NonZeroUsize::new(10).unwrap());
+        let mut reader = topic.subscribe("normalizer");
+        let mut sources = BTreeMap::new();
+        sources.insert(
+            "falco".to_owned(),
+            Source {
+                token: TOKEN.to_owned(),
+                raw: topic.sender(),
+            },
+        );
+        let server = Server::bind(
+            SocketAddr::from(([127, 0, 0, 1], 0)),
+            Some(acceptor),
+            sources,
+            Metrics::new(),
+        )
+        .await
+        .unwrap();
+        let Listener::Tls(listener) = &server.listener else {
+            panic!("not listening with TLS");
+        };
+        let address = listener.address();
+        let (stop, stopped) = watch::channel(false);
+        let serving = tokio::spawn(server.serve(stopped));
+
+        let mut roots = RootCertStore::empty();
+        roots
+            .add(CertificateDer::from(issued.cert.der().to_vec()))
+            .unwrap();
+        let provider = Arc::new(tokio_rustls::rustls::crypto::ring::default_provider());
+        let client = ClientConfig::builder_with_provider(provider)
+            .with_safe_default_protocol_versions()
+            .unwrap()
+            .with_root_certificates(roots)
+            .with_no_client_auth();
+        let connector = tokio_rustls::TlsConnector::from(Arc::new(client));
+        let body = "{\"a\":1}\n";
+        let request = format!(
+            "POST /ingest/falco HTTP/1.1\r\nhost: localhost\r\nauthorization: Bearer {TOKEN}\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+            body.len()
+        );
+        let stream = tokio::net::TcpStream::connect(address).await.unwrap();
+        let mut stream = connector
+            .connect(ServerName::try_from("localhost").unwrap(), stream)
+            .await
+            .unwrap();
+        stream.write_all(request.as_bytes()).await.unwrap();
+        let mut answer = String::new();
+        stream.read_to_string(&mut answer).await.unwrap_or_default();
+        assert!(answer.starts_with("HTTP/1.1 200"), "{answer}");
+        let delivered = reader.receive(10, Duration::from_millis(10)).await.unwrap();
+        assert_eq!(crate::raw::read(&delivered[0].payload).1, body.as_bytes());
+
+        // Plain HTTP to the same port gets no answer.
+        let mut plain = tokio::net::TcpStream::connect(address).await.unwrap();
+        plain.write_all(request.as_bytes()).await.unwrap();
+        let mut answer = Vec::new();
+        let _ = plain.read_to_end(&mut answer).await;
+        assert!(!answer.starts_with(b"HTTP/1.1 200"));
+
+        stop.send(true).unwrap();
+        serving.await.unwrap().unwrap();
     }
 }
