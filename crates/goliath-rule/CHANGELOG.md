@@ -14,7 +14,6 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ### Added
 
-- The Security mapping covers the new events, 120 of 145 SigmaHQ rules load
 - The Security mapping reads the fields of 4648
 
 ## [0.2.1] - 2026-09-28
