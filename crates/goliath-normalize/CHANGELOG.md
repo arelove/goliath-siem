@@ -9,6 +9,14 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.9] - 2026-09-28
+
+
+### Added
+
+- Windows Security definition version 2, 48 event IDs
+- Windows Security reads 4648, logons with explicit credentials
+
 ## [0.2.8] - 2026-09-28
 
 
