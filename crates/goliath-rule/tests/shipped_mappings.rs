@@ -90,3 +90,29 @@ fn every_sysmon_category_has_its_ocsf_class() {
         );
     }
 }
+
+#[test]
+fn the_security_log_is_selected_by_its_service_and_restricted_to_its_log() {
+    let set = MappingSet::from_yaml(SIGMA_WINDOWS).expect("loads");
+    let security = LogSourceSelector {
+        category: None,
+        product: Some("windows".to_owned()),
+        service: Some("security".to_owned()),
+    };
+    let entry = set.select(&security).expect("selected");
+    let class = |path: &str| &entry.class[&FieldPath::parse(path).expect("valid path")];
+    assert_eq!(
+        class("metadata.log_name"),
+        &ClassValue::String("Security".to_owned())
+    );
+    assert_eq!(class("device.os.type_id"), &ClassValue::Integer(100));
+    for field in [
+        "EventID",
+        "TargetUserName",
+        "SubjectUserName",
+        "IpAddress",
+        "LogonType",
+    ] {
+        assert!(entry.fields.contains_key(field), "{field} is not mapped");
+    }
+}
