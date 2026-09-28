@@ -69,6 +69,12 @@ max_delay_ms = 1000
 # default; any other address needs a certificate and key, PEM files, and is
 # then served over HTTPS only. See docs/adr/0018-collection.md.
 #
+# The same listener takes OpenTelemetry logs, `POST /v1/logs` as OTLP/HTTP
+# sends them, protobuf or JSON, for the source whose token the request
+# carries: each log record becomes a JSON line with its time, severity,
+# body, attributes, and resource, for a definition with `lines` framing and
+# `json` decoding.
+#
 # [receiver]
 # listen = "0.0.0.0:8514"
 # tls = { certificate = "/etc/goliath/receiver.crt", key = "/etc/goliath/receiver.key" }

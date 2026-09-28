@@ -448,6 +448,103 @@ max_delay_ms = 100
         .unwrap();
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn otlp_logs_reach_clickhouse() {
+    let Some(url) = clickhouse_url() else {
+        return;
+    };
+    let user = clickhouse_user();
+    let database = format!("goliath_test_otlp_{}", std::process::id());
+    let directory = tempfile::tempdir().unwrap();
+    let token = "0a1b2c3d4e5f6a7b".repeat(4);
+    std::fs::write(directory.path().join("auth_token"), &token).unwrap();
+    std::fs::write(
+        directory.path().join("auth.yaml"),
+        r"
+name: auth
+version: 1
+framing: lines
+decoding: json
+common:
+  time: { from: time, as: timestamp }
+  device.hostname: resource.host.name
+  message: body
+kinds:
+  - name: login
+    when: { event_name: login }
+    class: { class_uid: 3002, activity_id: 1 }
+    fields:
+      user.name: attributes.user.name
+",
+    )
+    .unwrap();
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let path = directory.path().join("goliath.toml");
+    std::fs::write(
+        &path,
+        format!(
+            r#"
+roles = ["receiver", "normalizer", "writer"]
+data = "data"
+
+[receiver]
+listen = "127.0.0.1:{port}"
+
+[[sources]]
+definition = "auth.yaml"
+http = {{ token_file = "auth_token" }}
+
+[store]
+url = "{url}"
+database = "{database}"
+user = "{user}"
+password_env = "GOLIATH_CLICKHOUSE_PASSWORD"
+
+[writer]
+max_rows = 1000
+max_delay_ms = 100
+"#
+        ),
+    )
+    .unwrap();
+
+    let (stop, running) = start(Config::load(&path).unwrap());
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while tokio::net::TcpStream::connect(("127.0.0.1", port))
+        .await
+        .is_err()
+    {
+        assert!(Instant::now() < deadline, "the receiver did not listen");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let login = |name: &str| {
+        format!(
+            r#"{{"timeUnixNano":"1790589600000000000","eventName":"login","body":{{"stringValue":"signed in"}},"attributes":[{{"key":"user.name","value":{{"stringValue":"{name}"}}}}]}}"#
+        )
+    };
+    let export = format!(
+        r#"{{"resourceLogs":[{{"resource":{{"attributes":[{{"key":"host.name","value":{{"stringValue":"web-01"}}}}]}},"scopeLogs":[{{"logRecords":[{},{}]}}]}}]}}"#,
+        login("adam"),
+        login("eve")
+    );
+    let (status, answer) = http(port, "POST", "/v1/logs", &token, &export).await;
+    assert_eq!(status, 200, "{answer}");
+    let client = connect(&url).with_database(&database);
+    eventually(&client, "SELECT count() FROM events", 2).await;
+
+    stop.send(()).unwrap();
+    running.await.unwrap().unwrap();
+    connect(&url)
+        .query(&format!("DROP DATABASE IF EXISTS {database}"))
+        .execute()
+        .await
+        .unwrap();
+}
+
 /// The value of the sample `name` on the platform's metrics endpoint.
 async fn metric(port: u16, name: &str) -> Option<f64> {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};

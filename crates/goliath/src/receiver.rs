@@ -7,6 +7,10 @@
 //!   framing, such as JSON lines, optionally gzip-encoded, with the source's
 //!   bearer token. Answered `200` only once the batch is in the pipe; `503`
 //!   with `Retry-After` if the topic stayed full for 10 seconds.
+//! - `POST /v1/logs`: an OTLP/HTTP logs export request, protobuf or JSON,
+//!   optionally gzip-encoded, for the source whose bearer token it carries.
+//!   Its log records become JSON lines, as `crate::otlp` describes, and are
+//!   answered as `/ingest` is, with an empty export response on success.
 //! - `GET /health`: whether the receiver is up; needs no token.
 //!
 //! With a certificate, the routes are served over HTTPS only.
@@ -36,6 +40,7 @@ use tracing::{info, warn};
 
 use crate::RunError;
 use crate::metrics::{Metrics, Received};
+use crate::otlp;
 use crate::tls::TlsListener;
 
 /// Bytes a request body may hold, as sent.
@@ -133,6 +138,7 @@ impl Server {
 fn app<S: Sender + Send + Sync + 'static>(shared: Shared<S>) -> Router {
     Router::new()
         .route("/ingest/{source}", post(ingest::<S>))
+        .route("/v1/logs", post(otlp_logs::<S>))
         .route(
             "/health",
             get(|| async { axum::Json(json!({ "status": "ok" })) }),
@@ -164,12 +170,7 @@ async fn ingest<S: Sender + Send + Sync + 'static>(
             "no source by that name takes records over HTTP",
         );
     };
-    let given = headers
-        .get(header::AUTHORIZATION)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.strip_prefix("Bearer "))
-        .unwrap_or_default();
-    if !bool::from(given.as_bytes().ct_eq(source.token.as_bytes())) {
+    if !bool::from(bearer(&headers).as_bytes().ct_eq(source.token.as_bytes())) {
         shared.metrics.received(&name, Received::Unauthorized, 0);
         return answer(
             StatusCode::UNAUTHORIZED,
@@ -187,34 +188,118 @@ async fn ingest<S: Sender + Send + Sync + 'static>(
         shared.metrics.received(&name, Received::Refused, 0);
         return answer(StatusCode::BAD_REQUEST, "the body holds no records");
     }
+    take(&shared, &name, source, bytes)
+        .await
+        .unwrap_or_else(|| answer(StatusCode::OK, "taken"))
+}
+
+/// Sends `bytes` to the source's raw topic as one raw record, waiting up to
+/// [`WAIT`] while the topic is full. Returns the answer that says why not,
+/// or nothing once the pipe has the record.
+async fn take<S: Sender>(
+    shared: &Shared<S>,
+    name: &str,
+    source: &Source<S>,
+    bytes: Vec<u8>,
+) -> Option<Response> {
     let size = bytes.len();
     let record = crate::raw::stamp(crate::raw::now(), &bytes);
     let started = std::time::Instant::now();
     match tokio::time::timeout(WAIT, source.raw.send(vec![record])).await {
         Ok(Ok(())) => {
             shared.metrics.waited(started.elapsed());
-            shared.metrics.received(&name, Received::Taken, size);
-            answer(StatusCode::OK, "taken")
+            shared.metrics.received(name, Received::Taken, size);
+            None
         }
         Ok(Err(error)) => {
             warn!(source = name, %error, "the raw topic refused a batch");
-            shared.metrics.received(&name, Received::Failed, 0);
-            answer(
-                StatusCode::SERVICE_UNAVAILABLE,
-                "the pipe could not take the batch",
+            shared.metrics.received(name, Received::Failed, 0);
+            Some(
+                answer(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "the pipe could not take the batch",
+                )
+                .with_retry(),
             )
-            .with_retry()
         }
         Err(_) => {
             shared.metrics.waited(started.elapsed());
-            shared.metrics.received(&name, Received::Busy, 0);
-            answer(
-                StatusCode::SERVICE_UNAVAILABLE,
-                "the platform is behind; send the batch again later",
+            shared.metrics.received(name, Received::Busy, 0);
+            Some(
+                answer(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "the platform is behind; send the batch again later",
+                )
+                .with_retry(),
             )
-            .with_retry()
         }
     }
+}
+
+/// `POST /v1/logs`: an OTLP/HTTP logs export request, for the source whose
+/// token it carries, its records as JSON lines.
+async fn otlp_logs<S: Sender + Send + Sync + 'static>(
+    State(shared): State<Arc<Shared<S>>>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    let given = bearer(&headers);
+    // Every token is compared, so that the time taken tells nothing.
+    let mut found = None;
+    for (name, source) in &shared.sources {
+        if bool::from(given.as_bytes().ct_eq(source.token.as_bytes())) {
+            found = Some((name, source));
+        }
+    }
+    let Some((name, source)) = found else {
+        return answer(
+            StatusCode::UNAUTHORIZED,
+            "a source's bearer token is needed",
+        );
+    };
+    let Some(encoding) = headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(otlp::Encoding::of)
+    else {
+        shared.metrics.received(name, Received::Refused, 0);
+        return answer(
+            StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            "OTLP is taken as application/x-protobuf or application/json",
+        );
+    };
+    let lines = decode(&headers, &body)
+        .map_err(|(status, message)| (status, message.to_owned()))
+        .and_then(|bytes| {
+            otlp::lines(&bytes, encoding).map_err(|error| (StatusCode::BAD_REQUEST, error))
+        });
+    let (lines, count) = match lines {
+        Ok(found) => found,
+        Err((status, message)) => {
+            shared.metrics.received(name, Received::Refused, 0);
+            return answer(status, &message);
+        }
+    };
+    if count > 0
+        && let Some(refused) = take(&shared, name, source, lines).await
+    {
+        return refused;
+    }
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, encoding.content_type())],
+        encoding.success(),
+    )
+        .into_response()
+}
+
+/// The bearer token in `headers`, or nothing.
+fn bearer(headers: &HeaderMap) -> &str {
+    headers
+        .get(header::AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.strip_prefix("Bearer "))
+        .unwrap_or_default()
 }
 
 trait WithRetry {
@@ -442,6 +527,62 @@ mod tests {
                 .len(),
             1
         );
+    }
+
+    fn otlp(token: &str, content_type: &str, body: Vec<u8>) -> Request<Body> {
+        Request::post("/v1/logs")
+            .header("authorization", format!("Bearer {token}"))
+            .header("content-type", content_type)
+            .body(Body::from(body))
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn otlp_logs_reach_the_raw_topic_of_the_source_whose_token_they_carry() {
+        let (app, topic) = receiver(10);
+        let mut reader = topic.subscribe("normalizer");
+        let body = br#"{"resourceLogs":[{"scopeLogs":[{"logRecords":[
+            {"body":{"stringValue":"one"}},{"body":{"stringValue":"two"}}]}]}]}"#;
+        let response = app
+            .clone()
+            .oneshot(otlp(TOKEN, "application/json", body.to_vec()))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "application/json");
+        let answer = response.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(&answer[..], b"{}");
+        let delivered = reader.receive(10, Duration::from_millis(10)).await.unwrap();
+        assert_eq!(
+            crate::raw::read(&delivered[0].payload).1,
+            b"{\"body\":\"one\"}\n{\"body\":\"two\"}\n"
+        );
+
+        // An empty protobuf request is an empty export: answered, nothing sent.
+        let response = app
+            .clone()
+            .oneshot(otlp(TOKEN, "application/x-protobuf", Vec::new()))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(
+            reader
+                .receive(10, Duration::from_millis(10))
+                .await
+                .unwrap()
+                .is_empty()
+        );
+
+        let (status, _, _) = call(
+            app.clone(),
+            otlp("wrong", "application/json", body.to_vec()),
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        let (status, _, _) = call(app.clone(), otlp(TOKEN, "text/plain", body.to_vec())).await;
+        assert_eq!(status, StatusCode::UNSUPPORTED_MEDIA_TYPE);
+        let (status, _, _) = call(app, otlp(TOKEN, "application/json", b"[1]".to_vec())).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
     }
 
     #[tokio::test]

@@ -19,7 +19,9 @@ goliath-ocsf = { path = "../goliath-ocsf", version = "0.1.2" }
 goliath-pipe = { path = "../goliath-pipe", version = "0.1.0" }
 goliath-search = { path = "../goliath-search", version = "0.1.0" }
 goliath-store = { path = "../goliath-store", version = "0.1.0" }
+jiff = { version = "0.2", default-features = false, features = ["std"] }
 prometheus-client = "0.25"
+prost = "0.14"
 serde.workspace = true
 serde_json.workspace = true
 subtle = "2.6"
