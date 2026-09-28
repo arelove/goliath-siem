@@ -1,0 +1,118 @@
+# AWS CloudTrail management events, as CloudTrail delivers them to S3: a
+# file holding `{"Records": [...]}`, which the definition unwraps. Events
+# one after another, as CloudWatch Logs exports them, are read too.
+#
+# A console sign-in becomes an OCSF Authentication; every other call an API
+# Activity, Read when CloudTrail marks it read-only and Other when it
+# changes something, since which change it makes is in the operation's
+# name, such as `CreateUser` or `DeleteBucket`, not in a field.
+#
+# Where an AWS service made the call, CloudTrail writes the service's name,
+# such as `ec2.amazonaws.com`, in `sourceIPAddress`: such calls write it as
+# the source's domain, and every other call as its address, which is
+# checked to be one.
+#
+# Every top-level member not mapped below is kept under `unmapped` by its
+# CloudTrail name, whole, including `userIdentity`, `requestParameters`,
+# `responseElements`, and `resources`, which rules compare as CloudTrail
+# writes them.
+
+name: cloudtrail
+version: 1
+framing: json-values
+decoding: json
+unwrap: Records
+
+common:
+  time: { from: eventTime, as: timestamp }
+  severity_id: { value: 1 }
+  metadata.version: { value: "1.5.0" }
+  metadata.product.name: { value: AWS CloudTrail }
+  metadata.product.vendor_name: { value: AWS }
+  metadata.uid: eventID
+  metadata.log_name: eventCategory
+  metadata.event_code: eventType
+  cloud.provider: { value: AWS }
+  cloud.region: awsRegion
+  cloud.account.uid: recipientAccountId
+  actor.user.type: userIdentity.type
+  actor.user.uid: userIdentity.principalId
+  actor.user.uid_alt: userIdentity.arn
+  actor.user.name: userIdentity.userName
+  actor.user.account.uid: userIdentity.accountId
+  actor.user.credential_uid: userIdentity.accessKeyId
+  actor.session.issuer: userIdentity.sessionContext.sessionIssuer.arn
+  actor.invoked_by: userIdentity.invokedBy
+  http_request.user_agent: userAgent
+
+kinds:
+  - name: console_login
+    when:
+      eventName: ConsoleLogin
+    # Authentication: Logon.
+    class: { class_uid: 3002, activity_id: 1 }
+    fields:
+      src_endpoint.ip: { from: sourceIPAddress, as: ip }
+      status: responseElements.ConsoleLogin
+      status_id:
+        from: responseElements.ConsoleLogin
+        map: { Success: 1, Failure: 2 }
+        otherwise: 99
+      status_detail: errorMessage
+      service.name: eventSource
+    unmapped: ["."]
+
+  - name: service_read
+    when:
+      userIdentity.type: AWSService
+      readOnly: true
+    # API Activity: Read, by an AWS service.
+    class: { class_uid: 6003, activity_id: 2 }
+    fields: &service
+      src_endpoint.domain: sourceIPAddress
+      api.operation: eventName
+      api.service.name: eventSource
+      api.request.uid: requestID
+      api.response.error: errorCode
+      api.response.message: errorMessage
+    unmapped: ["."]
+
+  - name: service_write
+    when:
+      userIdentity.type: AWSService
+      readOnly: false
+    # API Activity: Other, by an AWS service.
+    class: { class_uid: 6003, activity_id: 99 }
+    fields: *service
+    unmapped: ["."]
+
+  - name: service_event
+    when:
+      eventType: AwsServiceEvent
+    # API Activity: Other: an event AWS itself raised, such as a Health
+    # notice, which names no caller and has no `readOnly`.
+    class: { class_uid: 6003, activity_id: 99 }
+    fields: *service
+    unmapped: ["."]
+
+  - name: read
+    when:
+      readOnly: true
+    # API Activity: Read.
+    class: { class_uid: 6003, activity_id: 2 }
+    fields: &call
+      src_endpoint.ip: { from: sourceIPAddress, as: ip }
+      api.operation: eventName
+      api.service.name: eventSource
+      api.request.uid: requestID
+      api.response.error: errorCode
+      api.response.message: errorMessage
+    unmapped: ["."]
+
+  - name: write
+    when:
+      readOnly: false
+    # API Activity: Other: a change, named by the operation.
+    class: { class_uid: 6003, activity_id: 99 }
+    fields: *call
+    unmapped: ["."]

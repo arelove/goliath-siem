@@ -1,0 +1,64 @@
+{
+  "Records": [
+    {
+      "eventVersion": "1.10",
+      "userIdentity": {
+        "type": "AssumedRole",
+        "principalId": "AROAEXAMPLEOPS000001:jane",
+        "arn": "arn:aws:sts::111122223333:assumed-role/ops/jane",
+        "accountId": "111122223333",
+        "accessKeyId": "ASIAEXAMPLEJANE00001",
+        "sessionContext": {
+          "sessionIssuer": {
+            "type": "Role",
+            "principalId": "AROAEXAMPLEOPS000001",
+            "arn": "arn:aws:iam::111122223333:role/ops",
+            "accountId": "111122223333",
+            "userName": "ops"
+          },
+          "attributes": {
+            "creationDate": "2026-09-28T10:55:00Z",
+            "mfaAuthenticated": "true"
+          }
+        }
+      },
+      "eventTime": "2026-09-28T11:00:10Z",
+      "eventSource": "sts.amazonaws.com",
+      "eventName": "AssumeRole",
+      "awsRegion": "eu-central-1",
+      "sourceIPAddress": "cloudformation.amazonaws.com",
+      "userAgent": "cloudformation.amazonaws.com",
+      "requestParameters": null,
+      "responseElements": null,
+      "requestID": "7f3c1a2b-0000-4000-8000-000000000010",
+      "eventID": "e1d2c3b4-0000-4000-8000-000000000010",
+      "eventType": "AwsApiCall",
+      "managementEvent": true,
+      "recipientAccountId": "111122223333",
+      "eventCategory": "Management",
+      "readOnly": false
+    },
+    {
+      "eventVersion": "1.10",
+      "userIdentity": {
+        "accountId": "111122223333",
+        "invokedBy": "health.amazonaws.com"
+      },
+      "eventTime": "2026-09-28T11:00:11Z",
+      "eventSource": "health.amazonaws.com",
+      "eventName": "AWSServiceEventExample",
+      "awsRegion": "eu-central-1",
+      "sourceIPAddress": "203.0.113.24",
+      "userAgent": "aws-cli/2.17.0 Python/3.12.6 Linux/6.8.0 exe/x86_64.ubuntu.24",
+      "requestParameters": null,
+      "responseElements": null,
+      "requestID": "7f3c1a2b-0000-4000-8000-000000000011",
+      "eventID": "e1d2c3b4-0000-4000-8000-000000000011",
+      "eventType": "AwsServiceEvent",
+      "managementEvent": true,
+      "recipientAccountId": "111122223333",
+      "eventCategory": "Management"
+    }
+  ]
+}
+{"Records": [{"eventName": "ListBuckets", "readOnly": true

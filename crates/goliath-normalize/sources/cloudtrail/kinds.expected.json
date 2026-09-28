@@ -1,0 +1,532 @@
+[
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "user": {
+          "account": {
+            "uid": "111122223333"
+          },
+          "name": "adam",
+          "type": "IAMUser",
+          "uid": "AIDAEXAMPLEADAM00001",
+          "uid_alt": "arn:aws:iam::111122223333:user/adam"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3002,
+      "cloud": {
+        "account": {
+          "uid": "111122223333"
+        },
+        "provider": "AWS",
+        "region": "eu-central-1"
+      },
+      "http_request": {
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0"
+      },
+      "metadata": {
+        "event_code": "AwsConsoleSignIn",
+        "log_name": "Management",
+        "product": {
+          "name": "AWS CloudTrail",
+          "vendor_name": "AWS"
+        },
+        "uid": "e1d2c3b4-0000-4000-8000-000000000001",
+        "version": "1.5.0"
+      },
+      "service": {
+        "name": "signin.amazonaws.com"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "203.0.113.24"
+      },
+      "status": "Success",
+      "status_id": 1,
+      "time": 1790593201000,
+      "type_uid": 300201,
+      "unmapped": {
+        "additionalEventData": {
+          "LoginTo": "https://console.aws.amazon.com/console/home",
+          "MFAUsed": "Yes",
+          "MobileVersion": "No"
+        },
+        "eventName": "ConsoleLogin",
+        "eventVersion": "1.10",
+        "managementEvent": true,
+        "readOnly": false,
+        "requestID": "7f3c1a2b-0000-4000-8000-000000000001",
+        "responseElements": {
+          "ConsoleLogin": "Success"
+        },
+        "userIdentity": {
+          "accountId": "111122223333",
+          "arn": "arn:aws:iam::111122223333:user/adam",
+          "principalId": "AIDAEXAMPLEADAM00001",
+          "type": "IAMUser",
+          "userName": "adam"
+        }
+      }
+    },
+    "id": "b6d202b1329422ba17a01eeaf164ae8b",
+    "issues": [],
+    "kind": "console_login"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "user": {
+          "account": {
+            "uid": "111122223333"
+          },
+          "name": "adam",
+          "type": "IAMUser",
+          "uid": "111122223333"
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3002,
+      "cloud": {
+        "account": {
+          "uid": "111122223333"
+        },
+        "provider": "AWS",
+        "region": "eu-central-1"
+      },
+      "http_request": {
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0"
+      },
+      "metadata": {
+        "event_code": "AwsConsoleSignIn",
+        "log_name": "Management",
+        "product": {
+          "name": "AWS CloudTrail",
+          "vendor_name": "AWS"
+        },
+        "uid": "e1d2c3b4-0000-4000-8000-000000000002",
+        "version": "1.5.0"
+      },
+      "service": {
+        "name": "signin.amazonaws.com"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "198.51.100.77"
+      },
+      "status": "Failure",
+      "status_detail": "Failed authentication",
+      "status_id": 2,
+      "time": 1790593202000,
+      "type_uid": 300201,
+      "unmapped": {
+        "additionalEventData": {
+          "MFAUsed": "No",
+          "MobileVersion": "No"
+        },
+        "eventName": "ConsoleLogin",
+        "eventVersion": "1.10",
+        "managementEvent": true,
+        "readOnly": false,
+        "requestID": "7f3c1a2b-0000-4000-8000-000000000002",
+        "responseElements": {
+          "ConsoleLogin": "Failure"
+        },
+        "userIdentity": {
+          "accountId": "111122223333",
+          "principalId": "111122223333",
+          "type": "IAMUser",
+          "userName": "adam"
+        }
+      }
+    },
+    "id": "38795ba838a685f2a4ebe4c01043d724",
+    "issues": [],
+    "kind": "console_login"
+  },
+  {
+    "event": {
+      "activity_id": 2,
+      "actor": {
+        "user": {
+          "account": {
+            "uid": "111122223333"
+          },
+          "credential_uid": "AKIAEXAMPLEADAM00001",
+          "name": "adam",
+          "type": "IAMUser",
+          "uid": "AIDAEXAMPLEADAM00001",
+          "uid_alt": "arn:aws:iam::111122223333:user/adam"
+        }
+      },
+      "api": {
+        "operation": "ListBuckets",
+        "request": {
+          "uid": "7f3c1a2b-0000-4000-8000-000000000003"
+        },
+        "service": {
+          "name": "s3.amazonaws.com"
+        }
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "cloud": {
+        "account": {
+          "uid": "111122223333"
+        },
+        "provider": "AWS",
+        "region": "eu-central-1"
+      },
+      "http_request": {
+        "user_agent": "aws-cli/2.17.0 Python/3.12.6 Linux/6.8.0 exe/x86_64.ubuntu.24"
+      },
+      "metadata": {
+        "event_code": "AwsApiCall",
+        "log_name": "Management",
+        "product": {
+          "name": "AWS CloudTrail",
+          "vendor_name": "AWS"
+        },
+        "uid": "e1d2c3b4-0000-4000-8000-000000000003",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "203.0.113.24"
+      },
+      "time": 1790593203000,
+      "type_uid": 600302,
+      "unmapped": {
+        "eventVersion": "1.10",
+        "managementEvent": true,
+        "readOnly": true,
+        "requestParameters": {
+          "Host": "s3.eu-central-1.amazonaws.com"
+        },
+        "userIdentity": {
+          "accessKeyId": "AKIAEXAMPLEADAM00001",
+          "accountId": "111122223333",
+          "arn": "arn:aws:iam::111122223333:user/adam",
+          "principalId": "AIDAEXAMPLEADAM00001",
+          "type": "IAMUser",
+          "userName": "adam"
+        }
+      }
+    },
+    "id": "3a7464a96a76d37d02f46be448c3052f",
+    "issues": [],
+    "kind": "read"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "session": {
+          "issuer": "arn:aws:iam::111122223333:role/ops"
+        },
+        "user": {
+          "account": {
+            "uid": "111122223333"
+          },
+          "credential_uid": "ASIAEXAMPLEJANE00001",
+          "type": "AssumedRole",
+          "uid": "AROAEXAMPLEOPS000001:jane",
+          "uid_alt": "arn:aws:sts::111122223333:assumed-role/ops/jane"
+        }
+      },
+      "api": {
+        "operation": "CreateUser",
+        "request": {
+          "uid": "7f3c1a2b-0000-4000-8000-000000000004"
+        },
+        "service": {
+          "name": "iam.amazonaws.com"
+        }
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "cloud": {
+        "account": {
+          "uid": "111122223333"
+        },
+        "provider": "AWS",
+        "region": "eu-central-1"
+      },
+      "http_request": {
+        "user_agent": "console.amazonaws.com"
+      },
+      "metadata": {
+        "event_code": "AwsApiCall",
+        "log_name": "Management",
+        "product": {
+          "name": "AWS CloudTrail",
+          "vendor_name": "AWS"
+        },
+        "uid": "e1d2c3b4-0000-4000-8000-000000000004",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "203.0.113.24"
+      },
+      "time": 1790593204000,
+      "type_uid": 600399,
+      "unmapped": {
+        "eventVersion": "1.10",
+        "managementEvent": true,
+        "readOnly": false,
+        "requestParameters": {
+          "userName": "report-bot"
+        },
+        "responseElements": {
+          "user": {
+            "arn": "arn:aws:iam::111122223333:user/report-bot",
+            "createDate": "Sep 28, 2026 11:00:04 AM",
+            "path": "/",
+            "userId": "AIDAEXAMPLEBOT000001",
+            "userName": "report-bot"
+          }
+        },
+        "userIdentity": {
+          "accessKeyId": "ASIAEXAMPLEJANE00001",
+          "accountId": "111122223333",
+          "arn": "arn:aws:sts::111122223333:assumed-role/ops/jane",
+          "principalId": "AROAEXAMPLEOPS000001:jane",
+          "sessionContext": {
+            "attributes": {
+              "creationDate": "2026-09-28T10:55:00Z",
+              "mfaAuthenticated": "true"
+            },
+            "sessionIssuer": {
+              "accountId": "111122223333",
+              "arn": "arn:aws:iam::111122223333:role/ops",
+              "principalId": "AROAEXAMPLEOPS000001",
+              "type": "Role",
+              "userName": "ops"
+            }
+          },
+          "type": "AssumedRole"
+        }
+      }
+    },
+    "id": "4695cb36283c2eef652a6f6d85a0b7f4",
+    "issues": [],
+    "kind": "write"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "user": {
+          "account": {
+            "uid": "111122223333"
+          },
+          "credential_uid": "AKIAEXAMPLEADAM00001",
+          "name": "adam",
+          "type": "IAMUser",
+          "uid": "AIDAEXAMPLEADAM00001",
+          "uid_alt": "arn:aws:iam::111122223333:user/adam"
+        }
+      },
+      "api": {
+        "operation": "DeleteBucket",
+        "request": {
+          "uid": "7f3c1a2b-0000-4000-8000-000000000005"
+        },
+        "response": {
+          "error": "AccessDenied",
+          "message": "User: arn:aws:iam::111122223333:user/adam is not authorized to perform: s3:DeleteBucket"
+        },
+        "service": {
+          "name": "s3.amazonaws.com"
+        }
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "cloud": {
+        "account": {
+          "uid": "111122223333"
+        },
+        "provider": "AWS",
+        "region": "eu-central-1"
+      },
+      "http_request": {
+        "user_agent": "aws-cli/2.17.0 Python/3.12.6 Linux/6.8.0 exe/x86_64.ubuntu.24"
+      },
+      "metadata": {
+        "event_code": "AwsApiCall",
+        "log_name": "Management",
+        "product": {
+          "name": "AWS CloudTrail",
+          "vendor_name": "AWS"
+        },
+        "uid": "e1d2c3b4-0000-4000-8000-000000000005",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "203.0.113.24"
+      },
+      "time": 1790593205000,
+      "type_uid": 600399,
+      "unmapped": {
+        "eventVersion": "1.10",
+        "managementEvent": true,
+        "readOnly": false,
+        "requestParameters": {
+          "Host": "finance-reports-2026.s3.eu-central-1.amazonaws.com",
+          "bucketName": "finance-reports-2026"
+        },
+        "userIdentity": {
+          "accessKeyId": "AKIAEXAMPLEADAM00001",
+          "accountId": "111122223333",
+          "arn": "arn:aws:iam::111122223333:user/adam",
+          "principalId": "AIDAEXAMPLEADAM00001",
+          "type": "IAMUser",
+          "userName": "adam"
+        }
+      }
+    },
+    "id": "3baa1243af78f8974a645ec5daf7368e",
+    "issues": [],
+    "kind": "write"
+  },
+  {
+    "event": {
+      "activity_id": 2,
+      "actor": {
+        "invoked_by": "ec2.amazonaws.com",
+        "user": {
+          "type": "AWSService"
+        }
+      },
+      "api": {
+        "operation": "Decrypt",
+        "request": {
+          "uid": "7f3c1a2b-0000-4000-8000-000000000006"
+        },
+        "service": {
+          "name": "kms.amazonaws.com"
+        }
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "cloud": {
+        "account": {
+          "uid": "111122223333"
+        },
+        "provider": "AWS",
+        "region": "eu-central-1"
+      },
+      "http_request": {
+        "user_agent": "ec2.amazonaws.com"
+      },
+      "metadata": {
+        "event_code": "AwsApiCall",
+        "log_name": "Management",
+        "product": {
+          "name": "AWS CloudTrail",
+          "vendor_name": "AWS"
+        },
+        "uid": "e1d2c3b4-0000-4000-8000-000000000006",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "domain": "ec2.amazonaws.com"
+      },
+      "time": 1790593206000,
+      "type_uid": 600302,
+      "unmapped": {
+        "eventVersion": "1.10",
+        "managementEvent": true,
+        "readOnly": true,
+        "requestParameters": {
+          "encryptionAlgorithm": "SYMMETRIC_DEFAULT"
+        },
+        "resources": [
+          {
+            "ARN": "arn:aws:kms:eu-central-1:111122223333:key/0a1b2c3d-0000-4000-8000-000000000001",
+            "accountId": "111122223333",
+            "type": "AWS::KMS::Key"
+          }
+        ],
+        "sharedEventID": "5c6d7e8f-0000-4000-8000-000000000001",
+        "userIdentity": {
+          "invokedBy": "ec2.amazonaws.com",
+          "type": "AWSService"
+        }
+      }
+    },
+    "id": "7135042cfdae2a74e35c0f09a2ff3d3d",
+    "issues": [],
+    "kind": "service_read"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "invoked_by": "ec2.amazonaws.com",
+        "user": {
+          "type": "AWSService"
+        }
+      },
+      "api": {
+        "operation": "CreateGrant",
+        "request": {
+          "uid": "7f3c1a2b-0000-4000-8000-000000000007"
+        },
+        "service": {
+          "name": "kms.amazonaws.com"
+        }
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "cloud": {
+        "account": {
+          "uid": "111122223333"
+        },
+        "provider": "AWS",
+        "region": "eu-central-1"
+      },
+      "http_request": {
+        "user_agent": "ec2.amazonaws.com"
+      },
+      "metadata": {
+        "event_code": "AwsApiCall",
+        "log_name": "Management",
+        "product": {
+          "name": "AWS CloudTrail",
+          "vendor_name": "AWS"
+        },
+        "uid": "e1d2c3b4-0000-4000-8000-000000000007",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "domain": "ec2.amazonaws.com"
+      },
+      "time": 1790593207000,
+      "type_uid": 600399,
+      "unmapped": {
+        "eventVersion": "1.10",
+        "managementEvent": true,
+        "readOnly": false,
+        "requestParameters": {
+          "granteePrincipal": "ec2.eu-central-1.amazonaws.com",
+          "operations": [
+            "Decrypt"
+          ]
+        },
+        "userIdentity": {
+          "invokedBy": "ec2.amazonaws.com",
+          "type": "AWSService"
+        }
+      }
+    },
+    "id": "54763b83acb079086d76ba2ceba8c0a0",
+    "issues": [],
+    "kind": "service_write"
+  }
+]

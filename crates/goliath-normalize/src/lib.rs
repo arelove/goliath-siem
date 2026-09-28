@@ -77,9 +77,14 @@ pub const SYSMON_FLAT: &str = include_str!("../sources/sysmon-flat.yaml");
 /// logons, Kerberos, process creation, account and group changes.
 pub const WINDOWS_SECURITY: &str = include_str!("../sources/windows-security.yaml");
 
+/// The definition for AWS `CloudTrail` shipped with this crate: console sign-ins
+/// and API calls.
+pub const CLOUDTRAIL: &str = include_str!("../sources/cloudtrail.yaml");
+
 /// Every definition shipped with this crate, by name.
 pub const BUILTIN: &[(&str, &str)] = &[
     ("auditd", AUDITD),
+    ("cloudtrail", CLOUDTRAIL),
     ("entra", ENTRA),
     ("falco", FALCO),
     ("sysmon-flat", SYSMON_FLAT),

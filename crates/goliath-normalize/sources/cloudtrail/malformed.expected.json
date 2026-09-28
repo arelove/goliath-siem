@@ -1,0 +1,158 @@
+[
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "session": {
+          "issuer": "arn:aws:iam::111122223333:role/ops"
+        },
+        "user": {
+          "account": {
+            "uid": "111122223333"
+          },
+          "credential_uid": "ASIAEXAMPLEJANE00001",
+          "type": "AssumedRole",
+          "uid": "AROAEXAMPLEOPS000001:jane",
+          "uid_alt": "arn:aws:sts::111122223333:assumed-role/ops/jane"
+        }
+      },
+      "api": {
+        "operation": "AssumeRole",
+        "request": {
+          "uid": "7f3c1a2b-0000-4000-8000-000000000010"
+        },
+        "service": {
+          "name": "sts.amazonaws.com"
+        }
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "cloud": {
+        "account": {
+          "uid": "111122223333"
+        },
+        "provider": "AWS",
+        "region": "eu-central-1"
+      },
+      "http_request": {
+        "user_agent": "cloudformation.amazonaws.com"
+      },
+      "metadata": {
+        "event_code": "AwsApiCall",
+        "log_name": "Management",
+        "product": {
+          "name": "AWS CloudTrail",
+          "vendor_name": "AWS"
+        },
+        "uid": "e1d2c3b4-0000-4000-8000-000000000010",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790593210000,
+      "type_uid": 600399,
+      "unmapped": {
+        "eventVersion": "1.10",
+        "managementEvent": true,
+        "readOnly": false,
+        "sourceIPAddress": "cloudformation.amazonaws.com",
+        "userIdentity": {
+          "accessKeyId": "ASIAEXAMPLEJANE00001",
+          "accountId": "111122223333",
+          "arn": "arn:aws:sts::111122223333:assumed-role/ops/jane",
+          "principalId": "AROAEXAMPLEOPS000001:jane",
+          "sessionContext": {
+            "attributes": {
+              "creationDate": "2026-09-28T10:55:00Z",
+              "mfaAuthenticated": "true"
+            },
+            "sessionIssuer": {
+              "accountId": "111122223333",
+              "arn": "arn:aws:iam::111122223333:role/ops",
+              "principalId": "AROAEXAMPLEOPS000001",
+              "type": "Role",
+              "userName": "ops"
+            }
+          },
+          "type": "AssumedRole"
+        }
+      }
+    },
+    "id": "6928f03a3626965f019b7de72db22468",
+    "issues": [
+      {
+        "reason": "`cloudformation.amazonaws.com` is not an IP address",
+        "source": "sourceIPAddress",
+        "target": "src_endpoint.ip"
+      }
+    ],
+    "kind": "write"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "invoked_by": "health.amazonaws.com",
+        "user": {
+          "account": {
+            "uid": "111122223333"
+          }
+        }
+      },
+      "api": {
+        "operation": "AWSServiceEventExample",
+        "request": {
+          "uid": "7f3c1a2b-0000-4000-8000-000000000011"
+        },
+        "service": {
+          "name": "health.amazonaws.com"
+        }
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "cloud": {
+        "account": {
+          "uid": "111122223333"
+        },
+        "provider": "AWS",
+        "region": "eu-central-1"
+      },
+      "http_request": {
+        "user_agent": "aws-cli/2.17.0 Python/3.12.6 Linux/6.8.0 exe/x86_64.ubuntu.24"
+      },
+      "metadata": {
+        "event_code": "AwsServiceEvent",
+        "log_name": "Management",
+        "product": {
+          "name": "AWS CloudTrail",
+          "vendor_name": "AWS"
+        },
+        "uid": "e1d2c3b4-0000-4000-8000-000000000011",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "domain": "203.0.113.24"
+      },
+      "time": 1790593211000,
+      "type_uid": 600399,
+      "unmapped": {
+        "eventVersion": "1.10",
+        "managementEvent": true,
+        "userIdentity": {
+          "accountId": "111122223333",
+          "invokedBy": "health.amazonaws.com"
+        }
+      }
+    },
+    "id": "ad53352ef967032a6cf3a690776981bb",
+    "issues": [],
+    "kind": "service_event"
+  },
+  {
+    "dead_letter": {
+      "error": "EOF while parsing an object at line 65 column 0",
+      "raw": "{\"Records\": [{\"eventName\": \"ListBuckets\", \"readOnly\": true",
+      "stage": "framing"
+    }
+  }
+]
