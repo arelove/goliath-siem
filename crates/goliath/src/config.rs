@@ -40,6 +40,9 @@ pub struct Config {
     /// Where and how the API listens.
     #[serde(default)]
     pub api: ApiConfig,
+    /// Where the receiver listens.
+    #[serde(default)]
+    pub receiver: ReceiverConfig,
     /// Where Prometheus reads this process's metrics; not served if absent.
     pub metrics: Option<MetricsConfig>,
 }
@@ -67,6 +70,59 @@ pub enum Role {
     Writer,
     /// Serves searches over the stored events, and the interface.
     Api,
+    /// Takes records sent over the network into sources' raw topics.
+    Receiver,
+}
+
+/// The receiver: where it listens.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ReceiverConfig {
+    /// The address to listen on; `127.0.0.1:8514` by default. Until the
+    /// receiver serves TLS itself, only a loopback address is accepted:
+    /// put a proxy that terminates TLS in front of it.
+    #[serde(default = "default_receiver_listen")]
+    pub listen: SocketAddr,
+}
+
+impl Default for ReceiverConfig {
+    fn default() -> Self {
+        Self {
+            listen: default_receiver_listen(),
+        }
+    }
+}
+
+fn default_receiver_listen() -> SocketAddr {
+    SocketAddr::from(([127, 0, 0, 1], 8514))
+}
+
+/// How a source takes records over HTTP.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HttpSourceConfig {
+    /// A file holding the bearer token a sender must carry, at least 32
+    /// bytes, and different from every other source's.
+    pub token_file: PathBuf,
+}
+
+impl HttpSourceConfig {
+    /// The bearer token.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RunError::Config`] if the file cannot be read, or holds
+    /// fewer than 32 bytes.
+    pub fn token(&self) -> Result<String, RunError> {
+        let token = secret(None, Some(&self.token_file))?.unwrap_or_default();
+        if token.len() < MIN_TOKEN {
+            return Err(RunError::Config(format!(
+                "{}: a source's token must be at least {MIN_TOKEN} bytes; generate one with `openssl rand -hex 32`",
+                self.token_file.display()
+            )));
+        }
+        Ok(token)
+    }
 }
 
 /// The API: where it listens, who may use it, and what a search may ask.
@@ -138,6 +194,9 @@ pub struct SourceConfig {
     /// A directory the collector takes files from; needed by the collector
     /// only.
     pub inbox: Option<PathBuf>,
+    /// Whether, and with what token, the receiver takes this source's
+    /// records over HTTP.
+    pub http: Option<HttpSourceConfig>,
 }
 
 /// Kafka, or a service with its API such as Redpanda.
@@ -298,6 +357,9 @@ impl Config {
             if let Some(inbox) = &mut source.inbox {
                 *inbox = base.join(&*inbox);
             }
+            if let Some(http) = &mut source.http {
+                http.token_file = base.join(&http.token_file);
+            }
             if !is_builtin(&source.definition) {
                 source.definition = base.join(&source.definition).to_string_lossy().into_owned();
             }
@@ -308,9 +370,12 @@ impl Config {
 
     /// Whether this process runs a role that moves records through topics.
     pub fn has_pipeline(&self) -> bool {
-        self.roles
-            .iter()
-            .any(|role| matches!(role, Role::Collector | Role::Normalizer | Role::Writer))
+        self.roles.iter().any(|role| {
+            matches!(
+                role,
+                Role::Collector | Role::Normalizer | Role::Writer | Role::Receiver
+            )
+        })
     }
 
     /// Checks what the types cannot: that every source loads, that names do
@@ -335,6 +400,9 @@ impl Config {
                     normalizer.name()
                 )));
             }
+        }
+        if self.roles.contains(&Role::Receiver) {
+            self.check_receiver()?;
         }
         match &self.kafka {
             None if self.data.is_none() && self.has_pipeline() => {
@@ -373,6 +441,34 @@ impl Config {
             return Err(RunError::Config(
                 "writer limits must be above zero".to_owned(),
             ));
+        }
+        Ok(())
+    }
+
+    /// Checks the receiver: something to receive, tokens that each name one
+    /// source, and an address it may listen on without TLS.
+    fn check_receiver(&self) -> Result<(), RunError> {
+        let mut tokens = BTreeSet::new();
+        for source in &self.sources {
+            if let Some(http) = &source.http
+                && !tokens.insert(http.token()?)
+            {
+                return Err(RunError::Config(
+                    "two sources share a token; each needs its own, so that a token writes to one source only"
+                        .to_owned(),
+                ));
+            }
+        }
+        if tokens.is_empty() {
+            return Err(RunError::Config(
+                "the receiver role needs a source with `http = { token_file = ... }`".to_owned(),
+            ));
+        }
+        if !self.receiver.listen.ip().is_loopback() {
+            return Err(RunError::Config(format!(
+                "the receiver does not serve TLS yet, so it listens on loopback only, not {}; put a proxy that terminates TLS in front of it",
+                self.receiver.listen
+            )));
         }
         Ok(())
     }
@@ -610,6 +706,71 @@ database = "goliath"
             "user = \"goliath\"\npassword_env = \"X\"",
         );
         assert!(parse(&both).is_err());
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn a_receiver_needs_a_source_it_can_receive_distinct_tokens_and_loopback() {
+        let directory =
+            std::env::temp_dir().join(format!("goliath-receiver-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let (one, two, short) = (
+            directory.join("one"),
+            directory.join("two"),
+            directory.join("short"),
+        );
+        std::fs::write(&one, "a".repeat(32)).unwrap();
+        std::fs::write(&two, "b".repeat(32)).unwrap();
+        std::fs::write(&short, "c".repeat(31)).unwrap();
+        let config = |falco: &Path, auditd: &Path, listen: &str| {
+            format!(
+                r#"
+roles = ["receiver", "normalizer"]
+data = "data"
+
+[receiver]
+listen = "{listen}"
+
+[[sources]]
+definition = "falco"
+http = {{ token_file = '{}' }}
+
+[[sources]]
+definition = "auditd"
+http = {{ token_file = '{}' }}
+"#,
+                falco.display(),
+                auditd.display()
+            )
+        };
+
+        let loaded = parse(&config(&one, &two, "127.0.0.1:8514")).unwrap();
+        assert!(loaded.has_pipeline());
+        assert_eq!(
+            loaded.sources[0].http.as_ref().unwrap().token().unwrap(),
+            "a".repeat(32)
+        );
+
+        let shared = parse(&config(&one, &one, "127.0.0.1:8514"))
+            .unwrap_err()
+            .to_string();
+        assert!(shared.contains("share a token"), "{shared}");
+        let weak = parse(&config(&one, &short, "127.0.0.1:8514"))
+            .unwrap_err()
+            .to_string();
+        assert!(weak.contains("at least 32 bytes"), "{weak}");
+        let exposed = parse(&config(&one, &two, "0.0.0.0:8514"))
+            .unwrap_err()
+            .to_string();
+        assert!(exposed.contains("loopback"), "{exposed}");
+        let nothing = parse(
+            "roles = [\"receiver\"]
+data = \"data\"
+",
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(nothing.contains("needs a source"), "{nothing}");
         std::fs::remove_dir_all(directory).unwrap();
     }
 }

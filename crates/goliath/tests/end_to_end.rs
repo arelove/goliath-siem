@@ -275,6 +275,90 @@ async fn http(port: u16, method: &str, path: &str, token: &str, body: &str) -> (
     (status, serde_json::from_str(body).unwrap_or(Value::Null))
 }
 
+/// Records sent over HTTP reach ClickHouse through the receiver, the
+/// normalizer, and the writer, and are answered only once they are in the
+/// pipe.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn records_sent_over_http_reach_clickhouse() {
+    let Some(url) = clickhouse_url() else {
+        return;
+    };
+    let user = clickhouse_user();
+    let database = format!("goliath_test_receiver_{}", std::process::id());
+    let directory = tempfile::tempdir().unwrap();
+    let token = "fedcba9876543210".repeat(4);
+    std::fs::write(directory.path().join("falco_token"), &token).unwrap();
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let path = directory.path().join("goliath.toml");
+    std::fs::write(
+        &path,
+        format!(
+            r#"
+roles = ["receiver", "normalizer", "writer"]
+data = "data"
+
+[receiver]
+listen = "127.0.0.1:{port}"
+
+[[sources]]
+definition = "falco"
+http = {{ token_file = "falco_token" }}
+
+[store]
+url = "{url}"
+database = "{database}"
+user = "{user}"
+password_env = "GOLIATH_CLICKHOUSE_PASSWORD"
+
+[writer]
+max_rows = 1000
+max_delay_ms = 100
+"#
+        ),
+    )
+    .unwrap();
+    let falco = include_str!("../../goliath-normalize/sources/falco/kinds.input.json");
+    let normalizer = Normalizer::from_yaml(goliath_normalize::FALCO).unwrap();
+    let mut events = 0;
+    normalizer.normalize(falco.as_bytes(), |outcome| {
+        if matches!(outcome, Outcome::Event(_)) {
+            events += 1;
+        }
+    });
+    assert!(events > 0);
+
+    let (stop, running) = start(Config::load(&path).unwrap());
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        if tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .is_ok()
+        {
+            break;
+        }
+        assert!(Instant::now() < deadline, "the receiver did not listen");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let (status, _) = http(port, "POST", "/ingest/falco", "wrong", falco).await;
+    assert_eq!(status, 401);
+    let (status, answer) = http(port, "POST", "/ingest/falco", &token, falco).await;
+    assert_eq!(status, 200, "{answer}");
+    let client = connect(&url).with_database(&database);
+    eventually(&client, "SELECT count() FROM events", events).await;
+
+    stop.send(()).unwrap();
+    running.await.unwrap().unwrap();
+    connect(&url)
+        .query(&format!("DROP DATABASE IF EXISTS {database}"))
+        .execute()
+        .await
+        .unwrap();
+}
+
 /// The value of the sample `name` on the platform's metrics endpoint.
 async fn metric(port: u16, name: &str) -> Option<f64> {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
