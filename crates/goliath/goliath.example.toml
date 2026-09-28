@@ -65,12 +65,13 @@ max_delay_ms = 1000
 
 # The `receiver` role, if listed in `roles`: takes records sent over HTTP,
 # `POST /ingest/<source>` with the source's own bearer token, into the
-# source's raw topic, answering only once the pipe has them. It serves no TLS
-# yet, so it listens on loopback only: put a proxy that terminates TLS in
-# front of it. See docs/adr/0018-collection.md.
+# source's raw topic, answering only once the pipe has them. On loopback by
+# default; any other address needs a certificate and key, PEM files, and is
+# then served over HTTPS only. See docs/adr/0018-collection.md.
 #
 # [receiver]
-# listen = "127.0.0.1:8514"
+# listen = "0.0.0.0:8514"
+# tls = { certificate = "/etc/goliath/receiver.crt", key = "/etc/goliath/receiver.key" }
 #
 # [[sources]]
 # definition = "falco"
