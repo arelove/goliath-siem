@@ -98,11 +98,11 @@ fn process_creation_rules_fire_on_4688_as_on_sysmon() {
 fn a_field_of_an_event_the_definition_does_not_read_fails_to_load() {
     let error = resolve(
         "{ product: windows, service: security }",
-        "  selection:\n    EventID: 4648\n    TargetServerName: localhost\n  condition: selection",
+        "  selection:\n    EventID: 4898\n    TemplateContent|contains: Client\n  condition: selection",
     )
     .map(|_| ())
-    .expect_err("TargetServerName is not mapped");
-    assert!(error.contains("TargetServerName"), "{error}");
+    .expect_err("TemplateContent is not mapped");
+    assert!(error.contains("TemplateContent"), "{error}");
 }
 
 #[test]
@@ -165,4 +165,15 @@ fn account_and_group_lifecycle_is_found() {
     assert_eq!(fired(rule), ["3041"]);
     let rule = "  selection:\n    EventID:\n      - 4727\n      - 4730\n    TargetUserName: Finance Auditors\n  condition: selection";
     assert_eq!(fired(rule), ["3043", "3046"]);
+}
+
+#[test]
+fn a_logon_with_explicit_credentials_is_found_by_its_target_server() {
+    let rule = "  selection:
+    EventID: 4648
+    TargetServerName|endswith: '.corp.example'
+  filter:
+    SubjectUserName|fieldref: TargetUserName
+  condition: selection and not filter";
+    assert_eq!(fired(rule), ["3052"]);
 }

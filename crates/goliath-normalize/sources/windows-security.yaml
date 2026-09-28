@@ -109,6 +109,27 @@ kinds:
       src_endpoint.port: { from: Event.EventData.IpPort, as: integer }
     unmapped: [Event.EventData]
 
+  - name: explicit_credentials
+    when:
+      Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing
+      Event.System.EventID: 4648
+    # Authentication: Logon, attempted by a process with credentials other
+    # than its own, as `runas` does. Windows reports the attempt, not its
+    # outcome.
+    class: { class_uid: 3002, activity_id: 1 }
+    fields:
+      user.name: Event.EventData.TargetUserName
+      user.domain: Event.EventData.TargetDomainName
+      actor.user.name: Event.EventData.SubjectUserName
+      actor.user.domain: Event.EventData.SubjectDomainName
+      actor.user.uid: Event.EventData.SubjectUserSid
+      actor.process.file.path: Event.EventData.ProcessName
+      actor.process.pid: { from: Event.EventData.ProcessId, as: integer }
+      dst_endpoint.hostname: Event.EventData.TargetServerName
+      src_endpoint.ip: Event.EventData.IpAddress
+      src_endpoint.port: { from: Event.EventData.IpPort, as: integer }
+    unmapped: [Event.EventData]
+
   - name: logoff
     when:
       Event.System.Provider.#attributes.Name: Microsoft-Windows-Security-Auditing

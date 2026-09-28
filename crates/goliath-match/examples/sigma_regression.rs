@@ -11,9 +11,10 @@
 //! the mapping set, and evaluated by the reference evaluator against the
 //! events converted to OCSF.
 //!
-//! The events reach OCSF through the Sysmon source definition shipped with
-//! `goliath-normalize`, exactly as a deployment would normalize them. Because
-//! the same project wrote both it and the mapping set, a case passing shows
+//! The events reach OCSF through the Sysmon and Windows Security source
+//! definitions shipped with `goliath-normalize`, each reading the records of
+//! its own provider, exactly as a deployment would normalize them. Because
+//! the same project wrote both them and the mapping set, a case passing shows
 //! that normalization, parsing, resolution, and evaluation agree with
 //! `SigmaHQ`; it cannot show on its own that the two chose the right OCSF
 //! attributes.
@@ -73,7 +74,7 @@ struct Report {
     events: usize,
     /// Every converted event, for comparing the engine with the reference.
     converted: Vec<Value>,
-    /// Values the Sysmon definition could not convert, as `target: reason`.
+    /// Values the definitions could not convert, as `target: reason`.
     issues: Vec<String>,
 }
 
@@ -91,10 +92,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     collect(&root.join("regression_data"), "info.yml", &mut infos)?;
     infos.sort();
 
-    let sysmon = Normalizer::from_yaml(goliath_normalize::SYSMON)?;
+    let normalizers = [
+        Normalizer::from_yaml(goliath_normalize::SYSMON)?,
+        Normalizer::from_yaml(goliath_normalize::WINDOWS_SECURITY)?,
+    ];
     let mut report = Report::default();
     for info in &infos {
-        run_case(&root, info, &rules, &sysmon, &mut report);
+        run_case(&root, info, &rules, &normalizers, &mut report);
     }
 
     let comparison = compare_engine(&rules, &report.converted)?;
@@ -164,7 +168,7 @@ fn run_case(
     root: &Path,
     info_path: &Path,
     rules: &BTreeMap<String, Loaded>,
-    sysmon: &Normalizer,
+    normalizers: &[Normalizer],
     report: &mut Report,
 ) {
     let skip = |report: &mut Report, reason: &'static str| {
@@ -199,22 +203,25 @@ fn run_case(
     let Ok(raw) = fs::read(events_path) else {
         return skip(report, "event file unreadable (antivirus quarantine)");
     };
-    // Records of other providers, and Sysmon events of kinds the definition
-    // does not cover, come out as dead letters; only events are tested.
+    // Each definition reads its own provider's records; the others, and
+    // events of kinds a definition does not cover, come out as its dead
+    // letters. Only events are tested.
     let mut converted: Vec<Value> = Vec::new();
-    sysmon.normalize(&raw, |outcome| {
-        if let Outcome::Event(normalized) = outcome {
-            report.issues.extend(
-                normalized
-                    .issues
-                    .iter()
-                    .map(|issue| format!("{}: {}", issue.target, issue.reason)),
-            );
-            converted.push(normalized.event);
-        }
-    });
+    for normalizer in normalizers {
+        normalizer.normalize(&raw, |outcome| {
+            if let Outcome::Event(normalized) = outcome {
+                report.issues.extend(
+                    normalized
+                        .issues
+                        .iter()
+                        .map(|issue| format!("{}: {}", issue.target, issue.reason)),
+                );
+                converted.push(normalized.event);
+            }
+        });
+    }
     if converted.is_empty() {
-        return skip(report, "no Sysmon events of a converted type");
+        return skip(report, "no events of a converted type");
     }
     report.events += converted.len();
     report.converted.extend(converted.iter().cloned());

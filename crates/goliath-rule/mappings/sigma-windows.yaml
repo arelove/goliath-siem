@@ -175,6 +175,7 @@ mappings:
       LogonProcessName: [logon_process.name, unmapped.LogonProcessName]
       AuthenticationPackageName: [auth_protocol, unmapped.AuthenticationPackageName]
       WorkstationName: [src_endpoint.hostname, unmapped.WorkstationName]
+      TargetServerName: [dst_endpoint.hostname, unmapped.TargetServerName]
       Workstation: [src_endpoint.hostname, unmapped.Workstation]
       PackageName: [auth_protocol, unmapped.PackageName]
       IpAddress: [src_endpoint.ip, unmapped.IpAddress]
@@ -267,3 +268,5 @@ mappings:
       SidHistory: unmapped.SidHistory
       LogonHours: unmapped.LogonHours
       ComputerAccountChange: unmapped.ComputerAccountChange
+      TargetInfo: unmapped.TargetInfo
+      TargetLogonGuid: unmapped.TargetLogonGuid
