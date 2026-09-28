@@ -9,6 +9,18 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-09-27
+
+
+### Added
+
+- Sysmon as flat JSON lines, as NXLog and the OTRF datasets write it
+
+
+### Style
+
+- Format the flat Sysmon test
+
 ## [0.2.4] - 2026-09-27
 
 
