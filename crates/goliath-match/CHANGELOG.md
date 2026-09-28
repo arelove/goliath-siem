@@ -9,6 +9,13 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-28
+
+
+### Added
+
+- Sigma rules for the Windows Security log resolve to OCSF
+
 ## [0.2.0] - 2026-09-25
 
 
