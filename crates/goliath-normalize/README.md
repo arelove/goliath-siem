@@ -32,7 +32,7 @@ produce.
 | `sources/auditd.yaml` | Linux audit program executions on x86_64 and arm64, and logins, with the lines of each event gathered, as OCSF Process Activity and Authentication |
 | `sources/entra.yaml` | Microsoft Entra ID interactive, non-interactive, and service principal sign-ins, as Azure Monitor diagnostic settings write them, as OCSF Authentication |
 | `sources/falco.yaml` | Falco alerts on system calls and the Kubernetes audit log, as `json_output` writes them, as OCSF Detection Findings |
-| `sources/windows-security.yaml` | The Windows Security log, as `evtx_dump` writes it: logons and failures, Kerberos tickets, process creation, account changes and lockouts, group membership, scheduled tasks, and the log being cleared, as OCSF Authentication, Process Activity, Account Change, Group Management, Scheduled Job Activity, and Event Log Activity |
+| `sources/windows-security.yaml` | The Windows Security log, as `evtx_dump` writes it, 48 event IDs chosen by what SigmaHQ rules ask for: logons, NTLM and Kerberos, process creation, accounts, computer accounts, rights, groups, scheduled tasks, services installed, object, registry, and share access, directory changes, and the log being cleared |
 
 A definition for a source carried by syslog uses `framing: syslog`, which
 reads messages framed by length or by line as RFC 6587 describes, and
