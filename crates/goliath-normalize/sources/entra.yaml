@@ -1,7 +1,7 @@
 # Microsoft Entra ID sign-in logs, as Azure Monitor diagnostic settings write
 # them to a storage account: one JSON record per line, with the sign-in
-# itself under `properties`. Records sent to an event hub arrive wrapped in a
-# `records` array; unwrap them into lines first.
+# itself under `properties`. Records sent to an event hub arrive as a batch,
+# `{"records": [...]}`, which the definition unwraps.
 #
 # Every sign-in becomes an OCSF Authentication: Logon. Interactive and
 # non-interactive user sign-ins share one shape; service principal sign-ins
@@ -14,9 +14,10 @@
 # other value.
 
 name: entra
-version: 1
+version: 2
 framing: lines
 decoding: json
+unwrap: records
 
 common:
   time: { from: time, as: timestamp }

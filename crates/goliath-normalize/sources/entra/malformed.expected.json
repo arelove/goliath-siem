@@ -91,10 +91,27 @@
     }
   },
   {
-    "dead_letter": {
-      "error": "no kind of source `entra` accepts the record",
-      "raw": "{\"records\":[{\"time\":\"2026-09-25T09:02:00Z\",\"category\":\"SignInLogs\"}]}",
-      "stage": "mapping"
-    }
+    "event": {
+      "activity_id": 1,
+      "category_uid": 3,
+      "class_uid": 3002,
+      "cloud": {
+        "provider": "Azure"
+      },
+      "metadata": {
+        "log_name": "SignInLogs",
+        "product": {
+          "name": "Microsoft Entra ID",
+          "vendor_name": "Microsoft"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790326920000,
+      "type_uid": 300201
+    },
+    "id": "9edf5bb6fe531e94356d202251477f5a",
+    "issues": [],
+    "kind": "user"
   }
 ]
