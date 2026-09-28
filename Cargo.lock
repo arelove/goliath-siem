@@ -764,7 +764,7 @@ dependencies = [
 
 [[package]]
 name = "goliath-match"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "aho-corasick",
  "allocation-counter",
@@ -780,7 +780,7 @@ dependencies = [
 
 [[package]]
 name = "goliath-normalize"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "blake3",
  "goliath-ocsf",
@@ -814,7 +814,7 @@ dependencies = [
 
 [[package]]
 name = "goliath-rule"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "goliath-ocsf",
  "goliath-sigma",
