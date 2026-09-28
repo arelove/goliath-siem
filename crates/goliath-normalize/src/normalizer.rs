@@ -7,9 +7,9 @@ use goliath_rule::FieldPath;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 
-use crate::auditd;
 use crate::definition::{Coercion, Decoding, FieldSpec, Framing, SourceDefinition};
 use crate::error::DefinitionError;
+use crate::{auditd, syslog};
 
 /// A source definition, checked and compiled.
 ///
@@ -369,6 +369,9 @@ impl Normalizer {
             Framing::Lines => true,
             Framing::JsonValues => definition.decoding == Decoding::Json,
             Framing::AuditEvents => definition.decoding == Decoding::Auditd,
+            Framing::Syslog => {
+                matches!(definition.decoding, Decoding::Syslog | Decoding::SyslogJson)
+            }
         };
         if !fits {
             return Err(DefinitionError::Decoding {
@@ -376,10 +379,13 @@ impl Normalizer {
                     Framing::Lines => "lines",
                     Framing::JsonValues => "json-values",
                     Framing::AuditEvents => "audit-events",
+                    Framing::Syslog => "syslog",
                 },
                 decoding: match definition.decoding {
                     Decoding::Json => "json",
                     Decoding::Auditd => "auditd",
+                    Decoding::Syslog => "syslog",
+                    Decoding::SyslogJson => "syslog-json",
                 },
             });
         }
@@ -427,6 +433,18 @@ impl Normalizer {
                     });
                 }
             }
+            Framing::Syslog => {
+                for message in syslog::messages(bytes) {
+                    out(match message {
+                        Ok(raw) => self.decoded(raw),
+                        Err(rest) => dead(
+                            Stage::Framing,
+                            "the message is shorter than its octet count".to_owned(),
+                            rest,
+                        ),
+                    });
+                }
+            }
             Framing::JsonValues => {
                 let mut stream = serde_json::Deserializer::from_slice(bytes).into_iter::<Value>();
                 let mut start = 0;
@@ -460,6 +478,10 @@ impl Normalizer {
                 serde_json::from_slice::<Value>(raw).map_err(|error| error.to_string())
             }
             Decoding::Auditd => auditd::decode(raw),
+            Decoding::Syslog => syslog::decode(raw, syslog::Message::Text, jiff::Timestamp::now),
+            Decoding::SyslogJson => {
+                syslog::decode(raw, syslog::Message::Json, jiff::Timestamp::now)
+            }
         };
         match record {
             Ok(record) => self.record(&record, raw),

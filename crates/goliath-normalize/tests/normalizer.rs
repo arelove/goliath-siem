@@ -547,3 +547,63 @@ fn identities_read_back_from_their_text() {
         assert!(bad.parse::<EventId>().is_err(), "{bad}");
     }
 }
+
+const SYSLOG: &str = r"
+name: test
+version: 1
+framing: syslog
+decoding: syslog
+common:
+  time: { from: timestamp, as: timestamp }
+  device.hostname: hostname
+  message: message
+kinds:
+  - name: ssh
+    when: { app_name: sshd }
+    class: { class_uid: 3002, activity_id: 1 }
+    fields:
+      src_endpoint.port: { from: proc_id, as: integer }
+";
+
+#[test]
+fn syslog_framing_reads_octet_counted_and_line_messages_alike() {
+    let counted = "<38>1 2026-09-28T10:00:00Z bastion sshd 22 - - two\nlines";
+    let input = format!(
+        "{} {counted}<38>Sep 28 10:00:00 bastion sshd[22]: one line\n40 <38>1 cut short",
+        counted.len()
+    );
+    let all = outcomes(SYSLOG, &input);
+    assert_eq!(all.len(), 3, "{all:?}");
+    let Outcome::Event(first) = &all[0] else {
+        panic!("not an event: {:?}", all[0]);
+    };
+    assert_eq!(first.event["message"], "two\nlines");
+    assert_eq!(first.event["device"]["hostname"], "bastion");
+    assert_eq!(first.event["time"], 1_790_589_600_000_i64);
+    let Outcome::Event(second) = &all[1] else {
+        panic!("not an event: {:?}", all[1]);
+    };
+    assert_eq!(second.event["message"], "one line");
+    assert_eq!(second.event["src_endpoint"]["port"], 22);
+    let Outcome::DeadLetter(dead) = &all[2] else {
+        panic!("not a dead letter: {:?}", all[2]);
+    };
+    assert_eq!(dead.stage, Stage::Framing);
+    assert_eq!(dead.raw, b"40 <38>1 cut short");
+}
+
+#[test]
+fn syslog_framing_needs_a_syslog_decoding() {
+    assert!(matches!(
+        error(&SYSLOG.replace("decoding: syslog", "decoding: json")),
+        DefinitionError::Decoding { .. }
+    ));
+    let json = SYSLOG.replace("decoding: syslog", "decoding: syslog-json");
+    let Outcome::Event(normalized) = one(
+        &json.replace("message: message", "message: message.text"),
+        r#"<38>1 - - sshd - - - {"text":"hi"}"#,
+    ) else {
+        panic!("not an event");
+    };
+    assert_eq!(normalized.event["message"], "hi");
+}

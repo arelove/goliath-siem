@@ -49,6 +49,7 @@ mod auditd;
 pub mod definition;
 pub mod error;
 pub mod normalizer;
+mod syslog;
 pub mod wire;
 
 pub use definition::SourceDefinition;
