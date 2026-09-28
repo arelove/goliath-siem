@@ -1,0 +1,234 @@
+{
+  "Records": [
+    {
+      "eventVersion": "1.10",
+      "userIdentity": {
+        "type": "IAMUser",
+        "principalId": "AIDAEXAMPLEADAM00001",
+        "arn": "arn:aws:iam::111122223333:user/adam",
+        "accountId": "111122223333",
+        "userName": "adam"
+      },
+      "eventTime": "2026-09-28T11:00:01Z",
+      "eventSource": "signin.amazonaws.com",
+      "eventName": "ConsoleLogin",
+      "awsRegion": "eu-central-1",
+      "sourceIPAddress": "203.0.113.24",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+      "requestParameters": null,
+      "responseElements": {
+        "ConsoleLogin": "Success"
+      },
+      "requestID": "7f3c1a2b-0000-4000-8000-000000000001",
+      "eventID": "e1d2c3b4-0000-4000-8000-000000000001",
+      "eventType": "AwsConsoleSignIn",
+      "managementEvent": true,
+      "recipientAccountId": "111122223333",
+      "eventCategory": "Management",
+      "readOnly": false,
+      "additionalEventData": {
+        "LoginTo": "https://console.aws.amazon.com/console/home",
+        "MobileVersion": "No",
+        "MFAUsed": "Yes"
+      }
+    },
+    {
+      "eventVersion": "1.10",
+      "userIdentity": {
+        "type": "IAMUser",
+        "principalId": "111122223333",
+        "accountId": "111122223333",
+        "userName": "adam"
+      },
+      "eventTime": "2026-09-28T11:00:02Z",
+      "eventSource": "signin.amazonaws.com",
+      "eventName": "ConsoleLogin",
+      "awsRegion": "eu-central-1",
+      "sourceIPAddress": "198.51.100.77",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+      "requestParameters": null,
+      "responseElements": {
+        "ConsoleLogin": "Failure"
+      },
+      "requestID": "7f3c1a2b-0000-4000-8000-000000000002",
+      "eventID": "e1d2c3b4-0000-4000-8000-000000000002",
+      "eventType": "AwsConsoleSignIn",
+      "managementEvent": true,
+      "recipientAccountId": "111122223333",
+      "eventCategory": "Management",
+      "readOnly": false,
+      "errorCode": null,
+      "errorMessage": "Failed authentication",
+      "additionalEventData": {
+        "MobileVersion": "No",
+        "MFAUsed": "No"
+      }
+    },
+    {
+      "eventVersion": "1.10",
+      "userIdentity": {
+        "type": "IAMUser",
+        "principalId": "AIDAEXAMPLEADAM00001",
+        "arn": "arn:aws:iam::111122223333:user/adam",
+        "accountId": "111122223333",
+        "accessKeyId": "AKIAEXAMPLEADAM00001",
+        "userName": "adam"
+      },
+      "eventTime": "2026-09-28T11:00:03Z",
+      "eventSource": "s3.amazonaws.com",
+      "eventName": "ListBuckets",
+      "awsRegion": "eu-central-1",
+      "sourceIPAddress": "203.0.113.24",
+      "userAgent": "aws-cli/2.17.0 Python/3.12.6 Linux/6.8.0 exe/x86_64.ubuntu.24",
+      "requestParameters": {
+        "Host": "s3.eu-central-1.amazonaws.com"
+      },
+      "responseElements": null,
+      "requestID": "7f3c1a2b-0000-4000-8000-000000000003",
+      "eventID": "e1d2c3b4-0000-4000-8000-000000000003",
+      "eventType": "AwsApiCall",
+      "managementEvent": true,
+      "recipientAccountId": "111122223333",
+      "eventCategory": "Management",
+      "readOnly": true
+    },
+    {
+      "eventVersion": "1.10",
+      "userIdentity": {
+        "type": "AssumedRole",
+        "principalId": "AROAEXAMPLEOPS000001:jane",
+        "arn": "arn:aws:sts::111122223333:assumed-role/ops/jane",
+        "accountId": "111122223333",
+        "accessKeyId": "ASIAEXAMPLEJANE00001",
+        "sessionContext": {
+          "sessionIssuer": {
+            "type": "Role",
+            "principalId": "AROAEXAMPLEOPS000001",
+            "arn": "arn:aws:iam::111122223333:role/ops",
+            "accountId": "111122223333",
+            "userName": "ops"
+          },
+          "attributes": {
+            "creationDate": "2026-09-28T10:55:00Z",
+            "mfaAuthenticated": "true"
+          }
+        }
+      },
+      "eventTime": "2026-09-28T11:00:04Z",
+      "eventSource": "iam.amazonaws.com",
+      "eventName": "CreateUser",
+      "awsRegion": "eu-central-1",
+      "sourceIPAddress": "203.0.113.24",
+      "userAgent": "console.amazonaws.com",
+      "requestParameters": {
+        "userName": "report-bot"
+      },
+      "responseElements": {
+        "user": {
+          "path": "/",
+          "userName": "report-bot",
+          "userId": "AIDAEXAMPLEBOT000001",
+          "arn": "arn:aws:iam::111122223333:user/report-bot",
+          "createDate": "Sep 28, 2026 11:00:04 AM"
+        }
+      },
+      "requestID": "7f3c1a2b-0000-4000-8000-000000000004",
+      "eventID": "e1d2c3b4-0000-4000-8000-000000000004",
+      "eventType": "AwsApiCall",
+      "managementEvent": true,
+      "recipientAccountId": "111122223333",
+      "eventCategory": "Management",
+      "readOnly": false
+    },
+    {
+      "eventVersion": "1.10",
+      "userIdentity": {
+        "type": "IAMUser",
+        "principalId": "AIDAEXAMPLEADAM00001",
+        "arn": "arn:aws:iam::111122223333:user/adam",
+        "accountId": "111122223333",
+        "accessKeyId": "AKIAEXAMPLEADAM00001",
+        "userName": "adam"
+      },
+      "eventTime": "2026-09-28T11:00:05Z",
+      "eventSource": "s3.amazonaws.com",
+      "eventName": "DeleteBucket",
+      "awsRegion": "eu-central-1",
+      "sourceIPAddress": "203.0.113.24",
+      "userAgent": "aws-cli/2.17.0 Python/3.12.6 Linux/6.8.0 exe/x86_64.ubuntu.24",
+      "requestParameters": {
+        "bucketName": "finance-reports-2026",
+        "Host": "finance-reports-2026.s3.eu-central-1.amazonaws.com"
+      },
+      "responseElements": null,
+      "requestID": "7f3c1a2b-0000-4000-8000-000000000005",
+      "eventID": "e1d2c3b4-0000-4000-8000-000000000005",
+      "eventType": "AwsApiCall",
+      "managementEvent": true,
+      "recipientAccountId": "111122223333",
+      "eventCategory": "Management",
+      "readOnly": false,
+      "errorCode": "AccessDenied",
+      "errorMessage": "User: arn:aws:iam::111122223333:user/adam is not authorized to perform: s3:DeleteBucket"
+    },
+    {
+      "eventVersion": "1.10",
+      "userIdentity": {
+        "type": "AWSService",
+        "invokedBy": "ec2.amazonaws.com"
+      },
+      "eventTime": "2026-09-28T11:00:06Z",
+      "eventSource": "kms.amazonaws.com",
+      "eventName": "Decrypt",
+      "awsRegion": "eu-central-1",
+      "sourceIPAddress": "ec2.amazonaws.com",
+      "userAgent": "ec2.amazonaws.com",
+      "requestParameters": {
+        "encryptionAlgorithm": "SYMMETRIC_DEFAULT"
+      },
+      "responseElements": null,
+      "requestID": "7f3c1a2b-0000-4000-8000-000000000006",
+      "eventID": "e1d2c3b4-0000-4000-8000-000000000006",
+      "eventType": "AwsApiCall",
+      "managementEvent": true,
+      "recipientAccountId": "111122223333",
+      "eventCategory": "Management",
+      "readOnly": true,
+      "resources": [
+        {
+          "accountId": "111122223333",
+          "type": "AWS::KMS::Key",
+          "ARN": "arn:aws:kms:eu-central-1:111122223333:key/0a1b2c3d-0000-4000-8000-000000000001"
+        }
+      ],
+      "sharedEventID": "5c6d7e8f-0000-4000-8000-000000000001"
+    },
+    {
+      "eventVersion": "1.10",
+      "userIdentity": {
+        "type": "AWSService",
+        "invokedBy": "ec2.amazonaws.com"
+      },
+      "eventTime": "2026-09-28T11:00:07Z",
+      "eventSource": "kms.amazonaws.com",
+      "eventName": "CreateGrant",
+      "awsRegion": "eu-central-1",
+      "sourceIPAddress": "ec2.amazonaws.com",
+      "userAgent": "ec2.amazonaws.com",
+      "requestParameters": {
+        "granteePrincipal": "ec2.eu-central-1.amazonaws.com",
+        "operations": [
+          "Decrypt"
+        ]
+      },
+      "responseElements": null,
+      "requestID": "7f3c1a2b-0000-4000-8000-000000000007",
+      "eventID": "e1d2c3b4-0000-4000-8000-000000000007",
+      "eventType": "AwsApiCall",
+      "managementEvent": true,
+      "recipientAccountId": "111122223333",
+      "eventCategory": "Management",
+      "readOnly": false
+    }
+  ]
+}

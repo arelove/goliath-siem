@@ -57,6 +57,21 @@ Mapping these properly needs value translation in the mapping format, not only
 paths. Until then, the rules work on Sysmon data whose normalizer keeps the
 original fields, and would not fire on another producer's OCSF events.
 
+### AWS CloudTrail
+
+The `sigma-aws` mapping set, version 1, maps CloudTrail rules to what the
+`cloudtrail` source definition writes. 56 of the 57 CloudTrail rules in
+`rules` load. The one that does not compares a field named `status`, which
+CloudTrail does not write, so it could not fire on CloudTrail records in any
+product.
+
+Rules select calls by `eventSource` and `eventName`, and many compare the
+request or the response, such as `requestParameters.bucketName`. The
+definition keeps those objects whole under `unmapped` as CloudTrail wrote
+them, so each such field is one line of the mapping. SigmaHQ has no
+regression data for AWS; the fixtures of the definition are checked against
+rules written the same way in `goliath-match`.
+
 ## What stops the rest
 
 Log sources without a mapping, by number of rules in `rules`:
@@ -67,7 +82,6 @@ Log sources without a mapping, by number of rules in `rules`:
 | `process_creation`, Linux | 122 |
 | `process_creation`, macOS | 67 |
 | `system` service, Windows | 63 |
-| `cloudtrail`, AWS | 57 |
 | `auditd`, Linux | 53 |
 | `auditlogs`, Azure | 44 |
 | `activitylogs`, Azure | 35 |

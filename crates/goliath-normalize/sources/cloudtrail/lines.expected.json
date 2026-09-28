@@ -1,0 +1,159 @@
+[
+  {
+    "event": {
+      "activity_id": 2,
+      "actor": {
+        "user": {
+          "account": {
+            "uid": "111122223333"
+          },
+          "credential_uid": "AKIAEXAMPLEADAM00001",
+          "name": "adam",
+          "type": "IAMUser",
+          "uid": "AIDAEXAMPLEADAM00001",
+          "uid_alt": "arn:aws:iam::111122223333:user/adam"
+        }
+      },
+      "api": {
+        "operation": "GetCallerIdentity",
+        "request": {
+          "uid": "7f3c1a2b-0000-4000-8000-000000000008"
+        },
+        "service": {
+          "name": "sts.amazonaws.com"
+        }
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "cloud": {
+        "account": {
+          "uid": "111122223333"
+        },
+        "provider": "AWS",
+        "region": "eu-central-1"
+      },
+      "http_request": {
+        "user_agent": "aws-cli/2.17.0 Python/3.12.6 Linux/6.8.0 exe/x86_64.ubuntu.24"
+      },
+      "metadata": {
+        "event_code": "AwsApiCall",
+        "log_name": "Management",
+        "product": {
+          "name": "AWS CloudTrail",
+          "vendor_name": "AWS"
+        },
+        "uid": "e1d2c3b4-0000-4000-8000-000000000008",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "203.0.113.24"
+      },
+      "time": 1790593208000,
+      "type_uid": 600302,
+      "unmapped": {
+        "eventVersion": "1.10",
+        "managementEvent": true,
+        "readOnly": true,
+        "userIdentity": {
+          "accessKeyId": "AKIAEXAMPLEADAM00001",
+          "accountId": "111122223333",
+          "arn": "arn:aws:iam::111122223333:user/adam",
+          "principalId": "AIDAEXAMPLEADAM00001",
+          "type": "IAMUser",
+          "userName": "adam"
+        }
+      }
+    },
+    "id": "2ff6fdbc6592fad588b4007db1d63e29",
+    "issues": [],
+    "kind": "read"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "session": {
+          "issuer": "arn:aws:iam::111122223333:role/ops"
+        },
+        "user": {
+          "account": {
+            "uid": "111122223333"
+          },
+          "credential_uid": "ASIAEXAMPLEJANE00001",
+          "type": "AssumedRole",
+          "uid": "AROAEXAMPLEOPS000001:jane",
+          "uid_alt": "arn:aws:sts::111122223333:assumed-role/ops/jane"
+        }
+      },
+      "api": {
+        "operation": "PutBucketPolicy",
+        "request": {
+          "uid": "7f3c1a2b-0000-4000-8000-000000000009"
+        },
+        "service": {
+          "name": "s3.amazonaws.com"
+        }
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "cloud": {
+        "account": {
+          "uid": "111122223333"
+        },
+        "provider": "AWS",
+        "region": "eu-central-1"
+      },
+      "http_request": {
+        "user_agent": "aws-cli/2.17.0 Python/3.12.6 Linux/6.8.0 exe/x86_64.ubuntu.24"
+      },
+      "metadata": {
+        "event_code": "AwsApiCall",
+        "log_name": "Management",
+        "product": {
+          "name": "AWS CloudTrail",
+          "vendor_name": "AWS"
+        },
+        "uid": "e1d2c3b4-0000-4000-8000-000000000009",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "203.0.113.24"
+      },
+      "time": 1790593209000,
+      "type_uid": 600399,
+      "unmapped": {
+        "eventVersion": "1.10",
+        "managementEvent": true,
+        "readOnly": false,
+        "requestParameters": {
+          "bucketName": "finance-reports-2026"
+        },
+        "userIdentity": {
+          "accessKeyId": "ASIAEXAMPLEJANE00001",
+          "accountId": "111122223333",
+          "arn": "arn:aws:sts::111122223333:assumed-role/ops/jane",
+          "principalId": "AROAEXAMPLEOPS000001:jane",
+          "sessionContext": {
+            "attributes": {
+              "creationDate": "2026-09-28T10:55:00Z",
+              "mfaAuthenticated": "true"
+            },
+            "sessionIssuer": {
+              "accountId": "111122223333",
+              "arn": "arn:aws:iam::111122223333:role/ops",
+              "principalId": "AROAEXAMPLEOPS000001",
+              "type": "Role",
+              "userName": "ops"
+            }
+          },
+          "type": "AssumedRole"
+        }
+      }
+    },
+    "id": "0851a67b3ef9dfc468e3c61009f40631",
+    "issues": [],
+    "kind": "write"
+  }
+]

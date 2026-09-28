@@ -31,6 +31,7 @@ produce.
 | `sources/sysmon.yaml` | Sysmon process creation, network connections, image loads, file creation, and registry value sets, as `evtx_dump` writes them |
 | `sources/auditd.yaml` | Linux audit program executions on x86_64 and arm64, and logins, with the lines of each event gathered, as OCSF Process Activity and Authentication |
 | `sources/entra.yaml` | Microsoft Entra ID interactive, non-interactive, and service principal sign-ins, as Azure Monitor diagnostic settings write them, as OCSF Authentication |
+| `sources/cloudtrail.yaml` | AWS CloudTrail management events, as CloudTrail delivers them to S3, `{"Records": [...]}`, or one after another: console sign-ins as OCSF Authentication, and API calls as API Activity, read or other, with the caller, its session, and the request and response kept |
 | `sources/falco.yaml` | Falco alerts on system calls and the Kubernetes audit log, as `json_output` writes them, as OCSF Detection Findings |
 | `sources/windows-security.yaml` | The Windows Security log, as `evtx_dump` writes it, 49 event IDs chosen by what SigmaHQ rules ask for: logons, NTLM and Kerberos, process creation, accounts, computer accounts, rights, groups, scheduled tasks, services installed, object, registry, and share access, directory changes, and the log being cleared |
 

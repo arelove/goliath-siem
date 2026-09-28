@@ -116,3 +116,28 @@ fn the_security_log_is_selected_by_its_service_and_restricted_to_its_log() {
         assert!(entry.fields.contains_key(field), "{field} is not mapped");
     }
 }
+
+#[test]
+fn cloudtrail_is_selected_and_restricted_to_its_product() {
+    let set = MappingSet::from_yaml(goliath_rule::SIGMA_AWS).expect("shipped mapping set loads");
+    assert_eq!(set.name, "sigma-aws");
+    let cloudtrail = LogSourceSelector {
+        category: None,
+        product: Some("aws".to_owned()),
+        service: Some("cloudtrail".to_owned()),
+    };
+    let entry = set.select(&cloudtrail).expect("selected");
+    assert_eq!(
+        entry.class[&FieldPath::parse("metadata.product.name").expect("valid path")],
+        ClassValue::String("AWS CloudTrail".to_owned())
+    );
+    for field in [
+        "eventName",
+        "eventSource",
+        "userIdentity.arn",
+        "errorCode",
+        "userAgent",
+    ] {
+        assert!(entry.fields.contains_key(field), "{field} is not mapped");
+    }
+}
