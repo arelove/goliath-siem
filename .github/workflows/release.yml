@@ -42,7 +42,7 @@ jobs:
         if: steps.token.outputs.configured == 'true'
       - name: Open or update the release pull request
         if: steps.token.outputs.configured == 'true'
-        uses: release-plz/action@51e32d708d306b2c2e98540245b276439f3137c3 # v0.5.139
+        uses: release-plz/action@b8d6b54b02889ff2ae2bb82e8b57c3a8fc1683a5 # v0.5.139
         with:
           command: release-pr
         env:
@@ -74,7 +74,7 @@ jobs:
         if: steps.token.outputs.configured == 'true'
       - name: Tag, create the GitHub release, and publish to crates.io
         if: steps.token.outputs.configured == 'true'
-        uses: release-plz/action@51e32d708d306b2c2e98540245b276439f3137c3 # v0.5.139
+        uses: release-plz/action@b8d6b54b02889ff2ae2bb82e8b57c3a8fc1683a5 # v0.5.139
         with:
           command: release
         env:
