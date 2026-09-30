@@ -7,7 +7,8 @@ deprecated one, their tactics, the detection strategies that detect them,
 and their analytics, with every data component of the version, so that the
 names source definitions declare can be checked. Descriptions, references
 other than ATT&CK's own, and the log sources of data components no analytic
-here reads were removed; everything else is as published.
+here reads were removed, and long dashes were written as hyphens, as the
+repository's prose policy asks; everything else is as published.
 
 © 2026 The MITRE Corporation. This work is reproduced and distributed with
 the permission of The MITRE Corporation, under the

@@ -6738,7 +6738,7 @@
     },
     {
      "name": "macos:unifiedlog",
-     "channel": "chmod command with arguments including '+s', 'u+s', or numeric values 4000–6777"
+     "channel": "chmod command with arguments including '+s', 'u+s', or numeric values 4000-6777"
     },
     {
      "name": "macos:unifiedlog",
@@ -7907,7 +7907,7 @@
     },
     {
      "name": "networkdevice:syslog",
-     "channel": "Config change: CLI/NETCONF/SNMP – 'monitor session', 'mirror port'"
+     "channel": "Config change: CLI/NETCONF/SNMP - 'monitor session', 'mirror port'"
     },
     {
      "name": "NSM:Flow",
