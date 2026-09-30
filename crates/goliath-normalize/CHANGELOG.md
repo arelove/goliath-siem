@@ -9,6 +9,19 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.13] - 2026-09-30
+
+
+### Added
+
+- Times without an offset, read as UTC
+- A Microsoft 365 unified audit log definition
+
+
+### Fixed
+
+- The new coercion last, so earlier ones keep their discriminants
+
 ## [0.2.12] - 2026-09-30
 
 
