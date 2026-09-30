@@ -426,3 +426,69 @@ async fn an_overview_counts_what_is_stored_by_time_severity_and_value() {
     );
     scratch.drop().await;
 }
+
+#[tokio::test]
+async fn events_and_dead_letters_are_counted_by_source_and_hour() {
+    use goliath_store::{SearchLimits, Status, Watched};
+
+    let Some(scratch) = Scratch::new("health") else {
+        return;
+    };
+    scratch.store.migrate().await.unwrap();
+    // The counts are kept five weeks, so they are received now.
+    let now = i64::try_from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis(),
+    )
+    .unwrap();
+    let hour = now / 3_600_000 * 3_600;
+    let kinds = batch(KINDS, hour * 1000 + 1);
+    let malformed = batch(MALFORMED, hour * 1000 + 2);
+    assert!(malformed.dead_letters() > 0);
+    scratch.store.write(&kinds).await.unwrap();
+    scratch.store.write(&malformed).await.unwrap();
+
+    let hours = scratch
+        .store
+        .source_hours(SearchLimits::default())
+        .await
+        .unwrap();
+    assert_eq!(hours.len(), 1, "{hours:?}");
+    assert_eq!(hours[0].source, "sysmon");
+    assert_eq!(i64::from(hours[0].hour), hour);
+    assert_eq!(
+        hours[0].events,
+        u64::try_from(kinds.events() + malformed.events()).unwrap()
+    );
+    assert_eq!(hours[0].last_received, hour * 1000 + 2);
+
+    let dead_letters = scratch
+        .store
+        .dead_letter_hours(SearchLimits::default())
+        .await
+        .unwrap();
+    let counted: u64 = dead_letters.iter().map(|hour| hour.dead_letters).sum();
+    assert_eq!(counted, u64::try_from(malformed.dead_letters()).unwrap());
+
+    // Counted this hour only: no baseline yet, and not quiet.
+    let watched = [Watched {
+        source: "zeek".to_owned(),
+        silent_after_minutes: 60,
+    }];
+    let health = scratch
+        .store
+        .source_health(now, &watched, SearchLimits::default())
+        .await
+        .unwrap();
+    let statuses: Vec<(&str, Status)> = health
+        .iter()
+        .map(|health| (health.source.as_str(), health.status))
+        .collect();
+    assert_eq!(
+        statuses,
+        [("zeek", Status::Waiting), ("sysmon", Status::Learning)]
+    );
+    scratch.drop().await;
+}

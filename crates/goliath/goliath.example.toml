@@ -12,6 +12,9 @@ definition = "sysmon"
 # Drop `evtx_dump -o json` output here. Write a file under a name ending in
 # `.tmp` and rename it when complete; collected files move to `done/`.
 inbox = "inbox/sysmon"
+# Source health calls a source silent after this many minutes without an
+# event; 60 if left out. Raise it for a source that delivers late or seldom.
+# silent_after_minutes = 60
 
 [store]
 url = "http://localhost:8123"

@@ -230,3 +230,38 @@ export function overview(from: string, to: string, signal?: AbortSignal): Promis
 export function arrivals(signal?: AbortSignal): Promise<Arrivals> {
   return request<Arrivals>("/arrivals", signal ? { signal } : {});
 }
+
+/** What a source's numbers say; see docs/adr/0019-source-health.md. */
+export type Status = "rejecting" | "waiting" | "silent" | "low" | "high" | "learning" | "ok";
+
+/** The health of one source. */
+export interface SourceHealth {
+  source: string;
+  status: Status;
+  /** When its last event was received, in milliseconds since the epoch. */
+  last_event: number | null;
+  /** The start of the last complete hour, in milliseconds since the epoch. */
+  hour: number;
+  /** Its events in that hour. */
+  last_hour: number;
+  /** The median of its events in the same hour of the seven days before. */
+  baseline: number | null;
+  silent_after_minutes: number;
+  dead_letters: {
+    last_hour: number;
+    /** The last 24 complete hours, by stage. */
+    last_day: Record<string, number>;
+    last: number | null;
+  };
+}
+
+export interface Sources {
+  /** The server's clock, in milliseconds since the epoch. */
+  now: number;
+  /** The sources needing attention first. */
+  sources: SourceHealth[];
+}
+
+export function sources(signal?: AbortSignal): Promise<Sources> {
+  return request<Sources>("/sources", signal ? { signal } : {});
+}

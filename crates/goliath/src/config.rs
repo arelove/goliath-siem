@@ -5,7 +5,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::SocketAddr;
-use std::num::{NonZeroU16, NonZeroU64, NonZeroUsize};
+use std::num::{NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -212,6 +212,10 @@ pub struct SourceConfig {
     /// Whether, and where, the receiver takes this source's records as
     /// syslog over TCP.
     pub syslog: Option<SyslogSourceConfig>,
+    /// Minutes without an event before source health calls this source
+    /// silent; 60 if left out. Longer for a source that delivers late or
+    /// seldom. See docs/adr/0019-source-health.md.
+    pub silent_after_minutes: Option<NonZeroU32>,
 }
 
 /// How a source takes syslog over TCP: a port of its own, since syslog
@@ -626,6 +630,29 @@ impl SourceConfig {
         Normalizer::from_yaml(&text).map_err(|error| {
             RunError::Config(format!("source definition `{}`: {error}", self.definition))
         })
+    }
+}
+
+impl Config {
+    /// The configured sources, by the name their definitions give them, and
+    /// how long each may send nothing, for source health.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RunError::Config`] if a definition cannot be read or does
+    /// not load.
+    pub fn watched(&self) -> Result<Vec<goliath_store::Watched>, RunError> {
+        self.sources
+            .iter()
+            .map(|source| {
+                Ok(goliath_store::Watched {
+                    source: source.normalizer()?.name().to_owned(),
+                    silent_after_minutes: source
+                        .silent_after_minutes
+                        .map_or(goliath_store::DEFAULT_SILENT_AFTER_MINUTES, NonZeroU32::get),
+                })
+            })
+            .collect()
     }
 }
 

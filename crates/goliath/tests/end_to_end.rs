@@ -696,6 +696,11 @@ data = "data"
 definition = "sysmon"
 inbox = "inbox/sysmon"
 
+[[sources]]
+definition = "zeek"
+inbox = "inbox/zeek"
+silent_after_minutes = 240
+
 [store]
 url = "{url}"
 database = "{database}"
@@ -735,6 +740,18 @@ token_file = "token"
     assert_eq!(status, 200, "{event}");
     assert_eq!(event["source"], "sysmon");
     assert_eq!(event["event"], found[0]["event"]);
+
+    // Sysmon has events, counted this hour, so no baseline yet; Zeek, none.
+    let (status, health) = http(port, "GET", "/api/v1/sources", &token, "").await;
+    assert_eq!(status, 200, "{health}");
+    let sources = health["sources"].as_array().unwrap();
+    assert_eq!(sources.len(), 2, "{health}");
+    assert_eq!(sources[0]["source"], "zeek");
+    assert_eq!(sources[0]["status"], "waiting");
+    assert_eq!(sources[0]["silent_after_minutes"], 240);
+    assert_eq!(sources[1]["source"], "sysmon");
+    assert_eq!(sources[1]["status"], "learning");
+    assert!(sources[1]["last_event"].as_i64().unwrap() > 0, "{health}");
 
     stop.send(()).unwrap();
     running.await.unwrap().unwrap();

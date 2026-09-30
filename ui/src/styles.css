@@ -12,6 +12,8 @@
   --selected: #1b2a40;
   --error: #f06a5d;
   --severe: #e0533d;
+  --warn: #d9a13b;
+  --good: #3fb950;
   --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
   color-scheme: dark;
   font:
@@ -35,6 +37,8 @@
   --selected: #e6efff;
   --error: #d64532;
   --severe: #d64532;
+  --warn: #b7791f;
+  --good: #1f883d;
   color-scheme: light;
 }
 
@@ -438,6 +442,54 @@ button.bar-row:disabled {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Source health. */
+.sources table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sources th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sources td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.sources th:nth-child(n + 4),
+.sources td.count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status .dot {
+  background: var(--muted);
+}
+
+.status.bad .dot {
+  background: var(--severe);
+}
+
+.status.warn .dot {
+  background: var(--warn);
+}
+
+.status.good .dot {
+  background: var(--good);
 }
 
 @media (max-width: 1100px) {
