@@ -34,6 +34,32 @@ const OVERVIEW = {
   users: [{ key: "alice", count: 800 }],
 };
 
+const SOURCES = {
+  now: 1790598600000,
+  sources: [
+    {
+      source: "zeek",
+      status: "silent",
+      last_event: 1790588000000,
+      hour: 1790593200000,
+      last_hour: 0,
+      baseline: 1500,
+      silent_after_minutes: 60,
+      dead_letters: { last_hour: 0, last_day: {}, last: null },
+    },
+    {
+      source: "sysmon",
+      status: "ok",
+      last_event: 1790598590000,
+      hour: 1790593200000,
+      last_hour: 12000,
+      baseline: 11000,
+      silent_after_minutes: 60,
+      dead_letters: { last_hour: 3, last_day: { decoding: 5 }, last: 1790598000000 },
+    },
+  ],
+};
+
 interface Call {
   path: string;
   body: Search | null;
@@ -79,6 +105,9 @@ beforeEach(() => {
       }
       if (path === "/arrivals") {
         return reply(200, { now: 1790330460000, seconds: [{ at: 1790330455000, count: 12 }] });
+      }
+      if (path === "/sources") {
+        return reply(200, SOURCES);
       }
       if (path.startsWith("/events/")) {
         return reply(200, { ...LAUNCH, source_version: 1, issues: [] });
@@ -190,5 +219,19 @@ describe("the overview", () => {
         });
       expect(spans).toContain(3_600_000);
     });
+  });
+});
+
+describe("source health", () => {
+  it("lists the sources, the ones needing attention first", async () => {
+    window.history.replaceState(null, "", "/?view=sources");
+    show();
+    const silent = await screen.findByText("Silent");
+    expect(silent.closest("span")).toHaveAttribute("title", "No event for over 60 minutes.");
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(rows.map((row) => row.querySelector("td")?.textContent)).toEqual(["zeek", "sysmon"]);
+    expect(screen.getByText("2 h ago")).toBeInTheDocument();
+    expect(screen.getByText("just now")).toBeInTheDocument();
+    expect(screen.getByTitle("decoding 5")).toHaveTextContent("5");
   });
 });

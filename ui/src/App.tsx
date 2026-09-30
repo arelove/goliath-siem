@@ -9,13 +9,14 @@ import { TokenPrompt } from "./components/TokenPrompt";
 import { Overview } from "./Overview";
 import type { Draft } from "./query";
 import { fromParams, toParams, toSearch } from "./query";
+import { Sources } from "./Sources";
 import { className } from "./summary";
 
 function unauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401;
 }
 
-type View = "overview" | "search";
+type View = "overview" | "search" | "sources";
 
 /** Ranges the dashboard offers, each ending now. */
 const RANGES = [
@@ -73,8 +74,15 @@ function MoonIcon() {
 }
 
 function viewOf(params: URLSearchParams): View {
-  return params.get("view") === "search" ? "search" : "overview";
+  const view = params.get("view");
+  return view === "search" || view === "sources" ? view : "overview";
 }
+
+const TABS: Record<View, { tab: string; section: string }> = {
+  overview: { tab: "Dashboard", section: "Security overview" },
+  search: { tab: "Events", section: "Event search" },
+  sources: { tab: "Sources", section: "Source health" },
+};
 
 export function App() {
   const client = useQueryClient();
@@ -164,9 +172,7 @@ export function App() {
         <span className="brand">
           goliath<span className="mark">.</span>
         </span>
-        <span className="section">
-          {view === "overview" ? "Security overview" : "Event search"}
-        </span>
+        <span className="section">{TABS[view].section}</span>
         <button
           type="button"
           className="icon"
@@ -179,7 +185,7 @@ export function App() {
       </header>
       <nav className="subbar">
         <div className="tabs" role="tablist">
-          {(["overview", "search"] as const).map((name) => (
+          {(["overview", "search", "sources"] as const).map((name) => (
             <button
               key={name}
               type="button"
@@ -188,7 +194,7 @@ export function App() {
               className={view === name ? "tab active" : "tab"}
               onClick={() => show(name)}
             >
-              {name === "overview" ? "Dashboard" : "Events"}
+              {TABS[name].tab}
             </button>
           ))}
         </div>
@@ -206,7 +212,9 @@ export function App() {
           </select>
         )}
       </nav>
-      {view === "overview" ? (
+      {view === "sources" ? (
+        <Sources onError={setOverviewError} />
+      ) : view === "overview" ? (
         <Overview
           span={span}
           className={(uid) => names.get(Number(uid)) ?? `Class ${uid}`}
