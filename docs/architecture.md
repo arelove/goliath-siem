@@ -154,6 +154,32 @@ Published with every release:
 - precision and recall on the labelled set;
 - memory per node at 10^6 and 10^8 indicators.
 
+### Capacity model
+
+A rate that has not been run is not claimed; it is computed from rates that
+have. For a target of `R` events a second:
+
+- Each stage that keeps no state across events, receiving, normalizing,
+  matching, and writing, costs `c` core-seconds an event, measured on a
+  machine that runs only the platform, with the generator on another. It
+  needs `R × c` cores.
+- A node gives `k × u` of them: its cores, used to at most `u = 0.7`, so a
+  burst has room.
+- Storage needs `R × b` bytes a second written after compression, `b`
+  measured per source, and `R × b × 86,400 × days` of disk for the retention.
+- The network carries `R × a` bytes a second in, `a` the raw size of an
+  event.
+
+The nodes a rate needs are the largest of these terms, divided by what one
+node gives. The model holds only where scaling is linear, so it is checked:
+the same run at 1, 2, and 4 nodes must reach at least 0.8 of linear. Parts
+that are not linear are named and measured on their own before the model is
+used past them: one partition a topic in the pipe
+([ADR-0015](adr/0015-pipe-semantics.md)), correlation state held per node
+([ADR-0020](adr/0020-state-beyond-events.md)), and ClickHouse merges. A
+published figure for a rate beyond the machines measured states the costs it
+was computed from and the scaling that was checked.
+
 Precision and recall cannot be measured on synthetic data. Throughput cannot be
 measured on labelled datasets. Conflating the two is a methodological error
 caught at review.
