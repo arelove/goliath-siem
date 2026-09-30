@@ -9,6 +9,8 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.12] - 2026-09-30
+
 ## [0.2.11] - 2026-09-28
 
 

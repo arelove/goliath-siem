@@ -9,6 +9,13 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-09-30
+
+
+### Added
+
+- A Sigma mapping set for Okta, all 23 SigmaHQ rules load
+
 ## [0.2.3] - 2026-09-28
 
 
