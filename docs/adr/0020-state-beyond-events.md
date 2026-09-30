@@ -20,7 +20,7 @@ the hot path uses RocksDB.
 Five facts shape it:
 
 - The target is 1,000,000 events a second a cluster
-  ([architecture.md](architecture.md)), and the matching engine alone takes
+  ([architecture.md](../architecture.md)), and the matching engine alone takes
   about 8 microseconds of a core per event. A round trip to a database server
   on the same network is 100 to 500 microseconds, so one per event would
   cost more than everything else the event goes through.
