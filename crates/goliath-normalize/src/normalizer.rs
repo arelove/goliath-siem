@@ -869,7 +869,9 @@ impl Source {
             } => Some(match coercion {
                 Coercion::String => Writes::Text,
                 Coercion::Integer => Writes::Integer,
-                Coercion::Timestamp | Coercion::UnixSeconds => Writes::Timestamp,
+                Coercion::Timestamp | Coercion::UtcTimestamp | Coercion::UnixSeconds => {
+                    Writes::Timestamp
+                }
                 Coercion::Ip => Writes::Ip,
             }),
         }
@@ -954,6 +956,7 @@ fn coerce(value: &Value, coercion: Option<Coercion>) -> Result<Value, String> {
             .parse::<jiff::Timestamp>()
             .map(|time| Value::from(time.as_millisecond()))
             .map_err(|error| format!("`{text}` is not an RFC 3339 time: {error}")),
+        (Coercion::UtcTimestamp, Value::String(text)) => utc_timestamp(text),
         (Coercion::UnixSeconds, Value::String(text)) => unix_seconds(text),
         (Coercion::Ip, Value::String(text)) => text
             .trim()
@@ -966,6 +969,18 @@ fn coerce(value: &Value, coercion: Option<Coercion>) -> Result<Value, String> {
             describe(other)
         )),
     }
+}
+
+/// An RFC 3339 time, with or without an offset, as milliseconds; one
+/// without is UTC.
+fn utc_timestamp(text: &str) -> Result<Value, String> {
+    if let Ok(time) = text.parse::<jiff::Timestamp>() {
+        return Ok(Value::from(time.as_millisecond()));
+    }
+    text.parse::<jiff::civil::DateTime>()
+        .and_then(|time| time.to_zoned(jiff::tz::TimeZone::UTC))
+        .map(|time| Value::from(time.timestamp().as_millisecond()))
+        .map_err(|error| format!("`{text}` is not an RFC 3339 time: {error}"))
 }
 
 /// Seconds since the epoch, such as `1727251200.123`, as milliseconds.

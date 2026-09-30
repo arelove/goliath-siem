@@ -163,6 +163,10 @@ pub enum Coercion {
     /// An RFC 3339 time, such as `2025-12-25T14:30:27.369114Z`, as the
     /// milliseconds since the Unix epoch OCSF stores.
     Timestamp,
+    /// An RFC 3339 time written without an offset, such as Microsoft 365's
+    /// `2026-09-28T12:00:01`, taken as UTC, as milliseconds. A time with an
+    /// offset is read with it.
+    UtcTimestamp,
     /// Seconds since the Unix epoch, with a fraction if any, such as
     /// auditd's `1727251200.123`, as milliseconds.
     UnixSeconds,

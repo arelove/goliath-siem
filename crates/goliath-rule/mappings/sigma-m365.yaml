@@ -1,0 +1,76 @@
+# Sigma field names for the Microsoft 365 unified audit log, resolved to
+# OCSF 1.5.0 paths.
+#
+# Paths follow the `m365` source definition of goliath-normalize. It keeps
+# every member of a record it does not map under `unmapped`, whole, so a
+# field such as `Directionality` of a Defender for Office 365 record is read
+# there as Microsoft wrote it. See docs/adr/0012-sigma-field-mapping.md.
+#
+# SigmaHQ's rules for the `audit` service name the audit log's own fields.
+# Those for `exchange`, `threat_management`, and `threat_detection` name
+# `eventSource`, `eventName`, and `status`, which the audit log does not
+# write; they are read as the record's workload, its operation or, for an
+# alert, the alert's name, and its result.
+
+name: sigma-m365
+version: 1
+
+mappings:
+  - logsource: { product: m365, service: audit }
+    # Records of every workload share one schema, so the class condition is
+    # the product; rules select records by `Operation` and `Workload`.
+    class: { metadata.product.name: Microsoft 365 }
+    fields: &audit
+      Operation: metadata.event_code
+      Workload: metadata.product.feature.name
+      ResultStatus: status_code
+      CreationTime: time
+      Id: metadata.uid
+      OrganizationId: metadata.tenant_uid
+      UserId: actor.user.name
+      UserKey: [user.uid, unmapped.UserKey]
+      UserType: unmapped.UserType
+      RecordType: unmapped.RecordType
+      # The resource signed in to, the user an account change is of, or, for
+      # other records, the object acted on, as written.
+      ObjectId: [service.uid, user.name, unmapped.ObjectId]
+      ClientIP: [src_endpoint.ip, unmapped.ClientIP]
+      ApplicationId: [actor.app_uid, unmapped.ApplicationId]
+      LogonError: [status_detail, unmapped.LogonError]
+      ErrorNumber: unmapped.ErrorNumber
+      # Entra ID writes the request type among the extended properties of a
+      # sign-in, a list of names and values; any value of the list is
+      # compared.
+      RequestType: unmapped.ExtendedProperties.Value
+      ExtendedProperties: [unmapped.ExtendedProperties.Name, unmapped.ExtendedProperties.Value]
+      ModifiedProperties: [unmapped.ModifiedProperties.Name, unmapped.ModifiedProperties.NewValue]
+      # An Exchange cmdlet's parameters, and the properties of a mailbox
+      # operation, by name and by value.
+      Parameters: [unmapped.Parameters.Name, unmapped.Parameters.Value]
+      OperationProperties: [unmapped.OperationProperties.Name, unmapped.OperationProperties.Value]
+      Directionality: unmapped.Directionality
+      DeliveryAction: unmapped.DeliveryAction
+      Verdict: unmapped.Verdict
+      Name: [message, unmapped.Name]
+      Severity: [severity, unmapped.Severity]
+      Category: unmapped.Category
+
+  - logsource: { product: m365, service: exchange }
+    class: { metadata.product.name: Microsoft 365 }
+    fields:
+      eventSource: metadata.product.feature.name
+      eventName: metadata.event_code
+      status: status
+      Parameters: [unmapped.Parameters.Name, unmapped.Parameters.Value]
+
+  - logsource: { product: m365, service: threat_management }
+    # Alerts, which the audit log records as `AlertTriggered`.
+    class: { metadata.product.name: Microsoft 365, metadata.event_code: AlertTriggered }
+    fields: &alert
+      eventSource: metadata.product.feature.name
+      eventName: message
+      status: status
+
+  - logsource: { product: m365, service: threat_detection }
+    class: { metadata.product.name: Microsoft 365, metadata.event_code: AlertTriggered }
+    fields: *alert
