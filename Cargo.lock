@@ -791,7 +791,7 @@ dependencies = [
 
 [[package]]
 name = "goliath-normalize"
-version = "0.2.15"
+version = "0.2.16"
 dependencies = [
  "blake3",
  "goliath-ocsf",
