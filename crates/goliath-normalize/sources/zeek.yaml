@@ -21,6 +21,15 @@ version: 1
 framing: lines
 decoding: json
 
+# The ATT&CK data components its records supply: those ATT&CK names for
+# NSM:Flow, NSM:Connections, and NSM:Content, of the records the kinds below read.
+data_components:
+  - Network Connection Creation
+  - Network Traffic Flow
+  - Network Traffic Content
+  - Network Share Access
+  - User Account Authentication
+
 common:
   time: { from: ts, as: timestamp }
   severity_id: { value: 1 }

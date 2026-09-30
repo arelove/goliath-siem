@@ -38,6 +38,12 @@ pub struct SourceDefinition {
     /// Fields every kind writes, such as the time and the device.
     #[serde(default)]
     pub common: BTreeMap<String, FieldSpec>,
+    /// The ATT&CK data components the records it reads supply, by name,
+    /// such as `Process Creation`, so that coverage can tell a rule that can
+    /// fire from one whose data is not collected. See
+    /// docs/adr/0009-attack-knowledge-model.md.
+    #[serde(default)]
+    pub data_components: Vec<String>,
     /// The kinds of record the source produces, tried in order.
     pub kinds: Vec<KindDefinition>,
 }

@@ -19,6 +19,17 @@ framing: json-values
 decoding: json
 unwrap: "."
 
+# The ATT&CK data components its records supply: those ATT&CK names for
+# saas:okta and Okta:SystemLog, of the records the kinds below read.
+data_components:
+  - Application Log Content
+  - Logon Session Creation
+  - Logon Session Metadata
+  - User Account Authentication
+  - User Account Creation
+  - User Account Metadata
+  - User Account Modification
+
 common:
   time: { from: published, as: timestamp }
   metadata.version: { value: "1.5.0" }

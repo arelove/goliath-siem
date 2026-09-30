@@ -19,6 +19,13 @@ framing: lines
 decoding: json
 unwrap: records
 
+# The ATT&CK data components its records supply: those ATT&CK names for
+# azure:signinlogs, of the records the kinds below read.
+data_components:
+  - Logon Session Creation
+  - Logon Session Metadata
+  - User Account Authentication
+
 common:
   time: { from: time, as: timestamp }
   # A sign-in has no severity of its own; its risk is below.
