@@ -1,0 +1,115 @@
+[
+  {
+    "event": {
+      "activity_id": 6,
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "protocol_name": "tcp",
+        "uid": "CExample0018zeek"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.5",
+        "port": 443
+      },
+      "metadata": {
+        "correlation_uid": "CExample0018zeek",
+        "log_name": "conn",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50018
+      },
+      "traffic": {
+        "packets_in": 0,
+        "packets_out": 1
+      },
+      "type_uid": 400106,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:18.000000Z",
+        "conn_state": "S0",
+        "history": "S",
+        "ts": 1790596818.018
+      }
+    },
+    "id": "34abd80e945a8cda001e010955bf1757",
+    "issues": [
+      {
+        "reason": "cannot convert a number to Timestamp",
+        "source": "ts",
+        "target": "time"
+      }
+    ],
+    "kind": "conn"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "category_uid": 4,
+      "class_uid": 4003,
+      "connection_info": {
+        "protocol_name": "udp",
+        "uid": "CExample0019zeek"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.53",
+        "port": 53
+      },
+      "metadata": {
+        "correlation_uid": "CExample0019zeek",
+        "log_name": "dns",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "query": {
+        "hostname": "www.example.com",
+        "type": "A"
+      },
+      "rcode": "NOERROR",
+      "rcode_id": 0,
+      "severity_id": 1,
+      "src_endpoint": {
+        "port": 50019
+      },
+      "time": 1790596819000,
+      "type_uid": 400306,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:19.000000Z",
+        "id.orig_h": "not-an-address",
+        "rejected": false
+      }
+    },
+    "id": "123c5c9b5b25b4f70c19688aa366213f",
+    "issues": [
+      {
+        "reason": "`not-an-address` is not an IP address",
+        "source": "id.orig_h",
+        "target": "src_endpoint.ip"
+      }
+    ],
+    "kind": "dns"
+  },
+  {
+    "dead_letter": {
+      "error": "no kind of source `zeek` accepts the record",
+      "raw": "{\"_path\": \"weird\", \"_write_ts\": \"2026-09-28T12:01:20.000000Z\", \"ts\": \"2026-09-28T12:00:20.000020Z\", \"uid\": \"CExample0020zeek\", \"id.orig_h\": \"10.20.30.40\", \"id.orig_p\": 50020, \"id.resp_h\": \"10.20.30.5\", \"id.resp_p\": 443, \"name\": \"bad_TCP_checksum\", \"notice\": false, \"peer\": \"zeek\", \"source\": \"TCP\"}",
+      "stage": "mapping"
+    }
+  },
+  {
+    "dead_letter": {
+      "error": "EOF while parsing a string at line 1 column 71",
+      "raw": "{\"_path\": \"conn\", \"ts\": \"2026-09-28T12:00:21.000000Z\", \"uid\": \"CExample",
+      "stage": "decoding"
+    }
+  }
+]

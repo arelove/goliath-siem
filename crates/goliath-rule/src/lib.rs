@@ -65,6 +65,10 @@ pub const SIGMA_OKTA: &str = include_str!("../mappings/sigma-okta.yaml");
 /// The mapping set for Sigma's Microsoft 365 log sources shipped with this
 /// crate, ready for [`MappingSet::from_yaml`].
 pub const SIGMA_M365: &str = include_str!("../mappings/sigma-m365.yaml");
+
+/// The mapping set for Sigma's Zeek log sources shipped with this crate,
+/// ready for [`MappingSet::from_yaml`].
+pub const SIGMA_ZEEK: &str = include_str!("../mappings/sigma-zeek.yaml");
 pub use mapping::{ClassValue, LogSourceSelector, MappingSet, SourceMapping};
 pub use path::FieldPath;
 pub use resolved::{

@@ -1,0 +1,285 @@
+# Zeek logs, as the json-streaming-logs package writes them: one JSON record
+# per line, the log it belongs to in `_path`, and times in ISO 8601, which
+# the package sets. Zeek's own JSON writer names no log in its records, so
+# they cannot be told apart once sent; send them through the package.
+#
+# The logs read are conn, dns, http, ssl, x509, smb_files, dce_rpc,
+# kerberos, rdp, and ssh. A record of another log, such as weird or notice,
+# is not accepted, and is reported as a dead letter.
+#
+# Connections and their protocols become the OCSF network classes: Network,
+# DNS, HTTP, SMB, RDP, and SSH Activity; Kerberos requests, Authentication. A
+# certificate of the x509 log becomes a Network Activity of its own, the
+# certificate under `tls`. Every field not mapped below is kept under
+# `unmapped` by its Zeek name, such as `conn_state` and `history`.
+#
+# Zeek names a connection's endpoints `id.orig_h`, `id.orig_p`, `id.resp_h`,
+# and `id.resp_p`, with the dots part of the names; they are read as such.
+
+name: zeek
+version: 1
+framing: lines
+decoding: json
+
+common:
+  time: { from: ts, as: timestamp }
+  severity_id: { value: 1 }
+  metadata.version: { value: "1.5.0" }
+  metadata.product.name: { value: Zeek }
+  metadata.product.vendor_name: { value: Zeek }
+  metadata.log_name: _path
+  metadata.correlation_uid: uid
+  src_endpoint.ip: { from: id.orig_h, as: ip }
+  src_endpoint.port: id.orig_p
+  dst_endpoint.ip: { from: id.resp_h, as: ip }
+  dst_endpoint.port: id.resp_p
+
+kinds:
+  - name: conn
+    when:
+      _path: conn
+    # Network Activity: Traffic, one record per connection.
+    class: { class_uid: 4001, activity_id: 6 }
+    fields:
+      connection_info.uid: uid
+      connection_info.protocol_name: proto
+      connection_info.community_uid: community_id
+      app_name: service
+      traffic.bytes_out: orig_bytes
+      traffic.bytes_in: resp_bytes
+      traffic.packets_out: orig_pkts
+      traffic.packets_in: resp_pkts
+    unmapped: ["."]
+
+  - name: dns
+    when:
+      _path: dns
+    # DNS Activity: Traffic, a query and its response in one record.
+    class: { class_uid: 4003, activity_id: 6 }
+    fields:
+      connection_info.uid: uid
+      connection_info.protocol_name: proto
+      query.hostname: query
+      query.type: qtype_name
+      query.class: qclass_name
+      query.packet_uid: trans_id
+      rcode: rcode_name
+      # DNS response codes, as OCSF numbers them.
+      rcode_id:
+        from: rcode
+        map: { "0": 0, "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9, "10": 10 }
+        otherwise: 99
+    unmapped: ["."]
+
+  - name: http_get
+    when: { _path: http, method: GET }
+    # HTTP Activity: Get. `uri` is the path with its query, as sent.
+    class: { class_uid: 4002, activity_id: 3 }
+    fields: &http
+      connection_info.uid: uid
+      http_request.http_method: method
+      http_request.url.hostname: host
+      http_request.url.path: uri
+      http_request.referrer: referrer
+      http_request.version: version
+      http_request.user_agent: user_agent
+      http_request.length: request_body_len
+      http_response.code: status_code
+      http_response.message: status_msg
+      http_response.length: response_body_len
+    unmapped: ["."]
+
+  - name: http_post
+    when: { _path: http, method: POST }
+    # HTTP Activity: Post.
+    class: { class_uid: 4002, activity_id: 6 }
+    fields: *http
+    unmapped: ["."]
+
+  - name: http_put
+    when: { _path: http, method: PUT }
+    # HTTP Activity: Put.
+    class: { class_uid: 4002, activity_id: 7 }
+    fields: *http
+    unmapped: ["."]
+
+  - name: http_head
+    when: { _path: http, method: HEAD }
+    # HTTP Activity: Head.
+    class: { class_uid: 4002, activity_id: 4 }
+    fields: *http
+    unmapped: ["."]
+
+  - name: http_delete
+    when: { _path: http, method: DELETE }
+    # HTTP Activity: Delete.
+    class: { class_uid: 4002, activity_id: 2 }
+    fields: *http
+    unmapped: ["."]
+
+  - name: http_connect
+    when: { _path: http, method: CONNECT }
+    # HTTP Activity: Connect.
+    class: { class_uid: 4002, activity_id: 1 }
+    fields: *http
+    unmapped: ["."]
+
+  - name: http_options
+    when: { _path: http, method: OPTIONS }
+    # HTTP Activity: Options.
+    class: { class_uid: 4002, activity_id: 5 }
+    fields: *http
+    unmapped: ["."]
+
+  - name: http_trace
+    when: { _path: http, method: TRACE }
+    # HTTP Activity: Trace.
+    class: { class_uid: 4002, activity_id: 8 }
+    fields: *http
+    unmapped: ["."]
+
+  - name: http_other
+    when:
+      _path: http
+    # HTTP Activity: Other, such as WebDAV's methods, or a request Zeek saw
+    # no method of.
+    class: { class_uid: 4002, activity_id: 99 }
+    fields: *http
+    unmapped: ["."]
+
+  - name: ssl
+    when:
+      _path: ssl
+    # Network Activity: Traffic, a TLS or SSL session.
+    class: { class_uid: 4001, activity_id: 6 }
+    fields:
+      connection_info.uid: uid
+      tls.version: version
+      tls.cipher: cipher
+      tls.sni: server_name
+    unmapped: ["."]
+
+  - name: x509
+    when:
+      _path: x509
+    # Network Activity: Other, a certificate seen in a session. The log has
+    # no connection; its `fingerprint` joins it to `cert_chain_fps` of ssl.
+    class: { class_uid: 4001, activity_id: 99 }
+    fields:
+      tls.certificate.serial_number: certificate.serial
+      tls.certificate.subject: certificate.subject
+      tls.certificate.issuer: certificate.issuer
+      tls.certificate.version: { from: certificate.version, as: string }
+      tls.certificate.created_time: { from: certificate.not_valid_before, as: timestamp }
+      tls.certificate.expiration_time: { from: certificate.not_valid_after, as: timestamp }
+    unmapped: ["."]
+
+  - name: smb_file_open
+    when: { _path: smb_files, action: "SMB::FILE_OPEN" }
+    # SMB Activity: File Open, `path` being the share and `name` the file
+    # in it.
+    class: { class_uid: 4006, activity_id: 2 }
+    fields: &smb_file
+      connection_info.uid: uid
+      share: path
+      file.name: name
+      file.size: size
+    unmapped: ["."]
+
+  - name: smb_file_other
+    when:
+      _path: smb_files
+    # SMB Activity: Other, such as a read, write, or delete, its action kept.
+    class: { class_uid: 4006, activity_id: 99 }
+    fields: *smb_file
+    unmapped: ["."]
+
+  - name: dce_rpc
+    when:
+      _path: dce_rpc
+    # SMB Activity: Other, a DCE/RPC call; its interface, such as `lsarpc`,
+    # is kept as `endpoint`.
+    class: { class_uid: 4006, activity_id: 99 }
+    fields:
+      connection_info.uid: uid
+      dce_rpc.command: operation
+    unmapped: ["."]
+
+  # Kerberos requests are told apart by whether they succeeded, rather than
+  # translating `success`, so that it is kept as Zeek wrote it, a boolean.
+  - name: kerberos_ticket
+    when: { _path: kerberos, request_type: AS, success: true }
+    # Authentication: Authentication Ticket, for the client principal.
+    class: { class_uid: 3002, activity_id: 3 }
+    fields: &kerberos_success
+      auth_protocol: { value: Kerberos }
+      auth_protocol_id: { value: 2 }
+      user.name: client
+      service.name: service
+      status_id: { value: 1 }
+    unmapped: ["."]
+
+  - name: kerberos_ticket_refused
+    when: { _path: kerberos, request_type: AS, success: false }
+    # Authentication: Authentication Ticket, refused for `error_msg`.
+    class: { class_uid: 3002, activity_id: 3 }
+    fields: &kerberos_failure
+      auth_protocol: { value: Kerberos }
+      auth_protocol_id: { value: 2 }
+      user.name: client
+      service.name: service
+      status_id: { value: 2 }
+      status_detail: error_msg
+    unmapped: ["."]
+
+  - name: kerberos_ticket_unanswered
+    when: { _path: kerberos, request_type: AS }
+    # Authentication: Authentication Ticket, with no answer Zeek saw.
+    class: { class_uid: 3002, activity_id: 3 }
+    fields: &kerberos
+      auth_protocol: { value: Kerberos }
+      auth_protocol_id: { value: 2 }
+      user.name: client
+      service.name: service
+    unmapped: ["."]
+
+  - name: kerberos_service_ticket
+    when: { _path: kerberos, request_type: TGS, success: true }
+    # Authentication: Service Ticket Request.
+    class: { class_uid: 3002, activity_id: 4 }
+    fields: *kerberos_success
+    unmapped: ["."]
+
+  - name: kerberos_service_ticket_refused
+    when: { _path: kerberos, request_type: TGS, success: false }
+    # Authentication: Service Ticket Request, refused.
+    class: { class_uid: 3002, activity_id: 4 }
+    fields: *kerberos_failure
+    unmapped: ["."]
+
+  - name: kerberos_service_ticket_unanswered
+    when: { _path: kerberos, request_type: TGS }
+    # Authentication: Service Ticket Request, with no answer Zeek saw.
+    class: { class_uid: 3002, activity_id: 4 }
+    fields: *kerberos
+    unmapped: ["."]
+
+  - name: rdp
+    when:
+      _path: rdp
+    # RDP Activity: Other, a session with what Zeek saw of it; the cookie is
+    # the user name the client offered, if any.
+    class: { class_uid: 4005, activity_id: 99 }
+    fields:
+      connection_info.uid: uid
+    unmapped: ["."]
+
+  - name: ssh
+    when:
+      _path: ssh
+    # SSH Activity: Other, a session with its algorithms and whether it
+    # authenticated.
+    class: { class_uid: 4007, activity_id: 99 }
+    fields:
+      connection_info.uid: uid
+    unmapped: ["."]

@@ -107,6 +107,21 @@ result, so that "Impossible travel activity" fires on the `AlertTriggered`
 record of that alert. The one rule that does not load compares `Payload`,
 which no record has.
 
+### Zeek
+
+The `sigma-zeek` mapping set, version 1, maps Zeek rules to what the `zeek`
+source definition writes from the json-streaming-logs package. All 24 Zeek
+rules in the three sets load. Each log is selected by its name, and a
+connection's endpoints, `id.orig_h` and the rest, are the OCSF source and
+destination in every log.
+
+Two of SigmaHQ's DCE/RPC rules, from the BZAR set, pair each interface with
+a call the other way round from Zeek: `endpoint: JobAdd` and
+`operation: atsvc`, where Zeek logs `endpoint` `atsvc` and `operation`
+`JobAdd`. They load, and cannot fire on Zeek logs in any product; the
+mapping reads the fields as Zeek names them rather than swapping them for
+these rules.
+
 ## What stops the rest
 
 Log sources without a mapping, by number of rules in `rules`:

@@ -195,3 +195,39 @@ fn m365_alerts_are_selected_apart_from_the_audit_log() {
     let exchange = set.select(&service("exchange")).expect("selected");
     assert_eq!(exchange.fields["eventName"], [event_code]);
 }
+
+#[test]
+fn zeek_logs_are_selected_by_name() {
+    let set = MappingSet::from_yaml(goliath_rule::SIGMA_ZEEK).expect("shipped mapping set loads");
+    assert_eq!(set.name, "sigma-zeek");
+    let log_name = FieldPath::parse("metadata.log_name").expect("valid path");
+    for service in [
+        "conn",
+        "dns",
+        "http",
+        "ssl",
+        "x509",
+        "smb_files",
+        "dce_rpc",
+        "kerberos",
+        "rdp",
+        "ssh",
+    ] {
+        let selector = LogSourceSelector {
+            category: None,
+            product: Some("zeek".to_owned()),
+            service: Some(service.to_owned()),
+        };
+        let entry = set.select(&selector).expect("selected");
+        assert_eq!(
+            entry.class[&log_name],
+            ClassValue::String(service.to_owned())
+        );
+        if service != "x509" {
+            assert_eq!(
+                entry.fields["id.orig_h"],
+                [FieldPath::parse("src_endpoint.ip").expect("valid path")]
+            );
+        }
+    }
+}
