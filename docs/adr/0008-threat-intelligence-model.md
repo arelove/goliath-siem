@@ -1,6 +1,6 @@
 # 0008. Threat intelligence and indicator model
 
-- **Status:** Accepted
+- **Status:** Accepted; its PostgreSQL rows wait for M4.5, see [ADR-0020](0020-state-beyond-events.md)
 - **Date:** 2026-09-21
 
 ## Context

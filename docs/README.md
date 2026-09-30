@@ -37,6 +37,7 @@ orchestration, and incident handling in one system.
 | [0017](adr/0017-benchmark-rig.md) | Benchmark rig: raw records from an entity model, ground truth, the platform's own metrics | Accepted |
 | [0018](adr/0018-collection.md) | Collection over the network: HTTP ingest, syslog over TLS, and OTLP logs, acknowledged only once the pipe has taken them | Accepted |
 | [0019](adr/0019-source-health.md) | Source health: events and dead letters counted by source and hour on insert, each source judged against the same hour of its last seven days | Accepted |
+| [0020](adr/0020-state-beyond-events.md) | State beyond the event store: RocksDB embedded for what events pass through, PostgreSQL from M4.5 for what people and workflows change, M4 without it | Proposed |
 
 ## Writing an ADR
 
