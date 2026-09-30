@@ -313,6 +313,42 @@ fn seconds_since_the_epoch_become_milliseconds() {
 }
 
 #[test]
+fn a_time_without_an_offset_is_utc_when_the_definition_says_so() {
+    let definition = MINIMAL.replace("user.name: who", "time: { from: at, as: utc-timestamp }");
+    let time = |at: &str| match one(
+        &definition,
+        &format!(r#"{{"type": "login", "at": "{at}"}}"#),
+    ) {
+        Outcome::Event(normalized) => (normalized.event.get("time").cloned(), normalized.issues),
+        other => panic!("{other:?}"),
+    };
+    let noon = Some(json!(1_790_596_801_000_i64));
+    assert_eq!(time("2026-09-28T12:00:01").0, noon);
+    assert_eq!(time("2026-09-28T12:00:01Z").0, noon);
+    assert_eq!(time("2026-09-28T15:00:01+03:00").0, noon);
+    assert_eq!(
+        time("2026-09-28T12:00:01.25").0,
+        Some(json!(1_790_596_801_250_i64))
+    );
+    let (found, issues) = time("yesterday");
+    assert!(found.is_none());
+    assert_eq!(issues.len(), 1);
+
+    // Without it, a time must say where it is.
+    let definition = MINIMAL.replace("user.name: who", "time: { from: at, as: timestamp }");
+    match one(
+        &definition,
+        r#"{"type": "login", "at": "2026-09-28T12:00:01"}"#,
+    ) {
+        Outcome::Event(normalized) => {
+            assert!(normalized.event.get("time").is_none());
+            assert_eq!(normalized.issues.len(), 1);
+        }
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
 fn framing_and_decoding_must_fit_together() {
     let audit_json = MINIMAL.replace("framing: lines", "framing: audit-events");
     assert_eq!(
