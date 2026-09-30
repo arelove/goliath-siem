@@ -86,6 +86,27 @@ where Okta writes a JSON boolean. String tests read booleans as `true` or
 `false`, as they read numbers as their decimal text, so these rules fire as
 their authors meant.
 
+### Microsoft 365
+
+The `sigma-m365` mapping set, version 1, maps Microsoft 365 rules to what the
+`m365` source definition writes from the unified audit log. 20 of the 21
+rules in the three sets load.
+
+Rules for the `audit` service name the audit log's own fields, such as
+`Operation`, `Workload`, and `ResultStatus`. Where Microsoft writes a list of
+names and values, as for an Exchange cmdlet's `Parameters` or a sign-in's
+extended properties, a field is compared with every name and value of the
+list: `RequestType: 'Cmsi:Cmsi'` holds when any extended property has that
+value, a test slightly looser than one of the property of that name alone.
+
+Rules for the `exchange`, `threat_management`, and `threat_detection`
+services name `eventSource`, `eventName`, and `status`, which the audit log
+does not write. They are read as the record's workload, its operation or, for
+an alert of the Security & Compliance Center, the alert's name, and its
+result, so that "Impossible travel activity" fires on the `AlertTriggered`
+record of that alert. The one rule that does not load compares `Payload`,
+which no record has.
+
 ## What stops the rest
 
 Log sources without a mapping, by number of rules in `rules`:
