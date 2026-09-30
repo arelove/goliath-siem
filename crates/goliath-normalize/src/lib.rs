@@ -90,6 +90,11 @@ pub const OKTA: &str = include_str!("../sources/okta.yaml");
 /// every workload.
 pub const M365: &str = include_str!("../sources/m365.yaml");
 
+/// The Suricata EVE definition shipped with this crate: alerts as
+/// Detection Findings, and DNS, HTTP, TLS, flow, file, SMB, SSH, anomaly,
+/// and drop records.
+pub const SURICATA: &str = include_str!("../sources/suricata.yaml");
+
 /// The Zeek definition shipped with this crate: connections, DNS, HTTP,
 /// TLS, certificates, SMB files, DCE/RPC, Kerberos, RDP, and SSH.
 pub const ZEEK: &str = include_str!("../sources/zeek.yaml");
@@ -102,6 +107,7 @@ pub const BUILTIN: &[(&str, &str)] = &[
     ("falco", FALCO),
     ("m365", M365),
     ("okta", OKTA),
+    ("suricata", SURICATA),
     ("sysmon-flat", SYSMON_FLAT),
     ("sysmon", SYSMON),
     ("windows-security", WINDOWS_SECURITY),

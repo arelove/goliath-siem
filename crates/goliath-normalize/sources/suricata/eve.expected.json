@@ -1,0 +1,934 @@
+[
+  {
+    "event": {
+      "action": "allowed",
+      "action_id": 1,
+      "activity_id": 1,
+      "category_uid": 2,
+      "class_uid": 2004,
+      "evidences": [
+        {
+          "connection_info": {
+            "community_uid": "1:ExampleCommunity00010000000=",
+            "protocol_name": "TCP"
+          },
+          "dst_endpoint": {
+            "ip": "203.0.113.81",
+            "port": 80
+          },
+          "src_endpoint": {
+            "ip": "10.20.30.40",
+            "port": 50001
+          }
+        }
+      ],
+      "finding_info": {
+        "analytic": {
+          "category": "Potential Corporate Privacy Violation",
+          "name": "LOCAL POLICY Package manager traffic to an external mirror",
+          "type_id": 1,
+          "uid": "9000001",
+          "version": "2"
+        },
+        "title": "LOCAL POLICY Package manager traffic to an external mirror"
+      },
+      "is_alert": true,
+      "message": "LOCAL POLICY Package manager traffic to an external mirror",
+      "metadata": {
+        "correlation_uid": "1500000000000001",
+        "log_name": "alert",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 3,
+      "time": 1790596801000,
+      "type_uid": 200401,
+      "unmapped": {
+        "alert": {
+          "action": "allowed",
+          "category": "Potential Corporate Privacy Violation",
+          "gid": 1,
+          "metadata": {
+            "policy": [
+              "package-mirrors"
+            ]
+          },
+          "rev": 2,
+          "severity": 2,
+          "signature": "LOCAL POLICY Package manager traffic to an external mirror",
+          "signature_id": 9000001
+        },
+        "app_proto": "http",
+        "flow": {
+          "bytes_toclient": 158000,
+          "bytes_toserver": 620,
+          "pkts_toclient": 110,
+          "pkts_toserver": 5,
+          "start": "2026-09-28T12:00:00.900000+0000"
+        },
+        "http": {
+          "hostname": "mirror.example.com",
+          "http_method": "GET",
+          "http_user_agent": "Debian APT-HTTP/1.3 (2.6.1)",
+          "length": 151234,
+          "protocol": "HTTP/1.1",
+          "status": 200,
+          "url": "/debian/dists/stable/InRelease"
+        },
+        "in_iface": "eth0"
+      }
+    },
+    "id": "93f80855f4aa6e268baa36df2d188ce6",
+    "issues": [],
+    "kind": "alert"
+  },
+  {
+    "event": {
+      "action": "blocked",
+      "action_id": 2,
+      "activity_id": 1,
+      "category_uid": 2,
+      "class_uid": 2004,
+      "evidences": [
+        {
+          "connection_info": {
+            "community_uid": "1:ExampleCommunity00020000000=",
+            "protocol_name": "TCP"
+          },
+          "dst_endpoint": {
+            "ip": "203.0.113.82",
+            "port": 25
+          },
+          "src_endpoint": {
+            "ip": "10.20.30.40",
+            "port": 50002
+          }
+        }
+      ],
+      "finding_info": {
+        "analytic": {
+          "category": "Misc activity",
+          "name": "LOCAL POLICY Outbound SMTP from a workstation",
+          "type_id": 1,
+          "uid": "9000002",
+          "version": "1"
+        },
+        "title": "LOCAL POLICY Outbound SMTP from a workstation"
+      },
+      "is_alert": true,
+      "message": "LOCAL POLICY Outbound SMTP from a workstation",
+      "metadata": {
+        "correlation_uid": "1500000000000002",
+        "log_name": "alert",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 2,
+      "time": 1790596802000,
+      "type_uid": 200401,
+      "unmapped": {
+        "alert": {
+          "action": "blocked",
+          "category": "Misc activity",
+          "gid": 1,
+          "rev": 1,
+          "severity": 3,
+          "signature": "LOCAL POLICY Outbound SMTP from a workstation",
+          "signature_id": 9000002
+        },
+        "app_proto": "smtp",
+        "in_iface": "eth0"
+      }
+    },
+    "id": "960c185d9022db53beff80681cb3ca74",
+    "issues": [],
+    "kind": "alert"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "category_uid": 4,
+      "class_uid": 4003,
+      "connection_info": {
+        "community_uid": "1:ExampleCommunity00030000000=",
+        "protocol_name": "UDP"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.53",
+        "port": 53
+      },
+      "metadata": {
+        "correlation_uid": "1500000000000003",
+        "log_name": "dns",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "query": {
+        "hostname": "www.example.com",
+        "packet_uid": 4242,
+        "type": "A"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50003
+      },
+      "time": 1790596803000,
+      "type_uid": 400301,
+      "unmapped": {
+        "dns": {
+          "id": 4242,
+          "opcode": 0,
+          "rrname": "www.example.com",
+          "rrtype": "A",
+          "tx_id": 0,
+          "type": "query"
+        },
+        "in_iface": "eth0"
+      }
+    },
+    "id": "1bf6430a66852d8383ee2b47319e5527",
+    "issues": [],
+    "kind": "dns_query"
+  },
+  {
+    "event": {
+      "activity_id": 2,
+      "category_uid": 4,
+      "class_uid": 4003,
+      "connection_info": {
+        "community_uid": "1:ExampleCommunity00040000000=",
+        "protocol_name": "UDP"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50003
+      },
+      "metadata": {
+        "correlation_uid": "1500000000000004",
+        "log_name": "dns",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "query": {
+        "hostname": "www.example.com",
+        "packet_uid": 4242,
+        "type": "A"
+      },
+      "rcode": "NOERROR",
+      "rcode_id": 0,
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.53",
+        "port": 53
+      },
+      "time": 1790596804000,
+      "type_uid": 400302,
+      "unmapped": {
+        "dns": {
+          "answers": [
+            {
+              "rdata": "203.0.113.80",
+              "rrname": "www.example.com",
+              "rrtype": "A",
+              "ttl": 300
+            }
+          ],
+          "flags": "8180",
+          "grouped": {
+            "A": [
+              "203.0.113.80"
+            ]
+          },
+          "id": 4242,
+          "opcode": 0,
+          "qr": true,
+          "ra": true,
+          "rcode": "NOERROR",
+          "rd": true,
+          "rrname": "www.example.com",
+          "rrtype": "A",
+          "type": "answer",
+          "version": 2
+        },
+        "in_iface": "eth0"
+      }
+    },
+    "id": "abb6623b53989a8e983cd9aae94daa87",
+    "issues": [],
+    "kind": "dns_answer"
+  },
+  {
+    "event": {
+      "activity_id": 2,
+      "category_uid": 4,
+      "class_uid": 4003,
+      "connection_info": {
+        "community_uid": "1:ExampleCommunity00050000000=",
+        "protocol_name": "UDP"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50005
+      },
+      "metadata": {
+        "correlation_uid": "1500000000000005",
+        "log_name": "dns",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "query": {
+        "hostname": "missing.example.com",
+        "packet_uid": 4243,
+        "type": "AAAA"
+      },
+      "rcode": "NXDOMAIN",
+      "rcode_id": 3,
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.53",
+        "port": 53
+      },
+      "time": 1790596805000,
+      "type_uid": 400302,
+      "unmapped": {
+        "dns": {
+          "flags": "8183",
+          "id": 4243,
+          "opcode": 0,
+          "qr": true,
+          "ra": true,
+          "rcode": "NXDOMAIN",
+          "rd": true,
+          "rrname": "missing.example.com",
+          "rrtype": "AAAA",
+          "type": "answer",
+          "version": 2
+        },
+        "in_iface": "eth0"
+      }
+    },
+    "id": "a8949c16b2b34be1e5871db77f75dae9",
+    "issues": [],
+    "kind": "dns_answer"
+  },
+  {
+    "event": {
+      "activity_id": 3,
+      "category_uid": 4,
+      "class_uid": 4002,
+      "connection_info": {
+        "community_uid": "1:ExampleCommunity00060000000=",
+        "protocol_name": "TCP"
+      },
+      "dst_endpoint": {
+        "ip": "203.0.113.81",
+        "port": 80
+      },
+      "http_request": {
+        "http_method": "GET",
+        "referrer": "http://www.example.com/",
+        "url": {
+          "hostname": "www.example.com",
+          "path": "/downloads/manual.pdf"
+        },
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "version": "HTTP/1.1"
+      },
+      "http_response": {
+        "code": 200,
+        "content_type": "application/pdf",
+        "length": 182044
+      },
+      "metadata": {
+        "correlation_uid": "1500000000000006",
+        "log_name": "http",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50006
+      },
+      "time": 1790596806000,
+      "type_uid": 400203,
+      "unmapped": {
+        "app_proto": "http",
+        "http": {
+          "hostname": "www.example.com",
+          "http_content_type": "application/pdf",
+          "http_method": "GET",
+          "http_refer": "http://www.example.com/",
+          "http_user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+          "length": 182044,
+          "protocol": "HTTP/1.1",
+          "status": 200,
+          "url": "/downloads/manual.pdf"
+        },
+        "in_iface": "eth0",
+        "tx_id": 0
+      }
+    },
+    "id": "fcf684868d670048c85a2180455eea02",
+    "issues": [],
+    "kind": "http_get"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "category_uid": 4,
+      "class_uid": 4002,
+      "connection_info": {
+        "community_uid": "1:ExampleCommunity00070000000=",
+        "protocol_name": "TCP"
+      },
+      "dst_endpoint": {
+        "ip": "203.0.113.81",
+        "port": 80
+      },
+      "http_request": {
+        "http_method": "PROPFIND",
+        "url": {
+          "hostname": "dav.example.com",
+          "path": "/shared/"
+        },
+        "user_agent": "Microsoft-WebDAV-MiniRedir/10.0.19045",
+        "version": "HTTP/1.1"
+      },
+      "http_response": {
+        "code": 207,
+        "length": 940
+      },
+      "metadata": {
+        "correlation_uid": "1500000000000007",
+        "log_name": "http",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50007
+      },
+      "time": 1790596807000,
+      "type_uid": 400299,
+      "unmapped": {
+        "app_proto": "http",
+        "http": {
+          "hostname": "dav.example.com",
+          "http_method": "PROPFIND",
+          "http_user_agent": "Microsoft-WebDAV-MiniRedir/10.0.19045",
+          "length": 940,
+          "protocol": "HTTP/1.1",
+          "status": 207,
+          "url": "/shared/"
+        },
+        "in_iface": "eth0",
+        "tx_id": 0
+      }
+    },
+    "id": "13d2e029ae09f47fc73f1b49ea416afc",
+    "issues": [],
+    "kind": "http_other"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "community_uid": "1:ExampleCommunity00080000000=",
+        "protocol_name": "TCP"
+      },
+      "dst_endpoint": {
+        "ip": "203.0.113.80",
+        "port": 443
+      },
+      "metadata": {
+        "correlation_uid": "1500000000000008",
+        "log_name": "tls",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50008
+      },
+      "time": 1790596808000,
+      "tls": {
+        "certificate": {
+          "created_time": 1767225600000,
+          "expiration_time": 1798761600000,
+          "fingerprints": [
+            {
+              "algorithm_id": 2,
+              "value": "3f:1a:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:ab"
+            }
+          ],
+          "issuer": "CN=Example Issuing CA, O=Example",
+          "serial_number": "0A:1B:2C:3D:4E:5F:60:71",
+          "subject": "CN=www.example.com"
+        },
+        "ja3_hash": {
+          "algorithm_id": 1,
+          "value": "0123456789abcdef0123456789abcdef"
+        },
+        "sni": "www.example.com",
+        "version": "TLS 1.3"
+      },
+      "type_uid": 400106,
+      "unmapped": {
+        "app_proto": "tls",
+        "in_iface": "eth0",
+        "tls": {
+          "fingerprint": "3f:1a:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:ab",
+          "issuerdn": "CN=Example Issuing CA, O=Example",
+          "ja3": {
+            "hash": "0123456789abcdef0123456789abcdef",
+            "string": "771,4865-4866,0-23-65281,29-23,0"
+          },
+          "notafter": "2027-01-01T00:00:00",
+          "notbefore": "2026-01-01T00:00:00",
+          "serial": "0A:1B:2C:3D:4E:5F:60:71",
+          "sni": "www.example.com",
+          "subject": "CN=www.example.com",
+          "version": "TLS 1.3"
+        }
+      }
+    },
+    "id": "649f0b7ed11a676ef69694efcba9943f",
+    "issues": [],
+    "kind": "tls"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "app_name": "tls",
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "community_uid": "1:ExampleCommunity00090000000=",
+        "protocol_name": "TCP"
+      },
+      "dst_endpoint": {
+        "ip": "203.0.113.80",
+        "port": 443
+      },
+      "end_time": 1790596808818,
+      "metadata": {
+        "correlation_uid": "1500000000000009",
+        "log_name": "flow",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50009
+      },
+      "start_time": 1790596806500,
+      "time": 1790596809000,
+      "traffic": {
+        "bytes_in": 50363,
+        "bytes_out": 2992,
+        "packets_in": 41,
+        "packets_out": 22
+      },
+      "type_uid": 400106,
+      "unmapped": {
+        "flow": {
+          "age": 2,
+          "alerted": false,
+          "bytes_toclient": 50363,
+          "bytes_toserver": 2992,
+          "end": "2026-09-28T12:00:08.818000+0000",
+          "pkts_toclient": 41,
+          "pkts_toserver": 22,
+          "reason": "timeout",
+          "start": "2026-09-28T12:00:06.500000+0000",
+          "state": "closed"
+        },
+        "in_iface": "eth0",
+        "tcp": {
+          "ack": true,
+          "fin": true,
+          "psh": true,
+          "state": "closed",
+          "syn": true,
+          "tcp_flags": "1b"
+        }
+      }
+    },
+    "id": "85ecf5d4357444a1447e4efa2a56d138",
+    "issues": [],
+    "kind": "flow"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "category_uid": 4,
+      "class_uid": 4002,
+      "connection_info": {
+        "community_uid": "1:ExampleCommunity00100000000=",
+        "protocol_name": "TCP"
+      },
+      "dst_endpoint": {
+        "ip": "203.0.113.81",
+        "port": 80
+      },
+      "file": {
+        "hashes": [
+          {
+            "algorithm_id": 3,
+            "value": "5f00000000000000000000000000000000000000000000000000000000000abc"
+          }
+        ],
+        "name": "/downloads/manual.pdf",
+        "size": 182044
+      },
+      "metadata": {
+        "correlation_uid": "1500000000000010",
+        "log_name": "fileinfo",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50010
+      },
+      "time": 1790596810000,
+      "type_uid": 400299,
+      "unmapped": {
+        "app_proto": "http",
+        "fileinfo": {
+          "filename": "/downloads/manual.pdf",
+          "gaps": false,
+          "magic": "PDF document, version 1.7",
+          "sha256": "5f00000000000000000000000000000000000000000000000000000000000abc",
+          "size": 182044,
+          "state": "CLOSED",
+          "stored": false,
+          "tx_id": 0
+        },
+        "http": {
+          "hostname": "www.example.com",
+          "http_content_type": "application/pdf",
+          "http_method": "GET",
+          "http_refer": "http://www.example.com/",
+          "http_user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+          "length": 182044,
+          "protocol": "HTTP/1.1",
+          "status": 200,
+          "url": "/downloads/manual.pdf"
+        },
+        "in_iface": "eth0"
+      }
+    },
+    "id": "1571b882dcff28618c846da2a33ada9c",
+    "issues": [],
+    "kind": "http_file"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "category_uid": 4,
+      "class_uid": 4006,
+      "connection_info": {
+        "community_uid": "1:ExampleCommunity00110000000=",
+        "protocol_name": "TCP"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.5",
+        "port": 445
+      },
+      "file": {
+        "hashes": [
+          {
+            "algorithm_id": 3
+          }
+        ],
+        "name": "Reports\\budget.xlsx",
+        "size": 48211
+      },
+      "metadata": {
+        "correlation_uid": "1500000000000011",
+        "log_name": "fileinfo",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "share": "\\\\FILESRV01\\Finance",
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50011
+      },
+      "time": 1790596811000,
+      "type_uid": 400699,
+      "unmapped": {
+        "app_proto": "smb",
+        "fileinfo": {
+          "filename": "Reports\\budget.xlsx",
+          "gaps": false,
+          "size": 48211,
+          "state": "CLOSED",
+          "stored": false,
+          "tx_id": 3
+        },
+        "in_iface": "eth0",
+        "smb": {
+          "filename": "Reports\\budget.xlsx",
+          "share": "\\\\FILESRV01\\Finance"
+        }
+      }
+    },
+    "id": "e1da3ad962a500f6ec267ed1dea5f50c",
+    "issues": [],
+    "kind": "smb_file"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "category_uid": 4,
+      "class_uid": 4006,
+      "command": "SMB2_COMMAND_CREATE",
+      "connection_info": {
+        "community_uid": "1:ExampleCommunity00120000000=",
+        "protocol_name": "TCP"
+      },
+      "dialect": "3.11",
+      "dst_endpoint": {
+        "ip": "10.20.30.5",
+        "port": 445
+      },
+      "file": {
+        "name": "Reports\\budget.xlsx"
+      },
+      "metadata": {
+        "correlation_uid": "1500000000000012",
+        "log_name": "smb",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "share": "\\\\FILESRV01\\Finance",
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50012
+      },
+      "time": 1790596812000,
+      "type_uid": 400699,
+      "unmapped": {
+        "app_proto": "smb",
+        "in_iface": "eth0",
+        "smb": {
+          "access": "normal",
+          "accessed": 1790596740,
+          "changed": 1790511600,
+          "command": "SMB2_COMMAND_CREATE",
+          "created": 1788253200,
+          "dialect": "3.11",
+          "disposition": "FILE_OPEN",
+          "filename": "Reports\\budget.xlsx",
+          "fuid": "a1b2c3d4-0000-4000-8000-000000000012",
+          "id": 7,
+          "modified": 1790511600,
+          "session_id": 4398046511121,
+          "share": "\\\\FILESRV01\\Finance",
+          "size": 48211,
+          "status": "STATUS_SUCCESS",
+          "status_code": "0x0",
+          "tree_id": 5
+        }
+      }
+    },
+    "id": "7e50abdda10a7858d3aca4cd3e3e9fb8",
+    "issues": [],
+    "kind": "smb"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "category_uid": 4,
+      "class_uid": 4007,
+      "connection_info": {
+        "community_uid": "1:ExampleCommunity00130000000=",
+        "protocol_name": "TCP"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.22",
+        "port": 22
+      },
+      "metadata": {
+        "correlation_uid": "1500000000000013",
+        "log_name": "ssh",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "protocol_ver": "2.0",
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50013
+      },
+      "time": 1790596813000,
+      "type_uid": 400799,
+      "unmapped": {
+        "app_proto": "ssh",
+        "in_iface": "eth0",
+        "ssh": {
+          "client": {
+            "proto_version": "2.0",
+            "software_version": "OpenSSH_9.6"
+          },
+          "server": {
+            "proto_version": "2.0",
+            "software_version": "OpenSSH_9.2p1"
+          }
+        }
+      }
+    },
+    "id": "d023b6155736eee6f28f42f636c8fed7",
+    "issues": [],
+    "kind": "ssh"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "community_uid": "1:ExampleCommunity00140000000=",
+        "protocol_name": "UDP"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.53",
+        "port": 53
+      },
+      "message": "MALFORMED_DATA",
+      "metadata": {
+        "correlation_uid": "1500000000000014",
+        "log_name": "anomaly",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50014
+      },
+      "time": 1790596814000,
+      "type_uid": 400199,
+      "unmapped": {
+        "anomaly": {
+          "event": "MALFORMED_DATA",
+          "layer": "proto_parser",
+          "type": "applayer"
+        },
+        "in_iface": "eth0"
+      }
+    },
+    "id": "c7c4d745bcb4d476e8be0b1a7a8909ab",
+    "issues": [],
+    "kind": "anomaly"
+  },
+  {
+    "event": {
+      "action_id": 2,
+      "activity_id": 5,
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "community_uid": "1:ExampleCommunity00150000000=",
+        "protocol_name": "TCP"
+      },
+      "dst_endpoint": {
+        "ip": "203.0.113.82",
+        "port": 25
+      },
+      "metadata": {
+        "correlation_uid": "1500000000000015",
+        "log_name": "drop",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50015
+      },
+      "time": 1790596815000,
+      "type_uid": 400105,
+      "unmapped": {
+        "drop": {
+          "ack": false,
+          "fin": false,
+          "ipid": 4711,
+          "len": 60,
+          "psh": false,
+          "rst": false,
+          "syn": true,
+          "tcpack": 0,
+          "tcpres": 0,
+          "tcpseq": 1234567,
+          "tcpurgp": 0,
+          "tcpwin": 64240,
+          "tos": 0,
+          "ttl": 64,
+          "urg": false
+        },
+        "in_iface": "eth0"
+      }
+    },
+    "id": "2a52fdee57193343ce20d20e42ddaa56",
+    "issues": [],
+    "kind": "drop"
+  }
+]
