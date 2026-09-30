@@ -11,6 +11,11 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [0.2.12] - 2026-09-30
 
+
+### Added
+
+- An Okta System Log definition
+
 ## [0.2.11] - 2026-09-28
 
 
