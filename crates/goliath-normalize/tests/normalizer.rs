@@ -230,7 +230,7 @@ fn targets_must_be_attributes_of_the_class() {
     );
     assert_eq!(
         error(&MINIMAL.replace("user.name: who", "attacks.technique.uid: who")).to_string(),
-        "kind `login`: `attacks.technique.uid` is inside an array, which a field cannot write into"
+        "kind `login`: `attacks.technique.uid` is inside an array; name an element by its index after the array, such as `0`"
     );
 }
 
@@ -310,6 +310,42 @@ fn seconds_since_the_epoch_become_milliseconds() {
         assert!(found.is_none(), "{bad}");
         assert_eq!(issues.len(), 1, "{bad}");
     }
+}
+
+#[test]
+fn a_target_names_an_element_of_an_array_by_its_index() {
+    let definition = MINIMAL.replace(
+        "user.name: who",
+        "attacks.0.technique.uid: who
+      attacks.1.technique.uid: also",
+    );
+    match one(
+        &definition,
+        r#"{"type": "login", "who": "T1078", "also": "T1110"}"#,
+    ) {
+        Outcome::Event(normalized) => assert_eq!(
+            normalized.event["attacks"],
+            json!([{ "technique": { "uid": "T1078" } }, { "technique": { "uid": "T1110" } }])
+        ),
+        other => panic!("{other:?}"),
+    }
+    // An element named alone, the ones before it are empty.
+    let definition = MINIMAL.replace("user.name: who", "attacks.1.technique.uid: who");
+    match one(&definition, r#"{"type": "login", "who": "T1078"}"#) {
+        Outcome::Event(normalized) => assert_eq!(
+            normalized.event["attacks"],
+            json!([{}, { "technique": { "uid": "T1078" } }])
+        ),
+        other => panic!("{other:?}"),
+    }
+    assert_eq!(
+        error(&MINIMAL.replace("user.name: who", "user.0.name: who")).to_string(),
+        "kind `login`: `user.0.name` names an element of `user`, which is not an array"
+    );
+    assert_eq!(
+        error(&MINIMAL.replace("user.name: who", "0.name: who")).to_string(),
+        "kind `login`: `0.name`: class `authentication` has no attribute `0`"
+    );
 }
 
 #[test]
