@@ -10,10 +10,9 @@ criterion that is measurable, so "done" is not a judgement call.
 
 ## Current milestone
 
-**M3 - Benchmark rig.** Next. M2.5 met its exit criterion; the rig comes
-before collection, context, and the entity graph, because each of those is
-judged by a number only the rig can produce, and the entity-model generator
-is what the entity graph's precision and recall are measured against.
+**M4 - Context.** Next. M3 and M3.5 are built; each waits for its exit run,
+M3's 30 minutes at 100,000 events/s and M3.5's live senders at that rate,
+which are to be made together on a separate machine rather than a laptop.
 
 Review notes added on 2026-09-27 are implementation concerns, not revised ADRs
 or claims that an exit criterion has passed.
@@ -210,6 +209,43 @@ Designed in [ADR-0018](adr/0018-collection.md).
 visible in search within five seconds, and each receiver sustains the M3
 rate on one machine without losing an acknowledged record.
 
+**Status (2026-09-30):** built, and waiting for the exit run.
+
+- The `receiver` role: HTTP ingest with a token per source, syslog over TCP
+  with TLS on a port per source, and OTLP logs over HTTP, each acknowledging
+  only what the pipe has taken. End-to-end tests send over each to
+  ClickHouse.
+- Source definitions for Windows Security, AWS CloudTrail, Okta, Microsoft
+  365, Zeek, and Suricata EVE, with fixtures of every kind and of malformed
+  input, beside Sysmon, auditd, Falco, and Entra ID. Where SigmaHQ has rules
+  for a source, a mapping set loads them, checked by rules against the
+  definition's fixtures: 122 of 145 Security log rules, 56 of 57 CloudTrail,
+  23 of 23 Okta, 20 of 21 Microsoft 365, and 24 of 24 Zeek
+  ([sigma-coverage.md](sigma-coverage.md)).
+- Source health, designed in [ADR-0019](adr/0019-source-health.md):
+  events and dead letters counted by source and hour on insert, each source
+  judged against the same hour of its last seven days, at `/api/v1/sources`
+  and in the interface.
+
+Follow-ups found while building it, none in the exit criterion:
+
+- Decodings for CEF and LEEF, and for text by regular expression or
+  `key=value` pairs, so that appliances writing neither JSON nor syslog
+  structured data can be read without a definition per format.
+- Azure Monitor's activity, audit, and sign-in logs: 131 SigmaHQ rules, the
+  largest set left without a mapping outside Windows.
+- Product-independent mappings for Sigma's `dns`, `proxy`, and `firewall`
+  categories, by OCSF class, so that one rule reads Zeek, Suricata, and any
+  later source alike.
+- A `when` that tests only that a field is present, so that a definition
+  such as Zeek's can take every record of a log it has no kind for, as the
+  Okta and Microsoft 365 definitions do by a field every record holds.
+- Rule paths that reach members whose names contain dots, such as Zeek's
+  `certificate.key_alg` kept under `unmapped`; today a mapping must name an
+  OCSF attribute for them.
+- Two SigmaHQ DCE/RPC rules pair `endpoint` and `operation` the other way
+  round from Zeek, and cannot fire on its logs; to be reported upstream.
+
 ## M4 - Context
 
 Enrichment that makes an alert actionable rather than a row.
@@ -347,9 +383,10 @@ without leaving the interface.
 their own logs within ten minutes, following only the README.
 
 **Review note (2026-09-27):** maintain the published status independently of
-this release milestone. Both root READMEs still describe ingestion and storage
-as unbuilt despite the M2 and M2.5 completion evidence above. Reconcile those
-statements before using the README as an onboarding acceptance test.
+this release milestone. Both root READMEs described ingestion and storage as
+unbuilt despite the M2 and M2.5 completion evidence above; they were
+reconciled when M3.5 was built (2026-09-30). Keep them current before using
+the README as an onboarding acceptance test.
 
 ## Sequencing notes
 

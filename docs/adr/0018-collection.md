@@ -1,6 +1,6 @@
 # 0018. Collection over the network
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-28
 
 ## Context

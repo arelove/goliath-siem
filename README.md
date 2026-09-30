@@ -9,9 +9,10 @@ An open security data platform: event ingestion, detection, response
 orchestration, and incident handling in one system.
 
 > **Status: pre-alpha.** Nothing here is production-ready. The architecture is
-> settled and documented, and the Sigma detection path works end to end on
-> OCSF events. Ingestion, storage, and the platform around them are not built
-> yet.
+> settled and documented. Logs can be sent over the network, are normalized
+> to OCSF, stored, and searched, and the Sigma detection path works end to
+> end on OCSF events. Detection on the stored stream and the platform around
+> it are not built yet.
 
 Other languages: [Русский](README_ru.md)
 
@@ -57,6 +58,14 @@ fixed workload. See [docs/benchmarks.md](docs/benchmarks.md).
 Stored events are searchable by time, class, and any OCSF attribute, in the
 browser and over HTTP: over 10 million events, in 38 to 806 ms on a laptop
 ([docs/benchmarks.md](docs/benchmarks.md#search)).
+
+Logs arrive over HTTP with a token per source, as syslog over TCP with TLS,
+or as OpenTelemetry logs, and are acknowledged only once they cannot be
+lost. Definitions ship for Sysmon, the Windows Security log, auditd, Falco,
+Entra ID, AWS CloudTrail, Okta, Microsoft 365, Zeek, and Suricata, and any
+other source can be described in the same YAML. Each source's health, when
+it last sent and how its last hour compares with the same hour of its week,
+is shown beside the search.
 
 Not built yet: detection on the stored stream, the entity graph, response, and
 the investigation and case views. The order is in
