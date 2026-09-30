@@ -1,0 +1,199 @@
+# Sigma field names for Zeek logs, resolved to OCSF 1.5.0 paths.
+#
+# Paths follow the `zeek` source definition of goliath-normalize: each log is
+# selected by its name, `metadata.log_name`, and fields the definition does
+# not map are read under `unmapped` by their Zeek names. Zeek names a
+# connection's endpoints `id.orig_h`, `id.orig_p`, `id.resp_h`, and
+# `id.resp_p`; every log with a connection maps them the same way. See
+# docs/adr/0012-sigma-field-mapping.md.
+
+name: sigma-zeek
+version: 1
+
+mappings:
+  - logsource: { product: zeek, service: conn }
+    class: { metadata.product.name: Zeek, metadata.log_name: conn }
+    fields:
+      ts: time
+      uid: connection_info.uid
+      id.orig_h: src_endpoint.ip
+      id.orig_p: src_endpoint.port
+      id.resp_h: dst_endpoint.ip
+      id.resp_p: dst_endpoint.port
+      proto: connection_info.protocol_name
+      service: app_name
+      community_id: connection_info.community_uid
+      orig_bytes: traffic.bytes_out
+      resp_bytes: traffic.bytes_in
+      orig_pkts: traffic.packets_out
+      resp_pkts: traffic.packets_in
+      duration: unmapped.duration
+      conn_state: unmapped.conn_state
+      history: unmapped.history
+      local_orig: unmapped.local_orig
+      local_resp: unmapped.local_resp
+
+  - logsource: { product: zeek, service: dns }
+    class: { metadata.product.name: Zeek, metadata.log_name: dns }
+    fields:
+      ts: time
+      uid: connection_info.uid
+      id.orig_h: src_endpoint.ip
+      id.orig_p: src_endpoint.port
+      id.resp_h: dst_endpoint.ip
+      id.resp_p: dst_endpoint.port
+      proto: connection_info.protocol_name
+      trans_id: query.packet_uid
+      query: query.hostname
+      qtype_name: query.type
+      qclass_name: query.class
+      rcode_name: rcode
+      rcode: rcode_id
+      qtype: unmapped.qtype
+      answers: unmapped.answers
+      TTLs: unmapped.TTLs
+      rejected: unmapped.rejected
+      AA: unmapped.AA
+      TC: unmapped.TC
+      RD: unmapped.RD
+      RA: unmapped.RA
+      Z: unmapped.Z
+
+  - logsource: { product: zeek, service: http }
+    class: { metadata.product.name: Zeek, metadata.log_name: http }
+    fields:
+      ts: time
+      uid: connection_info.uid
+      id.orig_h: src_endpoint.ip
+      id.orig_p: src_endpoint.port
+      id.resp_h: dst_endpoint.ip
+      id.resp_p: dst_endpoint.port
+      method: http_request.http_method
+      host: http_request.url.hostname
+      uri: http_request.url.path
+      referrer: http_request.referrer
+      version: http_request.version
+      user_agent: http_request.user_agent
+      request_body_len: http_request.length
+      response_body_len: http_response.length
+      status_code: http_response.code
+      status_msg: http_response.message
+      trans_depth: unmapped.trans_depth
+      tags: unmapped.tags
+      resp_mime_types: unmapped.resp_mime_types
+      orig_mime_types: unmapped.orig_mime_types
+      client_header_names: unmapped.client_header_names
+      server_header_names: unmapped.server_header_names
+      # Names of the proxy log format, as some rules for Zeek use them.
+      c-uri: http_request.url.path
+      c-useragent: http_request.user_agent
+
+  - logsource: { product: zeek, service: ssl }
+    class: { metadata.product.name: Zeek, metadata.log_name: ssl }
+    fields:
+      ts: time
+      uid: connection_info.uid
+      id.orig_h: src_endpoint.ip
+      id.orig_p: src_endpoint.port
+      id.resp_h: dst_endpoint.ip
+      id.resp_p: dst_endpoint.port
+      version: tls.version
+      cipher: tls.cipher
+      server_name: tls.sni
+      curve: unmapped.curve
+      resumed: unmapped.resumed
+      established: unmapped.established
+      cert_chain_fps: unmapped.cert_chain_fps
+
+  - logsource: { product: zeek, service: x509 }
+    class: { metadata.product.name: Zeek, metadata.log_name: x509 }
+    fields:
+      ts: time
+      fingerprint: unmapped.fingerprint
+      certificate.serial: tls.certificate.serial_number
+      certificate.subject: tls.certificate.subject
+      certificate.issuer: tls.certificate.issuer
+      certificate.version: tls.certificate.version
+      certificate.not_valid_before: tls.certificate.created_time
+      certificate.not_valid_after: tls.certificate.expiration_time
+
+  - logsource: { product: zeek, service: smb_files }
+    class: { metadata.product.name: Zeek, metadata.log_name: smb_files }
+    fields:
+      ts: time
+      uid: connection_info.uid
+      id.orig_h: src_endpoint.ip
+      id.orig_p: src_endpoint.port
+      id.resp_h: dst_endpoint.ip
+      id.resp_p: dst_endpoint.port
+      # The share, such as `\\FILESRV01\Finance`, and the file in it.
+      path: share
+      name: file.name
+      size: file.size
+      action: unmapped.action
+      fuid: unmapped.fuid
+
+  - logsource: { product: zeek, service: dce_rpc }
+    class: { metadata.product.name: Zeek, metadata.log_name: dce_rpc }
+    fields:
+      ts: time
+      uid: connection_info.uid
+      id.orig_h: src_endpoint.ip
+      id.orig_p: src_endpoint.port
+      id.resp_h: dst_endpoint.ip
+      id.resp_p: dst_endpoint.port
+      # The interface, such as `svcctl`, and the call, such as
+      # `CreateServiceW`.
+      endpoint: unmapped.endpoint
+      operation: dce_rpc.command
+      named_pipe: unmapped.named_pipe
+      rtt: unmapped.rtt
+
+  - logsource: { product: zeek, service: kerberos }
+    class: { metadata.product.name: Zeek, metadata.log_name: kerberos }
+    fields:
+      ts: time
+      uid: metadata.correlation_uid
+      id.orig_h: src_endpoint.ip
+      id.orig_p: src_endpoint.port
+      id.resp_h: dst_endpoint.ip
+      id.resp_p: dst_endpoint.port
+      request_type: unmapped.request_type
+      client: user.name
+      service: service.name
+      success: unmapped.success
+      error_msg: [status_detail, unmapped.error_msg]
+      cipher: unmapped.cipher
+      forwardable: unmapped.forwardable
+      renewable: unmapped.renewable
+
+  - logsource: { product: zeek, service: rdp }
+    class: { metadata.product.name: Zeek, metadata.log_name: rdp }
+    fields:
+      ts: time
+      uid: connection_info.uid
+      id.orig_h: src_endpoint.ip
+      id.orig_p: src_endpoint.port
+      id.resp_h: dst_endpoint.ip
+      id.resp_p: dst_endpoint.port
+      cookie: unmapped.cookie
+      result: unmapped.result
+      security_protocol: unmapped.security_protocol
+      client_name: unmapped.client_name
+      client_build: unmapped.client_build
+
+  - logsource: { product: zeek, service: ssh }
+    class: { metadata.product.name: Zeek, metadata.log_name: ssh }
+    fields:
+      ts: time
+      uid: connection_info.uid
+      id.orig_h: src_endpoint.ip
+      id.orig_p: src_endpoint.port
+      id.resp_h: dst_endpoint.ip
+      id.resp_p: dst_endpoint.port
+      version: unmapped.version
+      auth_success: unmapped.auth_success
+      auth_attempts: unmapped.auth_attempts
+      direction: unmapped.direction
+      client: unmapped.client
+      server: unmapped.server
