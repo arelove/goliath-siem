@@ -23,6 +23,54 @@ framing: json-values
 decoding: json
 unwrap: Records
 
+# The ATT&CK data components its records supply: those ATT&CK names for
+# AWS:CloudTrail, of the records the kinds below read.
+data_components:
+  - Active Directory Object Creation
+  - Application Log Content
+  - Cloud Service Disable
+  - Cloud Service Enumeration
+  - Cloud Service Metadata
+  - Cloud Service Modification
+  - Cloud Storage Access
+  - Cloud Storage Creation
+  - Cloud Storage Deletion
+  - Cloud Storage Enumeration
+  - Cloud Storage Metadata
+  - Cloud Storage Modification
+  - Command Execution
+  - Container Enumeration
+  - File Creation
+  - Firewall Disable
+  - Firewall Rule Modification
+  - Group Enumeration
+  - Image Creation
+  - Image Modification
+  - Instance Creation
+  - Instance Enumeration
+  - Instance Metadata
+  - Instance Modification
+  - Instance Start
+  - Instance Stop
+  - Logon Session Creation
+  - Network Traffic Flow
+  - OS API Execution
+  - Pod Creation
+  - Process Metadata
+  - Snapshot Creation
+  - Snapshot Deletion
+  - Snapshot Metadata
+  - Snapshot Modification
+  - User Account Authentication
+  - User Account Creation
+  - User Account Metadata
+  - User Account Modification
+  - Volume Creation
+  - Volume Deletion
+  - Volume Modification
+  - Web Credential Creation
+  - Web Credential Usage
+
 common:
   time: { from: eventTime, as: timestamp }
   severity_id: { value: 1 }

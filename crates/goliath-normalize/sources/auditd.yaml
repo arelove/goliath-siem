@@ -18,6 +18,14 @@ version: 1
 framing: audit-events
 decoding: auditd
 
+# The ATT&CK data components its records supply: those ATT&CK names for
+# auditd:SYSCALL, EXECVE, and USER_LOGIN, of the records the kinds below read.
+data_components:
+  - Process Creation
+  - Command Execution
+  - User Account Authentication
+  - Logon Session Metadata
+
 common:
   time: { from: time, as: unix-seconds }
   severity_id: { value: 1 }

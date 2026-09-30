@@ -16,6 +16,15 @@ version: 1
 framing: lines
 decoding: json
 
+# The ATT&CK data components its records supply: those ATT&CK names for
+# WinEventLog:Sysmon, of the records the kinds below read.
+data_components:
+  - Process Creation
+  - Network Connection Creation
+  - Module Load
+  - File Creation
+  - Windows Registry Key Modification
+
 common:
   time: { from: "@timestamp", as: timestamp }
   severity_id: { value: 1 }

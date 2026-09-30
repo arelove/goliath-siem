@@ -24,6 +24,34 @@ framing: json-values
 decoding: json
 unwrap: "."
 
+# The ATT&CK data components its records supply: those ATT&CK names for
+# m365:unified, of the records the kinds below read.
+data_components:
+  - Active Directory Object Modification
+  - Application Log Content
+  - Cloud Service Enumeration
+  - Cloud Service Metadata
+  - Cloud Service Modification
+  - Cloud Storage Access
+  - Cloud Storage Metadata
+  - Cloud Storage Modification
+  - Command Execution
+  - File Access
+  - Group Modification
+  - Logon Session Creation
+  - Logon Session Metadata
+  - Module Load
+  - Network Share Access
+  - Script Execution
+  - User Account Authentication
+  - User Account Creation
+  - User Account Deletion
+  - User Account Metadata
+  - User Account Modification
+  - Web Credential Creation
+  - Web Credential Usage
+  - Windows Registry Key Modification
+
 common:
   time: { from: CreationTime, as: utc-timestamp }
   metadata.version: { value: "1.5.0" }

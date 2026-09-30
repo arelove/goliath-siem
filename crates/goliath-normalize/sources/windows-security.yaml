@@ -26,6 +26,28 @@ framing: json-values
 decoding: json
 nil: ["-"]
 
+# The ATT&CK data components its records supply: those ATT&CK names for
+# WinEventLog:Security, of the records the kinds below read.
+data_components:
+  - Logon Session Creation
+  - Logon Session Metadata
+  - User Account Authentication
+  - Active Directory Credential Request
+  - Process Creation
+  - Command Execution
+  - User Account Creation
+  - User Account Deletion
+  - User Account Modification
+  - Scheduled Job Creation
+  - Scheduled Job Modification
+  - Service Creation
+  - Active Directory Object Access
+  - Active Directory Object Modification
+  - Network Share Access
+  - File Access
+  - Windows Registry Key Access
+  - Windows Registry Key Modification
+
 common:
   time: { from: Event.System.TimeCreated.#attributes.SystemTime, as: timestamp }
   severity_id: { value: 1 }

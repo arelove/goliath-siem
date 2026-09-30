@@ -1,0 +1,26 @@
+[package]
+name = "goliath-attack"
+description = "Adversary knowledge frameworks for the Goliath security platform: MITRE ATT&CK from its STIX bundles, rule coverage against collected data, and Navigator layers"
+keywords = ["mitre", "attack", "stix", "siem", "security"]
+categories = ["data-structures"]
+readme = "README.md"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+# Not published until coverage reports have used it.
+publish = false
+
+[dependencies]
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+goliath-normalize = { path = "../goliath-normalize", version = "0.2.15" }
+goliath-rule = { path = "../goliath-rule", version = "0.2.6" }
+goliath-sigma = { path = "../goliath-sigma", version = "0.1.2" }
+
+[lints]
+workspace = true

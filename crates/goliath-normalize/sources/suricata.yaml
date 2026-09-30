@@ -21,6 +21,14 @@ version: 1
 framing: lines
 decoding: json
 
+# The ATT&CK data components its records supply: those ATT&CK names for
+# NSM:Flow, NSM:Connections, and NSM:Content, of the records the kinds below read.
+data_components:
+  - Network Connection Creation
+  - Network Traffic Flow
+  - Network Traffic Content
+  - Network Share Access
+
 common:
   # Suricata writes its offset without a colon, `+0000`, which is read.
   time: { from: timestamp, as: timestamp }

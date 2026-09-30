@@ -734,6 +734,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "goliath-attack"
+version = "0.1.0"
+dependencies = [
+ "goliath-normalize",
+ "goliath-rule",
+ "goliath-sigma",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "goliath-bench"
 version = "0.0.0"
 dependencies = [

@@ -25,6 +25,7 @@ pub struct Normalizer {
     kinds: Vec<Kind>,
     nil: Vec<Value>,
     unwrap: Option<String>,
+    data_components: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -410,12 +411,19 @@ impl Normalizer {
                 .map(|text| Value::from(text.as_str()))
                 .collect(),
             unwrap: definition.unwrap.clone(),
+            data_components: definition.data_components.clone(),
         })
     }
 
     /// The source's name.
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    /// The ATT&CK data components the definition says its records supply,
+    /// such as `Process Creation`.
+    pub fn data_components(&self) -> &[String] {
+        &self.data_components
     }
 
     /// How the source's bytes split into records.
