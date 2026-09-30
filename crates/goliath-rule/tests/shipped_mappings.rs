@@ -165,3 +165,33 @@ fn okta_is_selected_and_restricted_to_its_product() {
         assert!(entry.fields.contains_key(field), "{field} is not mapped");
     }
 }
+
+#[test]
+fn m365_alerts_are_selected_apart_from_the_audit_log() {
+    let set = MappingSet::from_yaml(goliath_rule::SIGMA_M365).expect("shipped mapping set loads");
+    assert_eq!(set.name, "sigma-m365");
+    let service = |service: &str| LogSourceSelector {
+        category: None,
+        product: Some("m365".to_owned()),
+        service: Some(service.to_owned()),
+    };
+    let event_code = FieldPath::parse("metadata.event_code").expect("valid path");
+    let audit = set.select(&service("audit")).expect("selected");
+    assert!(!audit.class.contains_key(&event_code));
+    for field in ["Operation", "Workload", "Parameters", "RequestType"] {
+        assert!(audit.fields.contains_key(field), "{field} is not mapped");
+    }
+    for name in ["threat_management", "threat_detection"] {
+        let alerts = set.select(&service(name)).expect("selected");
+        assert_eq!(
+            alerts.class[&event_code],
+            ClassValue::String("AlertTriggered".to_owned())
+        );
+        assert_eq!(
+            alerts.fields["eventName"],
+            [FieldPath::parse("message").expect("valid path")]
+        );
+    }
+    let exchange = set.select(&service("exchange")).expect("selected");
+    assert_eq!(exchange.fields["eventName"], [event_code]);
+}
