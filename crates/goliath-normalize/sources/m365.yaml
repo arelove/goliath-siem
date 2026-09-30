@@ -1,0 +1,181 @@
+# The Microsoft 365 unified audit log, as the Office 365 Management Activity
+# API delivers it: a content blob is an array of records, `[...]`, which the
+# definition unwraps; tools that page through the API and write one record
+# per line are read the same way.
+#
+# Records of every workload share the API's common schema: `Operation`,
+# `Workload`, `UserId`, `ResultStatus`, and the rest. Entra ID sign-ins become
+# OCSF Authentication; account, password, and strong authentication changes,
+# Account Change; group membership, Group Management; and directory roles,
+# User Access Management. Every other operation of every workload, such as
+# Exchange cmdlets, mailbox and SharePoint activity, and the alerts of the
+# Security & Compliance Center, becomes an API Activity whose operation is
+# the record's, so that none is lost for having no kind of its own. Every
+# member of a record not mapped below is kept under `unmapped` by its own
+# name, such as an Exchange cmdlet's `Parameters`, whole.
+#
+# Microsoft writes `CreationTime` without an offset; it is UTC. The client
+# address is mapped only on sign-ins, where Entra ID writes an address alone;
+# Exchange writes it with a port, and keeps it under `unmapped`.
+
+name: m365
+version: 1
+framing: json-values
+decoding: json
+unwrap: "."
+
+common:
+  time: { from: CreationTime, as: utc-timestamp }
+  metadata.version: { value: "1.5.0" }
+  metadata.product.name: { value: Microsoft 365 }
+  metadata.product.vendor_name: { value: Microsoft }
+  metadata.product.feature.name: Workload
+  metadata.uid: Id
+  metadata.event_code: Operation
+  metadata.tenant_uid: OrganizationId
+  # Most workloads write Succeeded or Failed, Entra ID Success, and Exchange
+  # cmdlets True or False; the value as written is the status code.
+  status_code: ResultStatus
+  status:
+    from: ResultStatus
+    map: { Succeeded: Success, Success: Success, "True": Success, "true": Success, Failed: Failure, "False": Failure, "false": Failure }
+    otherwise: Other
+  status_id:
+    from: ResultStatus
+    map: { Succeeded: 1, Success: 1, "True": 1, "true": 1, Failed: 2, "False": 2, "false": 2 }
+    otherwise: 99
+  actor.user.name: UserId
+  actor.user.type_id:
+    # Regular, Admin, and datacenter admin; system, and system policy.
+    from: UserType
+    map: { "0": 1, "2": 2, "3": 2, "4": 3, "8": 3 }
+    otherwise: 99
+
+kinds:
+  - name: sign_in
+    when:
+      Operation: UserLoggedIn
+    # Authentication: Logon, to the resource in `ObjectId`.
+    class: { class_uid: 3002, activity_id: 1 }
+    fields: &sign_in
+      severity_id: { value: 1 }
+      user.name: UserId
+      user.uid: UserKey
+      src_endpoint.ip: { from: ClientIP, as: ip }
+      service.uid: ObjectId
+      actor.app_uid: ApplicationId
+      status_detail: LogonError
+    unmapped: ["."]
+
+  - name: sign_in_failed
+    when:
+      Operation: UserLoginFailed
+    # Authentication: Logon, failed; `ErrorNumber` is Entra ID's error code.
+    class: { class_uid: 3002, activity_id: 1 }
+    fields: *sign_in
+    unmapped: ["."]
+
+  - name: account_created
+    when:
+      Operation: Add user.
+    # Account Change: Create, of the user in `ObjectId`.
+    class: { class_uid: 3001, activity_id: 1 }
+    fields: &target_user
+      severity_id: { value: 1 }
+      user.name: ObjectId
+    unmapped: ["."]
+
+  - name: password_changed
+    when:
+      Operation: Change user password.
+    # Account Change: Password Change.
+    class: { class_uid: 3001, activity_id: 3 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: password_reset
+    when:
+      Operation: Reset user password.
+    # Account Change: Password Reset.
+    class: { class_uid: 3001, activity_id: 4 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: strong_authentication_disabled
+    when:
+      Operation: Disable Strong Authentication.
+    # Account Change: MFA Factor Disable.
+    class: { class_uid: 3001, activity_id: 11 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: account_deleted
+    when:
+      Operation: Delete user.
+    # Account Change: Delete.
+    class: { class_uid: 3001, activity_id: 6 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: group_member_added
+    when:
+      Operation: Add member to group.
+    # Group Management: Add User. The group is among `ModifiedProperties`,
+    # in no fixed place, and kept there.
+    class: { class_uid: 3006, activity_id: 3 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: group_member_removed
+    when:
+      Operation: Remove member from group.
+    # Group Management: Remove User.
+    class: { class_uid: 3006, activity_id: 4 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: role_member_added
+    when:
+      Operation: Add member to role.
+    # User Access Management: Assign Privileges; the role is among
+    # `ModifiedProperties`.
+    class: { class_uid: 3005, activity_id: 1 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: role_member_removed
+    when:
+      Operation: Remove member from role.
+    # User Access Management: Revoke Privileges.
+    class: { class_uid: 3005, activity_id: 2 }
+    fields: *target_user
+    unmapped: ["."]
+
+  - name: alert
+    when:
+      Operation: AlertTriggered
+    # API Activity: Other. An alert of the Security & Compliance Center, or
+    # of Defender for Cloud Apps through it, as the audit log records it: its
+    # name is the message, its severity the event's.
+    class: { class_uid: 6003, activity_id: 99 }
+    fields:
+      api.operation: Operation
+      message: Name
+      severity: Severity
+      severity_id:
+        from: Severity
+        map: { Informational: 1, Low: 2, Medium: 3, High: 4 }
+        otherwise: 99
+    unmapped: ["."]
+
+  - name: other
+    when:
+      # Every record of the API's common schema is of version 1, so this
+      # kind takes each record of an operation no kind above names.
+      Version: 1
+    # API Activity: Other, the operation being the record's.
+    class: { class_uid: 6003, activity_id: 99 }
+    fields:
+      api.operation: Operation
+      severity_id: { value: 1 }
+    unmapped: ["."]

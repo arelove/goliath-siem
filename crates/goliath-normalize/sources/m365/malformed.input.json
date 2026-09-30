@@ -1,0 +1,198 @@
+[
+  {
+    "CreationTime": "28/09/2026 12:00:26",
+    "Id": "7c1d0e2f-0000-4000-8000-000000000026",
+    "Operation": "Add user.",
+    "OrganizationId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+    "RecordType": 8,
+    "ResultStatus": "Success",
+    "UserKey": "10032000EXAMPLE26",
+    "UserType": 0,
+    "Version": 1,
+    "Workload": "AzureActiveDirectory",
+    "UserId": "it-admin@contoso.com",
+    "ObjectId": "jane@contoso.com",
+    "AzureActiveDirectoryEventType": 1,
+    "ExtendedProperties": [
+      {
+        "Name": "additionalDetails",
+        "Value": "{}"
+      },
+      {
+        "Name": "extendedAuditEventCategory",
+        "Value": "User"
+      }
+    ],
+    "ModifiedProperties": [],
+    "Actor": [
+      {
+        "ID": "it-admin@contoso.com",
+        "Type": 5
+      }
+    ],
+    "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+    "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000002",
+    "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000002",
+    "SupportTicketId": "",
+    "Target": [
+      {
+        "ID": "User_d9e8f7a6-0000-4000-8000-0000000000b2",
+        "Type": 2
+      },
+      {
+        "ID": "jane@contoso.com",
+        "Type": 5
+      }
+    ],
+    "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de"
+  },
+  {
+    "CreationTime": "2026-09-28T12:00:27",
+    "Id": "7c1d0e2f-0000-4000-8000-000000000027",
+    "Operation": "UserLoggedIn",
+    "OrganizationId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+    "RecordType": 15,
+    "ResultStatus": "Success",
+    "UserKey": "10032000EXAMPLE27",
+    "UserType": 0,
+    "Version": 1,
+    "Workload": "AzureActiveDirectory",
+    "UserId": "adam@contoso.com",
+    "ClientIP": "203.0.113.24:50123",
+    "ObjectId": "00000003-0000-0ff1-ce00-000000000000",
+    "AzureActiveDirectoryEventType": 1,
+    "ExtendedProperties": [
+      {
+        "Name": "ResultStatusDetail",
+        "Value": "Success"
+      },
+      {
+        "Name": "UserAgent",
+        "Value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0"
+      },
+      {
+        "Name": "RequestType",
+        "Value": "OAuth2:Authorize"
+      }
+    ],
+    "ModifiedProperties": [],
+    "Actor": [
+      {
+        "ID": "a1b2c3d4-0000-4000-8000-0000000000a1",
+        "Type": 0
+      },
+      {
+        "ID": "adam@contoso.com",
+        "Type": 5
+      }
+    ],
+    "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+    "ActorIpAddress": "203.0.113.24:50123",
+    "ApplicationId": "d3590ed6-52b3-4102-aeff-aad2292ab01c",
+    "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000001",
+    "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000001",
+    "SupportTicketId": "",
+    "Target": [
+      {
+        "ID": "00000003-0000-0ff1-ce00-000000000000",
+        "Type": 0
+      }
+    ],
+    "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de"
+  },
+  {
+    "CreationTime": "2026-09-28T12:00:28",
+    "Id": "7c1d0e2f-0000-4000-8000-000000000028",
+    "Operation": "Delete user.",
+    "OrganizationId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+    "RecordType": 8,
+    "ResultStatus": "PartiallySucceeded",
+    "UserKey": "10032000EXAMPLE28",
+    "UserType": 0,
+    "Version": 1,
+    "Workload": "AzureActiveDirectory",
+    "UserId": "it-admin@contoso.com",
+    "ObjectId": "jane@contoso.com",
+    "AzureActiveDirectoryEventType": 1,
+    "ExtendedProperties": [
+      {
+        "Name": "additionalDetails",
+        "Value": "{}"
+      },
+      {
+        "Name": "extendedAuditEventCategory",
+        "Value": "User"
+      }
+    ],
+    "ModifiedProperties": [],
+    "Actor": [
+      {
+        "ID": "it-admin@contoso.com",
+        "Type": 5
+      }
+    ],
+    "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+    "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000002",
+    "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000002",
+    "SupportTicketId": "",
+    "Target": [
+      {
+        "ID": "User_d9e8f7a6-0000-4000-8000-0000000000b2",
+        "Type": 2
+      },
+      {
+        "ID": "jane@contoso.com",
+        "Type": 5
+      }
+    ],
+    "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de"
+  },
+  {
+    "CreationTime": "2026-09-28T12:00:29",
+    "Id": "7c1d0e2f-0000-4000-8000-000000000029",
+    "Operation": "Add service principal.",
+    "OrganizationId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+    "RecordType": 8,
+    "ResultStatus": "Success",
+    "UserKey": "10032000EXAMPLE29",
+    "UserType": 0,
+    "Version": 2,
+    "Workload": "AzureActiveDirectory",
+    "UserId": "it-admin@contoso.com",
+    "ObjectId": "jane@contoso.com",
+    "AzureActiveDirectoryEventType": 1,
+    "ExtendedProperties": [
+      {
+        "Name": "additionalDetails",
+        "Value": "{}"
+      },
+      {
+        "Name": "extendedAuditEventCategory",
+        "Value": "User"
+      }
+    ],
+    "ModifiedProperties": [],
+    "Actor": [
+      {
+        "ID": "it-admin@contoso.com",
+        "Type": 5
+      }
+    ],
+    "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+    "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000002",
+    "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000002",
+    "SupportTicketId": "",
+    "Target": [
+      {
+        "ID": "User_d9e8f7a6-0000-4000-8000-0000000000b2",
+        "Type": 2
+      },
+      {
+        "ID": "jane@contoso.com",
+        "Type": 5
+      }
+    ],
+    "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de"
+  }
+]
+[{"Operation": "UserLoggedIn", "Version": 1

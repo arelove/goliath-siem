@@ -28,6 +28,7 @@ produce.
 
 | Definition | Covers |
 | --- | --- |
+| `sources/m365.yaml` | The Microsoft 365 unified audit log, as the Office 365 Management Activity API delivers it, `[...]`, or one record per line: Entra ID sign-ins, account, password, and strong authentication changes, group membership, and directory roles as their OCSF classes, and every other operation of every workload, alerts included, as API Activity |
 | `sources/okta.yaml` | The Okta System Log, as its API answers, `[...]`, or one event after another: sign-ins, account, password, and factor changes, group membership, and admin privileges as their OCSF classes, and every other event type as API Activity |
 | `sources/sysmon.yaml` | Sysmon process creation, network connections, image loads, file creation, and registry value sets, as `evtx_dump` writes them |
 | `sources/auditd.yaml` | Linux audit program executions on x86_64 and arm64, and logins, with the lines of each event gathered, as OCSF Process Activity and Authentication |

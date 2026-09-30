@@ -1,0 +1,1626 @@
+[
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "app_uid": "d3590ed6-52b3-4102-aeff-aad2292ab01c",
+        "user": {
+          "name": "adam@contoso.com",
+          "type_id": 1
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3002,
+      "metadata": {
+        "event_code": "UserLoggedIn",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000001",
+        "version": "1.5.0"
+      },
+      "service": {
+        "uid": "00000003-0000-0ff1-ce00-000000000000"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "203.0.113.24"
+      },
+      "status": "Success",
+      "status_code": "Success",
+      "status_id": 1,
+      "time": 1790596801000,
+      "type_uid": 300201,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "a1b2c3d4-0000-4000-8000-0000000000a1",
+            "Type": 0
+          },
+          {
+            "ID": "adam@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "ActorIpAddress": "203.0.113.24",
+        "AzureActiveDirectoryEventType": 1,
+        "ExtendedProperties": [
+          {
+            "Name": "ResultStatusDetail",
+            "Value": "Success"
+          },
+          {
+            "Name": "UserAgent",
+            "Value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0"
+          },
+          {
+            "Name": "RequestType",
+            "Value": "OAuth2:Authorize"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000001",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000001",
+        "ModifiedProperties": [],
+        "RecordType": 15,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "00000003-0000-0ff1-ce00-000000000000",
+            "Type": 0
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "Version": 1
+      },
+      "user": {
+        "name": "adam@contoso.com",
+        "uid": "10032000EXAMPLE01"
+      }
+    },
+    "id": "117fbde54ea6b265e19600d8cc536c97",
+    "issues": [],
+    "kind": "sign_in"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "app_uid": "d3590ed6-52b3-4102-aeff-aad2292ab01c",
+        "user": {
+          "name": "adam@contoso.com",
+          "type_id": 1
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3002,
+      "metadata": {
+        "event_code": "UserLoginFailed",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000002",
+        "version": "1.5.0"
+      },
+      "service": {
+        "uid": "00000003-0000-0ff1-ce00-000000000000"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "198.51.100.77"
+      },
+      "status": "Failure",
+      "status_code": "Failed",
+      "status_detail": "InvalidUserNameOrPassword",
+      "status_id": 2,
+      "time": 1790596802000,
+      "type_uid": 300201,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "a1b2c3d4-0000-4000-8000-0000000000a1",
+            "Type": 0
+          },
+          {
+            "ID": "adam@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "ActorIpAddress": "198.51.100.77",
+        "AzureActiveDirectoryEventType": 1,
+        "ErrorNumber": "50126",
+        "ExtendedProperties": [
+          {
+            "Name": "ResultStatusDetail",
+            "Value": "UserError"
+          },
+          {
+            "Name": "UserAgent",
+            "Value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0"
+          },
+          {
+            "Name": "RequestType",
+            "Value": "Login:login"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000001",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000001",
+        "ModifiedProperties": [],
+        "RecordType": 15,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "00000003-0000-0ff1-ce00-000000000000",
+            "Type": 0
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "Version": 1
+      },
+      "user": {
+        "name": "adam@contoso.com",
+        "uid": "10032000EXAMPLE02"
+      }
+    },
+    "id": "6faf85f59a1e9de14debde6eb3809806",
+    "issues": [],
+    "kind": "sign_in_failed"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "app_uid": "9ba1a5c7-f17a-4de9-a1f1-6178c8d51223",
+        "user": {
+          "name": "jane@contoso.com",
+          "type_id": 1
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3002,
+      "metadata": {
+        "event_code": "UserLoggedIn",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000003",
+        "version": "1.5.0"
+      },
+      "service": {
+        "uid": "01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "203.0.113.25"
+      },
+      "status": "Success",
+      "status_code": "Success",
+      "status_id": 1,
+      "time": 1790596803000,
+      "type_uid": 300201,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "a1b2c3d4-0000-4000-8000-0000000000a1",
+            "Type": 0
+          },
+          {
+            "ID": "jane@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "ActorIpAddress": "203.0.113.25",
+        "AzureActiveDirectoryEventType": 1,
+        "ExtendedProperties": [
+          {
+            "Name": "ResultStatusDetail",
+            "Value": "Success"
+          },
+          {
+            "Name": "UserAgent",
+            "Value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0"
+          },
+          {
+            "Name": "RequestType",
+            "Value": "Cmsi:Cmsi"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000001",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000001",
+        "ModifiedProperties": [],
+        "RecordType": 15,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "01cb2876-7ebd-4aa4-9cc9-d28bd4d359a9",
+            "Type": 0
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "Version": 1
+      },
+      "user": {
+        "name": "jane@contoso.com",
+        "uid": "10032000EXAMPLE03"
+      }
+    },
+    "id": "1934a9ddcbdbaf7472ccc33b5c792656",
+    "issues": [],
+    "kind": "sign_in"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "user": {
+          "name": "it-admin@contoso.com",
+          "type_id": 1
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3001,
+      "metadata": {
+        "event_code": "Add user.",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000004",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Success",
+      "status_id": 1,
+      "time": 1790596804000,
+      "type_uid": 300101,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "it-admin@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "AzureActiveDirectoryEventType": 1,
+        "ExtendedProperties": [
+          {
+            "Name": "additionalDetails",
+            "Value": "{}"
+          },
+          {
+            "Name": "extendedAuditEventCategory",
+            "Value": "User"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000002",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000002",
+        "ModifiedProperties": [],
+        "RecordType": 8,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "User_d9e8f7a6-0000-4000-8000-0000000000b2",
+            "Type": 2
+          },
+          {
+            "ID": "jane@contoso.com",
+            "Type": 5
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "UserKey": "10032000EXAMPLE04",
+        "Version": 1
+      },
+      "user": {
+        "name": "jane@contoso.com"
+      }
+    },
+    "id": "19312da1ca16480c37df605e2ee41378",
+    "issues": [],
+    "kind": "account_created"
+  },
+  {
+    "event": {
+      "activity_id": 3,
+      "actor": {
+        "user": {
+          "name": "it-admin@contoso.com",
+          "type_id": 1
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3001,
+      "metadata": {
+        "event_code": "Change user password.",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000005",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Success",
+      "status_id": 1,
+      "time": 1790596805000,
+      "type_uid": 300103,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "it-admin@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "AzureActiveDirectoryEventType": 1,
+        "ExtendedProperties": [
+          {
+            "Name": "additionalDetails",
+            "Value": "{}"
+          },
+          {
+            "Name": "extendedAuditEventCategory",
+            "Value": "User"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000002",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000002",
+        "ModifiedProperties": [],
+        "RecordType": 8,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "User_d9e8f7a6-0000-4000-8000-0000000000b2",
+            "Type": 2
+          },
+          {
+            "ID": "jane@contoso.com",
+            "Type": 5
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "UserKey": "10032000EXAMPLE05",
+        "Version": 1
+      },
+      "user": {
+        "name": "jane@contoso.com"
+      }
+    },
+    "id": "c97aee40890013ef2fbcc2d9a0b51e59",
+    "issues": [],
+    "kind": "password_changed"
+  },
+  {
+    "event": {
+      "activity_id": 4,
+      "actor": {
+        "user": {
+          "name": "it-admin@contoso.com",
+          "type_id": 1
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3001,
+      "metadata": {
+        "event_code": "Reset user password.",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000006",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Success",
+      "status_id": 1,
+      "time": 1790596806000,
+      "type_uid": 300104,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "it-admin@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "AzureActiveDirectoryEventType": 1,
+        "ExtendedProperties": [
+          {
+            "Name": "additionalDetails",
+            "Value": "{}"
+          },
+          {
+            "Name": "extendedAuditEventCategory",
+            "Value": "User"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000002",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000002",
+        "ModifiedProperties": [],
+        "RecordType": 8,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "User_d9e8f7a6-0000-4000-8000-0000000000b2",
+            "Type": 2
+          },
+          {
+            "ID": "jane@contoso.com",
+            "Type": 5
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "UserKey": "10032000EXAMPLE06",
+        "Version": 1
+      },
+      "user": {
+        "name": "jane@contoso.com"
+      }
+    },
+    "id": "f9509b7de830c40da477395dd9776cce",
+    "issues": [],
+    "kind": "password_reset"
+  },
+  {
+    "event": {
+      "activity_id": 11,
+      "actor": {
+        "user": {
+          "name": "it-admin@contoso.com",
+          "type_id": 1
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3001,
+      "metadata": {
+        "event_code": "Disable Strong Authentication.",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000007",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Success",
+      "status_id": 1,
+      "time": 1790596807000,
+      "type_uid": 300111,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "it-admin@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "AzureActiveDirectoryEventType": 1,
+        "ExtendedProperties": [
+          {
+            "Name": "additionalDetails",
+            "Value": "{}"
+          },
+          {
+            "Name": "extendedAuditEventCategory",
+            "Value": "User"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000002",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000002",
+        "ModifiedProperties": [
+          {
+            "Name": "StrongAuthenticationRequirement",
+            "NewValue": "[]",
+            "OldValue": "[{\"State\":1}]"
+          }
+        ],
+        "RecordType": 8,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "User_d9e8f7a6-0000-4000-8000-0000000000b2",
+            "Type": 2
+          },
+          {
+            "ID": "jane@contoso.com",
+            "Type": 5
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "UserKey": "10032000EXAMPLE07",
+        "Version": 1
+      },
+      "user": {
+        "name": "jane@contoso.com"
+      }
+    },
+    "id": "913a85cb9ba2437376bfc7143979501a",
+    "issues": [],
+    "kind": "strong_authentication_disabled"
+  },
+  {
+    "event": {
+      "activity_id": 3,
+      "actor": {
+        "user": {
+          "name": "it-admin@contoso.com",
+          "type_id": 1
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3006,
+      "metadata": {
+        "event_code": "Add member to group.",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000008",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Success",
+      "status_id": 1,
+      "time": 1790596808000,
+      "type_uid": 300603,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "it-admin@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "AzureActiveDirectoryEventType": 1,
+        "ExtendedProperties": [
+          {
+            "Name": "additionalDetails",
+            "Value": "{}"
+          },
+          {
+            "Name": "extendedAuditEventCategory",
+            "Value": "User"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000002",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000002",
+        "ModifiedProperties": [
+          {
+            "Name": "Group.ObjectID",
+            "NewValue": "0a1b2c3d-0000-4000-8000-0000000000f1",
+            "OldValue": ""
+          },
+          {
+            "Name": "Group.DisplayName",
+            "NewValue": "Finance",
+            "OldValue": ""
+          }
+        ],
+        "RecordType": 8,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "User_d9e8f7a6-0000-4000-8000-0000000000b2",
+            "Type": 2
+          },
+          {
+            "ID": "jane@contoso.com",
+            "Type": 5
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "UserKey": "10032000EXAMPLE08",
+        "Version": 1
+      },
+      "user": {
+        "name": "jane@contoso.com"
+      }
+    },
+    "id": "4821c2fedfa3426d98c254d8b1aff315",
+    "issues": [],
+    "kind": "group_member_added"
+  },
+  {
+    "event": {
+      "activity_id": 4,
+      "actor": {
+        "user": {
+          "name": "it-admin@contoso.com",
+          "type_id": 1
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3006,
+      "metadata": {
+        "event_code": "Remove member from group.",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000009",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Success",
+      "status_id": 1,
+      "time": 1790596809000,
+      "type_uid": 300604,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "it-admin@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "AzureActiveDirectoryEventType": 1,
+        "ExtendedProperties": [
+          {
+            "Name": "additionalDetails",
+            "Value": "{}"
+          },
+          {
+            "Name": "extendedAuditEventCategory",
+            "Value": "User"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000002",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000002",
+        "ModifiedProperties": [
+          {
+            "Name": "Group.ObjectID",
+            "NewValue": "",
+            "OldValue": "0a1b2c3d-0000-4000-8000-0000000000f1"
+          },
+          {
+            "Name": "Group.DisplayName",
+            "NewValue": "",
+            "OldValue": "Finance"
+          }
+        ],
+        "RecordType": 8,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "User_d9e8f7a6-0000-4000-8000-0000000000b2",
+            "Type": 2
+          },
+          {
+            "ID": "jane@contoso.com",
+            "Type": 5
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "UserKey": "10032000EXAMPLE09",
+        "Version": 1
+      },
+      "user": {
+        "name": "jane@contoso.com"
+      }
+    },
+    "id": "ce924aaf9c82b1dba15987d354b4c2c8",
+    "issues": [],
+    "kind": "group_member_removed"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "user": {
+          "name": "it-admin@contoso.com",
+          "type_id": 1
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3005,
+      "metadata": {
+        "event_code": "Add member to role.",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000010",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Success",
+      "status_id": 1,
+      "time": 1790596810000,
+      "type_uid": 300501,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "it-admin@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "AzureActiveDirectoryEventType": 1,
+        "ExtendedProperties": [
+          {
+            "Name": "additionalDetails",
+            "Value": "{}"
+          },
+          {
+            "Name": "extendedAuditEventCategory",
+            "Value": "User"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000002",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000002",
+        "ModifiedProperties": [
+          {
+            "Name": "Role.DisplayName",
+            "NewValue": "Helpdesk Administrator",
+            "OldValue": ""
+          }
+        ],
+        "RecordType": 8,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "User_d9e8f7a6-0000-4000-8000-0000000000b2",
+            "Type": 2
+          },
+          {
+            "ID": "jane@contoso.com",
+            "Type": 5
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "UserKey": "10032000EXAMPLE10",
+        "Version": 1
+      },
+      "user": {
+        "name": "jane@contoso.com"
+      }
+    },
+    "id": "7322a39392a675d3f360d48908bee015",
+    "issues": [],
+    "kind": "role_member_added"
+  },
+  {
+    "event": {
+      "activity_id": 2,
+      "actor": {
+        "user": {
+          "name": "it-admin@contoso.com",
+          "type_id": 1
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3005,
+      "metadata": {
+        "event_code": "Remove member from role.",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000011",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Success",
+      "status_id": 1,
+      "time": 1790596811000,
+      "type_uid": 300502,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "it-admin@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "AzureActiveDirectoryEventType": 1,
+        "ExtendedProperties": [
+          {
+            "Name": "additionalDetails",
+            "Value": "{}"
+          },
+          {
+            "Name": "extendedAuditEventCategory",
+            "Value": "User"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000002",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000002",
+        "ModifiedProperties": [
+          {
+            "Name": "Role.DisplayName",
+            "NewValue": "",
+            "OldValue": "Helpdesk Administrator"
+          }
+        ],
+        "RecordType": 8,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "User_d9e8f7a6-0000-4000-8000-0000000000b2",
+            "Type": 2
+          },
+          {
+            "ID": "jane@contoso.com",
+            "Type": 5
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "UserKey": "10032000EXAMPLE11",
+        "Version": 1
+      },
+      "user": {
+        "name": "jane@contoso.com"
+      }
+    },
+    "id": "6adf0d1c501f1005d52a49a794047ca0",
+    "issues": [],
+    "kind": "role_member_removed"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "actor": {
+        "user": {
+          "name": "it-admin@contoso.com",
+          "type_id": 1
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3001,
+      "metadata": {
+        "event_code": "Delete user.",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000012",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Success",
+      "status_id": 1,
+      "time": 1790596812000,
+      "type_uid": 300106,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "it-admin@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "AzureActiveDirectoryEventType": 1,
+        "ExtendedProperties": [
+          {
+            "Name": "additionalDetails",
+            "Value": "{}"
+          },
+          {
+            "Name": "extendedAuditEventCategory",
+            "Value": "User"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000002",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000002",
+        "ModifiedProperties": [],
+        "RecordType": 8,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "User_d9e8f7a6-0000-4000-8000-0000000000b2",
+            "Type": 2
+          },
+          {
+            "ID": "jane@contoso.com",
+            "Type": 5
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "UserKey": "10032000EXAMPLE12",
+        "Version": 1
+      },
+      "user": {
+        "name": "jane@contoso.com"
+      }
+    },
+    "id": "c64ad03d1c8f7d785feefdcefb04cef7",
+    "issues": [],
+    "kind": "account_deleted"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "user": {
+          "name": "it-admin@contoso.com",
+          "type_id": 1
+        }
+      },
+      "api": {
+        "operation": "Add domain to company."
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "metadata": {
+        "event_code": "Add domain to company.",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000013",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Success",
+      "status_id": 1,
+      "time": 1790596813000,
+      "type_uid": 600399,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "it-admin@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "AzureActiveDirectoryEventType": 1,
+        "ExtendedProperties": [
+          {
+            "Name": "additionalDetails",
+            "Value": "{}"
+          },
+          {
+            "Name": "extendedAuditEventCategory",
+            "Value": "User"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000002",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000002",
+        "ModifiedProperties": [],
+        "ObjectId": "fabrikam.example",
+        "RecordType": 8,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "User_d9e8f7a6-0000-4000-8000-0000000000b2",
+            "Type": 2
+          },
+          {
+            "ID": "fabrikam.example",
+            "Type": 5
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "UserKey": "10032000EXAMPLE13",
+        "Version": 1
+      }
+    },
+    "id": "a873c7eb25a374d833cb19e7f947df68",
+    "issues": [],
+    "kind": "other"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "user": {
+          "name": "it-admin@contoso.com",
+          "type_id": 1
+        }
+      },
+      "api": {
+        "operation": "New-InboxRule"
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "metadata": {
+        "event_code": "New-InboxRule",
+        "product": {
+          "feature": {
+            "name": "Exchange"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000014",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "True",
+      "status_id": 1,
+      "time": 1790596814000,
+      "type_uid": 600399,
+      "unmapped": {
+        "ClientIP": "203.0.113.24:52431",
+        "ExternalAccess": false,
+        "ObjectId": "jane@contoso.com\\Newsletters",
+        "OrganizationName": "contoso.onmicrosoft.com",
+        "OriginatingServer": "AM0PR01MB0001 (15.20.8000.001)",
+        "Parameters": [
+          {
+            "Name": "Mailbox",
+            "Value": "jane@contoso.com"
+          },
+          {
+            "Name": "Name",
+            "Value": "Newsletters"
+          },
+          {
+            "Name": "From",
+            "Value": "news@example.org"
+          },
+          {
+            "Name": "MoveToFolder",
+            "Value": "Newsletters"
+          }
+        ],
+        "RecordType": 1,
+        "UserKey": "10032000EXAMPLE14",
+        "Version": 1
+      }
+    },
+    "id": "5b65f23797b1f94b3ebf27a4d8d0bb49",
+    "issues": [],
+    "kind": "other"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "user": {
+          "name": "it-admin@contoso.com",
+          "type_id": 1
+        }
+      },
+      "api": {
+        "operation": "Set-Mailbox"
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "metadata": {
+        "event_code": "Set-Mailbox",
+        "product": {
+          "feature": {
+            "name": "Exchange"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000015",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "True",
+      "status_id": 1,
+      "time": 1790596815000,
+      "type_uid": 600399,
+      "unmapped": {
+        "ClientIP": "203.0.113.24:52431",
+        "ExternalAccess": false,
+        "ObjectId": "jane@contoso.com",
+        "OrganizationName": "contoso.onmicrosoft.com",
+        "OriginatingServer": "AM0PR01MB0001 (15.20.8000.001)",
+        "Parameters": [
+          {
+            "Name": "Identity",
+            "Value": "jane@contoso.com"
+          },
+          {
+            "Name": "ForwardingSmtpAddress",
+            "Value": "smtp:jane@example.net"
+          },
+          {
+            "Name": "DeliverToMailboxAndForward",
+            "Value": "True"
+          }
+        ],
+        "RecordType": 1,
+        "UserKey": "10032000EXAMPLE15",
+        "Version": 1
+      }
+    },
+    "id": "31279e0c90117dbbb25cbf791de40073",
+    "issues": [],
+    "kind": "other"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "user": {
+          "name": "it-admin@contoso.com",
+          "type_id": 1
+        }
+      },
+      "api": {
+        "operation": "Add-FederatedDomain"
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "metadata": {
+        "event_code": "Add-FederatedDomain",
+        "product": {
+          "feature": {
+            "name": "Exchange"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000016",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "True",
+      "status_id": 1,
+      "time": 1790596816000,
+      "type_uid": 600399,
+      "unmapped": {
+        "ClientIP": "203.0.113.24:52431",
+        "ExternalAccess": false,
+        "ObjectId": "fabrikam.example",
+        "OrganizationName": "contoso.onmicrosoft.com",
+        "OriginatingServer": "AM0PR01MB0001 (15.20.8000.001)",
+        "Parameters": [
+          {
+            "Name": "DomainName",
+            "Value": "fabrikam.example"
+          }
+        ],
+        "RecordType": 1,
+        "UserKey": "10032000EXAMPLE16",
+        "Version": 1
+      }
+    },
+    "id": "906ca5b7e26f2f0faf7b25f0c122f883",
+    "issues": [],
+    "kind": "other"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "user": {
+          "name": "jane@contoso.com",
+          "type_id": 1
+        }
+      },
+      "api": {
+        "operation": "UpdateInboxRules"
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "metadata": {
+        "event_code": "UpdateInboxRules",
+        "product": {
+          "feature": {
+            "name": "Exchange"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000017",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Succeeded",
+      "status_id": 1,
+      "time": 1790596817000,
+      "type_uid": 600399,
+      "unmapped": {
+        "ClientIP": "2001:db8::24",
+        "ClientInfoString": "Client=MSExchangeRPC",
+        "ObjectId": "",
+        "OperationProperties": [
+          {
+            "Name": "RuleName",
+            "Value": "Copy to assistant"
+          },
+          {
+            "Name": "RuleActions",
+            "Value": "[{\"ActionType\":\"Forward\",\"Recipients\":[\"assistant@contoso.com\"]}]"
+          }
+        ],
+        "RecordType": 2,
+        "UserKey": "10032000EXAMPLE17",
+        "Version": 1
+      }
+    },
+    "id": "fc06df7594e88bb6c9cc0d1a8ef18e17",
+    "issues": [],
+    "kind": "other"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "user": {
+          "name": "jane@contoso.com",
+          "type_id": 1
+        }
+      },
+      "api": {
+        "operation": "MailItemsAccessed"
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "metadata": {
+        "event_code": "MailItemsAccessed",
+        "product": {
+          "feature": {
+            "name": "Exchange"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000018",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Succeeded",
+      "status_id": 1,
+      "time": 1790596818000,
+      "type_uid": 600399,
+      "unmapped": {
+        "ClientIP": "203.0.113.25",
+        "MailboxOwnerUPN": "jane@contoso.com",
+        "ObjectId": "",
+        "OperationProperties": [
+          {
+            "Name": "MailAccessType",
+            "Value": "Bind"
+          }
+        ],
+        "RecordType": 50,
+        "UserKey": "10032000EXAMPLE18",
+        "Version": 1
+      }
+    },
+    "id": "a751da8c8d8c373d92d78da890984073",
+    "issues": [],
+    "kind": "other"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "user": {
+          "name": "jane@contoso.com",
+          "type_id": 1
+        }
+      },
+      "api": {
+        "operation": "FileDownloaded"
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "metadata": {
+        "event_code": "FileDownloaded",
+        "product": {
+          "feature": {
+            "name": "SharePoint"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000019",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Succeeded",
+      "status_id": 1,
+      "time": 1790596819000,
+      "type_uid": 600399,
+      "unmapped": {
+        "ClientIP": "203.0.113.25",
+        "ObjectId": "https://contoso.sharepoint.com/sites/finance/Shared Documents/budget.xlsx",
+        "RecordType": 6,
+        "SiteUrl": "https://contoso.sharepoint.com/sites/finance/",
+        "SourceFileExtension": "xlsx",
+        "SourceFileName": "budget.xlsx",
+        "SourceRelativeUrl": "Shared Documents",
+        "UserKey": "10032000EXAMPLE19",
+        "Version": 1
+      }
+    },
+    "id": "86e9050f3630a6dc9bd1faa7dec0380f",
+    "issues": [],
+    "kind": "other"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "user": {
+          "name": "ThreatIntel",
+          "type_id": 3
+        }
+      },
+      "api": {
+        "operation": "TIMailData"
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "metadata": {
+        "event_code": "TIMailData",
+        "product": {
+          "feature": {
+            "name": "ThreatIntelligence"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000020",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Succeeded",
+      "status_id": 1,
+      "time": 1790596820000,
+      "type_uid": 600399,
+      "unmapped": {
+        "DeliveryAction": "Delivered",
+        "Directionality": "Inbound",
+        "NetworkMessageId": "d1e2f3a4-0000-4000-8000-000000000020",
+        "ObjectId": "",
+        "P1Sender": "offers@example.org",
+        "Recipients": [
+          "jane@contoso.com"
+        ],
+        "RecordType": 28,
+        "Subject": "Quarterly offer",
+        "UserKey": "10032000EXAMPLE20",
+        "Verdict": "Spam",
+        "Version": 1
+      }
+    },
+    "id": "9e7fab64f75f6393fd4f99e07f3fdd16",
+    "issues": [],
+    "kind": "other"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "user": {
+          "name": "ThreatIntel",
+          "type_id": 3
+        }
+      },
+      "api": {
+        "operation": "TIMailData"
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "metadata": {
+        "event_code": "TIMailData",
+        "product": {
+          "feature": {
+            "name": "ThreatIntelligence"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000021",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Succeeded",
+      "status_id": 1,
+      "time": 1790596821000,
+      "type_uid": 600399,
+      "unmapped": {
+        "DeliveryAction": "Blocked",
+        "Directionality": "Inbound",
+        "NetworkMessageId": "d1e2f3a4-0000-4000-8000-000000000021",
+        "ObjectId": "",
+        "P1Sender": "offers@example.org",
+        "Recipients": [
+          "adam@contoso.com"
+        ],
+        "RecordType": 28,
+        "Subject": "Quarterly offer",
+        "UserKey": "10032000EXAMPLE21",
+        "Verdict": "Spam",
+        "Version": 1
+      }
+    },
+    "id": "f6f5d5dfe799635ff143192c35825201",
+    "issues": [],
+    "kind": "other"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "user": {
+          "name": "SecurityComplianceAlerts",
+          "type_id": 3
+        }
+      },
+      "api": {
+        "operation": "AlertTriggered"
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "message": "Impossible travel activity",
+      "metadata": {
+        "event_code": "AlertTriggered",
+        "product": {
+          "feature": {
+            "name": "SecurityComplianceCenter"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000022",
+        "version": "1.5.0"
+      },
+      "severity": "Medium",
+      "severity_id": 3,
+      "status": "Success",
+      "status_code": "Succeeded",
+      "status_id": 1,
+      "time": 1790596822000,
+      "type_uid": 600399,
+      "unmapped": {
+        "AlertEntityId": "adam@contoso.com",
+        "AlertId": "e3a9b1c2-0000-4000-8000-000000000022",
+        "AlertType": "System",
+        "Category": "ThreatManagement",
+        "Comments": "New alert",
+        "Data": "{\"f3u\": \"adam@contoso.com\", \"an\": \"Impossible travel activity\", \"sev\": \"Medium\"}",
+        "EntityType": "User",
+        "ObjectId": "e3a9b1c2-0000-4000-8000-000000000022",
+        "PolicyId": "f4b0c2d3-0000-4000-8000-000000000022",
+        "RecordType": 40,
+        "Source": "Cloud App Security",
+        "Status": "Active",
+        "UserKey": "SecurityComplianceAlerts",
+        "Version": 1
+      }
+    },
+    "id": "6e6fc141eef181e3d1059cbdcf02e02e",
+    "issues": [],
+    "kind": "alert"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "user": {
+          "name": "SecurityComplianceAlerts",
+          "type_id": 3
+        }
+      },
+      "api": {
+        "operation": "AlertTriggered"
+      },
+      "category_uid": 6,
+      "class_uid": 6003,
+      "message": "eDiscovery search started or exported",
+      "metadata": {
+        "event_code": "AlertTriggered",
+        "product": {
+          "feature": {
+            "name": "SecurityComplianceCenter"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000023",
+        "version": "1.5.0"
+      },
+      "severity": "Informational",
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Succeeded",
+      "status_id": 1,
+      "time": 1790596823000,
+      "type_uid": 600399,
+      "unmapped": {
+        "AlertEntityId": "adam@contoso.com",
+        "AlertId": "e3a9b1c2-0000-4000-8000-000000000023",
+        "AlertType": "System",
+        "Category": "ThreatManagement",
+        "Comments": "New alert",
+        "Data": "{\"f3u\": \"adam@contoso.com\", \"an\": \"eDiscovery search started or exported\", \"sev\": \"Informational\"}",
+        "EntityType": "User",
+        "ObjectId": "e3a9b1c2-0000-4000-8000-000000000023",
+        "PolicyId": "f4b0c2d3-0000-4000-8000-000000000023",
+        "RecordType": 40,
+        "Source": "Office 365 Security & Compliance",
+        "Status": "Active",
+        "UserKey": "SecurityComplianceAlerts",
+        "Version": 1
+      }
+    },
+    "id": "e8b6fc5662f3d74bc4948366ecdf3946",
+    "issues": [],
+    "kind": "alert"
+  }
+]

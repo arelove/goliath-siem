@@ -1,0 +1,266 @@
+[
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "user": {
+          "name": "it-admin@contoso.com",
+          "type_id": 1
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3001,
+      "metadata": {
+        "event_code": "Add user.",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000026",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Success",
+      "status_id": 1,
+      "type_uid": 300101,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "it-admin@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "AzureActiveDirectoryEventType": 1,
+        "CreationTime": "28/09/2026 12:00:26",
+        "ExtendedProperties": [
+          {
+            "Name": "additionalDetails",
+            "Value": "{}"
+          },
+          {
+            "Name": "extendedAuditEventCategory",
+            "Value": "User"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000002",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000002",
+        "ModifiedProperties": [],
+        "RecordType": 8,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "User_d9e8f7a6-0000-4000-8000-0000000000b2",
+            "Type": 2
+          },
+          {
+            "ID": "jane@contoso.com",
+            "Type": 5
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "UserKey": "10032000EXAMPLE26",
+        "Version": 1
+      },
+      "user": {
+        "name": "jane@contoso.com"
+      }
+    },
+    "id": "0216023b512b1f9a98af7422b5fc4c3f",
+    "issues": [
+      {
+        "reason": "`28/09/2026 12:00:26` is not an RFC 3339 time: failed to parse four digit integer as year: invalid digit, expected 0-9 but got /",
+        "source": "CreationTime",
+        "target": "time"
+      }
+    ],
+    "kind": "account_created"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "actor": {
+        "app_uid": "d3590ed6-52b3-4102-aeff-aad2292ab01c",
+        "user": {
+          "name": "adam@contoso.com",
+          "type_id": 1
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3002,
+      "metadata": {
+        "event_code": "UserLoggedIn",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000027",
+        "version": "1.5.0"
+      },
+      "service": {
+        "uid": "00000003-0000-0ff1-ce00-000000000000"
+      },
+      "severity_id": 1,
+      "status": "Success",
+      "status_code": "Success",
+      "status_id": 1,
+      "time": 1790596827000,
+      "type_uid": 300201,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "a1b2c3d4-0000-4000-8000-0000000000a1",
+            "Type": 0
+          },
+          {
+            "ID": "adam@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "ActorIpAddress": "203.0.113.24:50123",
+        "AzureActiveDirectoryEventType": 1,
+        "ClientIP": "203.0.113.24:50123",
+        "ExtendedProperties": [
+          {
+            "Name": "ResultStatusDetail",
+            "Value": "Success"
+          },
+          {
+            "Name": "UserAgent",
+            "Value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0"
+          },
+          {
+            "Name": "RequestType",
+            "Value": "OAuth2:Authorize"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000001",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000001",
+        "ModifiedProperties": [],
+        "RecordType": 15,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "00000003-0000-0ff1-ce00-000000000000",
+            "Type": 0
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "Version": 1
+      },
+      "user": {
+        "name": "adam@contoso.com",
+        "uid": "10032000EXAMPLE27"
+      }
+    },
+    "id": "f8ab0f8530b5d96cbbfbe736959bcf04",
+    "issues": [
+      {
+        "reason": "`203.0.113.24:50123` is not an IP address",
+        "source": "ClientIP",
+        "target": "src_endpoint.ip"
+      }
+    ],
+    "kind": "sign_in"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "actor": {
+        "user": {
+          "name": "it-admin@contoso.com",
+          "type_id": 1
+        }
+      },
+      "category_uid": 3,
+      "class_uid": 3001,
+      "metadata": {
+        "event_code": "Delete user.",
+        "product": {
+          "feature": {
+            "name": "AzureActiveDirectory"
+          },
+          "name": "Microsoft 365",
+          "vendor_name": "Microsoft"
+        },
+        "tenant_uid": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "uid": "7c1d0e2f-0000-4000-8000-000000000028",
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "status": "Other",
+      "status_code": "PartiallySucceeded",
+      "status_id": 99,
+      "time": 1790596828000,
+      "type_uid": 300106,
+      "unmapped": {
+        "Actor": [
+          {
+            "ID": "it-admin@contoso.com",
+            "Type": 5
+          }
+        ],
+        "ActorContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "AzureActiveDirectoryEventType": 1,
+        "ExtendedProperties": [
+          {
+            "Name": "additionalDetails",
+            "Value": "{}"
+          },
+          {
+            "Name": "extendedAuditEventCategory",
+            "Value": "User"
+          }
+        ],
+        "InterSystemsId": "b7e0c1a2-0000-4000-8000-000000000002",
+        "IntraSystemId": "c8f1d2b3-0000-4000-8000-000000000002",
+        "ModifiedProperties": [],
+        "RecordType": 8,
+        "SupportTicketId": "",
+        "Target": [
+          {
+            "ID": "User_d9e8f7a6-0000-4000-8000-0000000000b2",
+            "Type": 2
+          },
+          {
+            "ID": "jane@contoso.com",
+            "Type": 5
+          }
+        ],
+        "TargetContextId": "4f2a1c3e-0000-4000-8000-00000000c0de",
+        "UserKey": "10032000EXAMPLE28",
+        "Version": 1
+      },
+      "user": {
+        "name": "jane@contoso.com"
+      }
+    },
+    "id": "62495b0e2a0647453d282b8819d13681",
+    "issues": [],
+    "kind": "account_deleted"
+  },
+  {
+    "dead_letter": {
+      "error": "no kind of source `m365` accepts the record",
+      "raw": "{\"Actor\":[{\"ID\":\"it-admin@contoso.com\",\"Type\":5}],\"ActorContextId\":\"4f2a1c3e-0000-4000-8000-00000000c0de\",\"AzureActiveDirectoryEventType\":1,\"CreationTime\":\"2026-09-28T12:00:29\",\"ExtendedProperties\":[{\"Name\":\"additionalDetails\",\"Value\":\"{}\"},{\"Name\":\"extendedAuditEventCategory\",\"Value\":\"User\"}],\"Id\":\"7c1d0e2f-0000-4000-8000-000000000029\",\"InterSystemsId\":\"b7e0c1a2-0000-4000-8000-000000000002\",\"IntraSystemId\":\"c8f1d2b3-0000-4000-8000-000000000002\",\"ModifiedProperties\":[],\"ObjectId\":\"jane@contoso.com\",\"Operation\":\"Add service principal.\",\"OrganizationId\":\"4f2a1c3e-0000-4000-8000-00000000c0de\",\"RecordType\":8,\"ResultStatus\":\"Success\",\"SupportTicketId\":\"\",\"Target\":[{\"ID\":\"User_d9e8f7a6-0000-4000-8000-0000000000b2\",\"Type\":2},{\"ID\":\"jane@contoso.com\",\"Type\":5}],\"TargetContextId\":\"4f2a1c3e-0000-4000-8000-00000000c0de\",\"UserId\":\"it-admin@contoso.com\",\"UserKey\":\"10032000EXAMPLE29\",\"UserType\":0,\"Version\":2,\"Workload\":\"AzureActiveDirectory\"}",
+      "stage": "mapping"
+    }
+  },
+  {
+    "dead_letter": {
+      "error": "EOF while parsing an object at line 199 column 0",
+      "raw": "[{\"Operation\": \"UserLoggedIn\", \"Version\": 1",
+      "stage": "framing"
+    }
+  }
+]

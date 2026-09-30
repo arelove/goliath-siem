@@ -85,12 +85,18 @@ pub const CLOUDTRAIL: &str = include_str!("../sources/cloudtrail.yaml");
 /// accounts, factors, groups, privileges, and every other event type.
 pub const OKTA: &str = include_str!("../sources/okta.yaml");
 
+/// The Microsoft 365 unified audit log definition shipped with this crate:
+/// Entra ID sign-ins, accounts, groups, roles, and every other operation of
+/// every workload.
+pub const M365: &str = include_str!("../sources/m365.yaml");
+
 /// Every definition shipped with this crate, by name.
 pub const BUILTIN: &[(&str, &str)] = &[
     ("auditd", AUDITD),
     ("cloudtrail", CLOUDTRAIL),
     ("entra", ENTRA),
     ("falco", FALCO),
+    ("m365", M365),
     ("okta", OKTA),
     ("sysmon-flat", SYSMON_FLAT),
     ("sysmon", SYSMON),
