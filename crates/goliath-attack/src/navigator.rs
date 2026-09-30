@@ -14,23 +14,23 @@ const SHOWN: [(Verdict, &str, &str); 3] = [
     (
         Verdict::Detected,
         "#3fb950",
-        "Detected: a rule, and its data collected",
+        "Detected: a rule that can fire",
     ),
     (
         Verdict::Blind,
         "#e0533d",
-        "Blind: a rule, but none of its data collected",
+        "Blind: rules, none of whose log sources is collected",
     ),
     (
         Verdict::Collected,
         "#d9a13b",
-        "Collected: data, but no rule",
+        "Collected: data to detect it, but no rule",
     ),
 ];
 
-/// A layer named `name` that colours each technique by its verdict, lists
-/// its rules and collected data components in the comment, and leaves
-/// uncovered techniques uncoloured.
+/// A layer named `name` that colours each technique by its verdict, names
+/// its rules, those that cannot fire, and its collected data components in
+/// the comment, and leaves uncovered techniques uncoloured.
 pub fn layer(framework: &Framework, coverage: &Coverage, name: &str) -> Value {
     let major = framework.version().split('.').next().unwrap_or_default();
     let techniques: Vec<Value> = coverage
@@ -43,6 +43,12 @@ pub fn layer(framework: &Framework, coverage: &Coverage, name: &str) -> Value {
             let mut comment = Vec::new();
             if !technique.rules.is_empty() {
                 comment.push(format!("Rules: {}", technique.rules.join("; ")));
+            }
+            if !technique.blind_rules.is_empty() {
+                comment.push(format!(
+                    "Cannot fire, their log source not collected: {}",
+                    technique.blind_rules.join("; ")
+                ));
             }
             let names = |ids: &std::collections::BTreeSet<String>| {
                 ids.iter()
@@ -75,7 +81,7 @@ pub fn layer(framework: &Framework, coverage: &Coverage, name: &str) -> Value {
         "versions": { "attack": major, "layer": LAYER_FORMAT },
         "domain": framework.domain(),
         "description": format!(
-            "Coverage against {} {}: which techniques a rule detects, and whether the data it needs is collected.",
+            "Coverage against {} {}: which techniques a rule that can fire detects, which have only rules whose log source is not collected, and which could be detected from collected data.",
             framework.name(),
             framework.version()
         ),

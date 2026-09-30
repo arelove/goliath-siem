@@ -17,5 +17,10 @@ publish = false
 serde_json.workspace = true
 thiserror.workspace = true
 
+[dev-dependencies]
+goliath-normalize = { path = "../goliath-normalize", version = "0.2.15" }
+goliath-rule = { path = "../goliath-rule", version = "0.2.6" }
+goliath-sigma = { path = "../goliath-sigma", version = "0.1.2" }
+
 [lints]
 workspace = true

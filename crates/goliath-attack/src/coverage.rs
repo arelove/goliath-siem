@@ -14,18 +14,23 @@ pub struct RuleRef {
     pub title: String,
     /// The techniques it is tagged with, such as `T1059.001`.
     pub techniques: Vec<String>,
+    /// Whether a configured source supplies the log source the rule reads,
+    /// so that it can fire.
+    pub collected: bool,
 }
 
 impl RuleRef {
     /// A rule named `title` with Sigma tags such as `attack.t1059.001`; tags
     /// of tactics, groups, and software are not techniques and are left out.
-    pub fn from_sigma_tags(title: &str, tags: &[String]) -> Self {
+    /// `collected` says whether a configured source supplies its log source.
+    pub fn from_sigma_tags(title: &str, tags: &[String], collected: bool) -> Self {
         Self {
             title: title.to_owned(),
             techniques: tags
                 .iter()
                 .filter_map(|tag| technique_of_tag(tag))
                 .collect(),
+            collected,
         }
     }
 }
@@ -54,13 +59,13 @@ pub fn technique_of_tag(tag: &str) -> Option<String> {
 /// What a technique's rules and collected data add up to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Verdict {
-    /// A rule detects it, and data it reads is collected.
+    /// A rule detects it whose log source a configured source supplies.
     Detected,
-    /// A rule detects it, but no data its detection strategies read is
-    /// collected, so the rule cannot fire.
+    /// Rules detect it, but no configured source supplies the log source of
+    /// any of them, so none can fire.
     Blind,
-    /// Data its detection strategies read is collected, but no rule
-    /// detects it.
+    /// No rule detects it, but data its detection strategies read is
+    /// collected: a rule could be written.
     Collected,
     /// Neither.
     Uncovered,
@@ -71,8 +76,11 @@ pub enum Verdict {
 pub struct TechniqueCoverage {
     /// The technique, such as `T1059.001`.
     pub technique: String,
-    /// The titles of the rules tagged with it.
+    /// The titles of the rules tagged with it that can fire.
     pub rules: Vec<String>,
+    /// The titles of the rules tagged with it whose log source no
+    /// configured source supplies.
+    pub blind_rules: Vec<String>,
     /// The data components its detection strategies read, by identifier.
     pub needs: BTreeSet<String>,
     /// Of those, the ones collected.
@@ -132,9 +140,11 @@ impl Coverage {
 /// Assesses `rules` against the data components named in `collected`, such
 /// as `Process Creation`, which the configured sources supply.
 ///
-/// A technique counts as observable when data read by at least one of its
-/// detection strategies is collected. A rule tagged with a revoked,
-/// deprecated, or unknown technique counts for nothing and is reported.
+/// A technique is detected when a rule for it can fire, which each rule
+/// says, and blind when it has rules and none can. Without a rule, it could
+/// be detected when data read by at least one of its detection strategies
+/// is collected. A rule tagged with a revoked, deprecated, or unknown
+/// technique counts for nothing and is reported.
 ///
 /// # Errors
 ///
@@ -159,7 +169,7 @@ pub fn assess(
         })
         .collect::<Result<_, _>>()?;
 
-    let mut by_technique: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut by_technique: BTreeMap<String, Vec<&RuleRef>> = BTreeMap::new();
     let mut broken = Vec::new();
     for rule in rules {
         for tagged in &rule.techniques {
@@ -176,7 +186,7 @@ pub fn assess(
                 None => by_technique
                     .entry(tagged.to_ascii_uppercase())
                     .or_default()
-                    .push(rule.title.clone()),
+                    .push(rule),
                 Some(why) => broken.push(BrokenReference {
                     rule: rule.title.clone(),
                     technique: tagged.clone(),
@@ -190,23 +200,35 @@ pub fn assess(
         .techniques()
         .filter(|technique| technique.state == State::Active)
         .map(|technique| {
-            let rules = by_technique.remove(&technique.id).unwrap_or_default();
+            let (firing, blind): (Vec<&RuleRef>, Vec<&RuleRef>) = by_technique
+                .remove(&technique.id)
+                .unwrap_or_default()
+                .into_iter()
+                .partition(|rule| rule.collected);
+            let titles = |rules: Vec<&RuleRef>| -> Vec<String> {
+                rules.into_iter().map(|rule| rule.title.clone()).collect()
+            };
+            let (rules, blind_rules) = (titles(firing), titles(blind));
             let observed: BTreeSet<String> = technique
                 .data_components
                 .intersection(&collected)
                 .cloned()
                 .collect();
-            let verdict = match (rules.is_empty(), observed.is_empty()) {
-                (false, false) => Verdict::Detected,
-                (false, true) => Verdict::Blind,
-                (true, false) => Verdict::Collected,
-                (true, true) => Verdict::Uncovered,
+            let verdict = if !rules.is_empty() {
+                Verdict::Detected
+            } else if !blind_rules.is_empty() {
+                Verdict::Blind
+            } else if !observed.is_empty() {
+                Verdict::Collected
+            } else {
+                Verdict::Uncovered
             };
             (
                 technique.id.clone(),
                 TechniqueCoverage {
                     technique: technique.id.clone(),
                     rules,
+                    blind_rules,
                     needs: technique.data_components.clone(),
                     collected: observed,
                     verdict,

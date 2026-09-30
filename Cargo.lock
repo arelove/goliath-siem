@@ -737,6 +737,9 @@ dependencies = [
 name = "goliath-attack"
 version = "0.1.0"
 dependencies = [
+ "goliath-normalize",
+ "goliath-rule",
+ "goliath-sigma",
  "serde_json",
  "thiserror",
 ]

@@ -4,9 +4,11 @@
 //! the data a deployment collects.
 //!
 //! Two questions are answered apart: whether a rule detects a technique,
-//! coverage, and whether the data that rule reads is collected, capability.
-//! A technique with a rule and none of its data collected is reported as
-//! blind: the rule exists and cannot fire. See
+//! coverage, and whether a configured source supplies the log source that
+//! rule reads, capability. A technique whose rules all read log sources
+//! nothing collects is reported as blind: the rules exist and cannot fire.
+//! A technique with no rule whose data, as ATT&CK's detection strategies
+//! name it, is collected is one a rule could be written for. See
 //! `docs/adr/0009-attack-knowledge-model.md`.
 //!
 //! ```no_run
@@ -17,6 +19,7 @@
 //! let rules = [RuleRef::from_sigma_tags(
 //!     "Encoded PowerShell",
 //!     &["attack.execution".to_owned(), "attack.t1059.001".to_owned()],
+//!     true,
 //! )];
 //! let coverage = assess(&framework, &rules, &["Process Creation".to_owned()])?;
 //! let navigator = layer(&framework, &coverage, "Our coverage");

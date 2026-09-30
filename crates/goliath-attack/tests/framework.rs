@@ -159,11 +159,16 @@ fn coverage_separates_detected_blind_collected_and_uncovered() {
         RuleRef::from_sigma_tags(
             "Encoded PowerShell",
             &tags(&["attack.execution", "attack.t1059.001"]),
+            true,
         ),
-        RuleRef::from_sigma_tags("Password spraying", &tags(&["attack.t1110.003"])),
-        RuleRef::from_sigma_tags("Old PowerShell", &tags(&["attack.t1086"])),
-        RuleRef::from_sigma_tags("Scripting", &tags(&["attack.t1064"])),
-        RuleRef::from_sigma_tags("Typo", &tags(&["attack.t9999"])),
+        // Its log source is not collected, so it cannot fire.
+        RuleRef::from_sigma_tags("Password spraying", &tags(&["attack.t1110.003"]), false),
+        // Its log source is collected; ATT&CK's own data components for the
+        // technique need not be.
+        RuleRef::from_sigma_tags("Valid accounts", &tags(&["attack.t1078"]), true),
+        RuleRef::from_sigma_tags("Old PowerShell", &tags(&["attack.t1086"]), true),
+        RuleRef::from_sigma_tags("Scripting", &tags(&["attack.t1064"]), true),
+        RuleRef::from_sigma_tags("Typo", &tags(&["attack.t9999"]), true),
     ];
     let collected = [
         "Process Creation".to_owned(),
@@ -174,14 +179,20 @@ fn coverage_separates_detected_blind_collected_and_uncovered() {
 
     let verdict = |id: &str| coverage.techniques[id].verdict;
     assert_eq!(verdict("T1059.001"), Verdict::Detected);
-    // A rule exists and cannot fire: no authentication data is collected.
+    assert_eq!(verdict("T1078"), Verdict::Detected);
     assert_eq!(verdict("T1110.003"), Verdict::Blind);
+    // No rule, and data a rule could read is collected.
     assert_eq!(verdict("T1071"), Verdict::Collected);
     assert_eq!(verdict("T1110"), Verdict::Uncovered);
     assert_eq!(
         coverage.techniques["T1059.001"].rules,
         ["Encoded PowerShell"]
     );
+    assert_eq!(
+        coverage.techniques["T1110.003"].blind_rules,
+        ["Password spraying"]
+    );
+    assert!(coverage.techniques["T1110.003"].rules.is_empty());
     // Only current techniques are assessed.
     assert!(!coverage.techniques.contains_key("T1086"));
     assert!(!coverage.techniques.contains_key("T1064"));
@@ -227,8 +238,8 @@ fn a_misspelled_data_component_is_refused() {
 fn a_navigator_layer_colours_each_verdict() {
     let framework = framework();
     let rules = [
-        RuleRef::from_sigma_tags("Encoded PowerShell", &["attack.t1059.001".to_owned()]),
-        RuleRef::from_sigma_tags("Password spraying", &["attack.t1110.003".to_owned()]),
+        RuleRef::from_sigma_tags("Encoded PowerShell", &["attack.t1059.001".to_owned()], true),
+        RuleRef::from_sigma_tags("Password spraying", &["attack.t1110.003".to_owned()], false),
     ];
     let coverage = assess(&framework, &rules, &["Process Creation".to_owned()]).expect("assessed");
     let layer = layer(&framework, &coverage, "Coverage");
@@ -253,7 +264,7 @@ fn a_navigator_layer_colours_each_verdict() {
     assert_eq!(spraying["color"], "#e0533d");
     assert_eq!(
         spraying["comment"],
-        "Rules: Password spraying. Needs one of: User Account Authentication"
+        "Cannot fire, their log source not collected: Password spraying. Needs one of: User Account Authentication"
     );
     assert_eq!(
         entry("T1059").expect("collected")["showSubtechniques"],
