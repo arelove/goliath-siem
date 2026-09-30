@@ -81,7 +81,13 @@ pub async fn run(config: Config, shutdown: impl Future<Output = ()>) -> Result<(
             .store
             .as_ref()
             .ok_or_else(|| RunError::Config("no [store]".to_owned()))?;
-        let server = api::Server::bind(&config.api, connect(settings)?, metrics.clone()).await?;
+        let server = api::Server::bind(
+            &config.api,
+            connect(settings)?,
+            config.watched()?,
+            metrics.clone(),
+        )
+        .await?;
         roles.spawn(server.serve(stopped.clone()));
     }
     if config.has_pipeline() {

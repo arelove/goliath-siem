@@ -12,6 +12,9 @@
 //!   a dashboard: counts by time and severity, and the most frequent classes,
 //!   sources, hosts, and users.
 //! - `GET /api/v1/arrivals`: events that arrived in each of the last seconds.
+//! - `GET /api/v1/sources`: the health of each source: its last event, its
+//!   last hour against its baseline, its dead letters, and a status. See
+//!   `docs/adr/0019-source-health.md`.
 //! - `GET /api/v1/health`: whether the service is up; needs no token.
 //!
 //! With a token configured, every other API request must carry it as
@@ -31,7 +34,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use goliath_ocsf::schema::{self, Attribute, Base};
 use goliath_search::{Cursor, Limits, Search, Window};
-use goliath_store::{Found, Frequent, SearchLimits, Store, StoreError};
+use goliath_store::{Found, Frequent, SearchLimits, Store, StoreError, Watched};
 use serde_json::{Value, json};
 use subtle::ConstantTimeEq;
 use tokio::net::TcpListener;
@@ -54,6 +57,7 @@ const MAX_DEPTH: usize = 4;
 /// What every request shares.
 struct Shared {
     store: Store,
+    watched: Vec<Watched>,
     token: Option<String>,
     limits: Limits,
     query: SearchLimits,
@@ -76,10 +80,12 @@ impl Server {
     pub(crate) async fn bind(
         config: &ApiConfig,
         store: Store,
+        watched: Vec<Watched>,
         metrics: Metrics,
     ) -> Result<Self, RunError> {
         let shared = Shared {
             store,
+            watched,
             token: config.token()?,
             limits: Limits {
                 max_span_ms: i64::from(config.max_span_days.get()) * 24 * 60 * 60 * 1000,
@@ -130,6 +136,7 @@ fn app(shared: Shared, ui: Option<PathBuf>) -> Router {
         .route("/schema/classes/{uid}/paths", get(paths))
         .route("/overview", post(overview))
         .route("/arrivals", get(arrivals))
+        .route("/sources", get(sources))
         .route_layer(middleware::from_fn_with_state(
             Arc::clone(&shared),
             authorize,
@@ -422,6 +429,44 @@ async fn arrivals(State(shared): State<Arc<Shared>>) -> Response {
     }
 }
 
+/// The health of every configured or counted source, the ones needing
+/// attention first. See docs/adr/0019-source-health.md.
+async fn sources(State(shared): State<Arc<Shared>>) -> Response {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |since| {
+            i64::try_from(since.as_millis()).unwrap_or(i64::MAX)
+        });
+    match shared
+        .store
+        .source_health(now, &shared.watched, shared.query)
+        .await
+    {
+        Ok(health) => axum::Json(json!({
+            "now": now,
+            "sources": health
+                .iter()
+                .map(|source| json!({
+                    "source": source.source,
+                    "status": source.status.as_str(),
+                    "last_event": source.last_event,
+                    "hour": source.hour * 1000,
+                    "last_hour": source.last_hour,
+                    "baseline": source.baseline,
+                    "silent_after_minutes": source.silent_after_minutes,
+                    "dead_letters": {
+                        "last_hour": source.dead_letters_last_hour,
+                        "last_day": source.dead_letters_last_day,
+                        "last": source.last_dead_letter,
+                    },
+                }))
+                .collect::<Vec<_>>(),
+        }))
+        .into_response(),
+        Err(error) => store_failed(&error),
+    }
+}
+
 async fn classes() -> Response {
     let classes: Vec<Value> = schema::classes()
         .iter()
@@ -495,6 +540,7 @@ mod tests {
         app(
             Shared {
                 store,
+                watched: Vec::new(),
                 token: token.map(str::to_owned),
                 limits: Limits::default(),
                 query: SearchLimits::default(),
@@ -718,5 +764,15 @@ mod tests {
         // A valid range reaches the store, which is not there.
         let (status, _, _) = call(test_app(None), post("/api/v1/overview", day, None)).await;
         assert_eq!(status, StatusCode::BAD_GATEWAY);
+    }
+
+    #[tokio::test]
+    async fn source_health_needs_the_token_and_reads_the_store() {
+        let get = || Request::get("/api/v1/sources").body(Body::empty()).unwrap();
+        let (status, _, _) = call(test_app(Some(TOKEN)), get()).await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        let (status, answer, _) = call(test_app(None), get()).await;
+        assert_eq!(status, StatusCode::BAD_GATEWAY);
+        assert!(answer["error"].is_string(), "{answer}");
     }
 }
