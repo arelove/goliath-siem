@@ -1,0 +1,190 @@
+[
+  {
+    "event": {
+      "activity_id": 6,
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "community_uid": "1:ExampleCommunity00160000000=",
+        "protocol_name": "TCP"
+      },
+      "dst_endpoint": {
+        "ip": "203.0.113.80",
+        "port": 443
+      },
+      "metadata": {
+        "correlation_uid": "1500000000000016",
+        "log_name": "flow",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50016
+      },
+      "traffic": {
+        "bytes_in": 0,
+        "bytes_out": 60,
+        "packets_in": 0,
+        "packets_out": 1
+      },
+      "type_uid": 400106,
+      "unmapped": {
+        "flow": {
+          "bytes_toclient": 0,
+          "bytes_toserver": 60,
+          "pkts_toclient": 0,
+          "pkts_toserver": 1,
+          "state": "new"
+        },
+        "in_iface": "eth0",
+        "timestamp": "2026-09-28 12:00:16"
+      }
+    },
+    "id": "be3d697dbd346dfb02e39ce29c4115dc",
+    "issues": [
+      {
+        "reason": "`2026-09-28 12:00:16` is not an RFC 3339 time: failed to find offset component, which is required for parsing a timestamp",
+        "source": "timestamp",
+        "target": "time"
+      }
+    ],
+    "kind": "flow"
+  },
+  {
+    "event": {
+      "activity_id": 1,
+      "category_uid": 4,
+      "class_uid": 4003,
+      "connection_info": {
+        "community_uid": "1:ExampleCommunity00170000000=",
+        "protocol_name": "UDP"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.53",
+        "port": 53
+      },
+      "metadata": {
+        "correlation_uid": "1500000000000017",
+        "log_name": "dns",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "query": {
+        "hostname": "www.example.com",
+        "packet_uid": 1,
+        "type": "A"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "port": 50017
+      },
+      "time": 1790596817000,
+      "type_uid": 400301,
+      "unmapped": {
+        "dns": {
+          "id": 1,
+          "rrname": "www.example.com",
+          "rrtype": "A",
+          "type": "query"
+        },
+        "in_iface": "eth0",
+        "src_ip": "not-an-address"
+      }
+    },
+    "id": "27d53f92c992e6235aaf79a6ead42e26",
+    "issues": [
+      {
+        "reason": "`not-an-address` is not an IP address",
+        "source": "src_ip",
+        "target": "src_endpoint.ip"
+      }
+    ],
+    "kind": "dns_query"
+  },
+  {
+    "event": {
+      "action": "allowed",
+      "action_id": 1,
+      "activity_id": 1,
+      "category_uid": 2,
+      "class_uid": 2004,
+      "evidences": [
+        {
+          "connection_info": {
+            "community_uid": "1:ExampleCommunity00180000000=",
+            "protocol_name": "TCP"
+          },
+          "dst_endpoint": {
+            "ip": "203.0.113.80",
+            "port": 443
+          },
+          "src_endpoint": {
+            "ip": "10.20.30.40",
+            "port": 50018
+          }
+        }
+      ],
+      "finding_info": {
+        "analytic": {
+          "category": "Misc activity",
+          "name": "LOCAL POLICY Example",
+          "type_id": 1,
+          "uid": "9000003",
+          "version": "1"
+        },
+        "title": "LOCAL POLICY Example"
+      },
+      "is_alert": true,
+      "message": "LOCAL POLICY Example",
+      "metadata": {
+        "correlation_uid": "1500000000000018",
+        "log_name": "alert",
+        "product": {
+          "name": "Suricata",
+          "vendor_name": "OISF"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 99,
+      "time": 1790596818000,
+      "type_uid": 200401,
+      "unmapped": {
+        "alert": {
+          "action": "allowed",
+          "category": "Misc activity",
+          "gid": 1,
+          "rev": 1,
+          "severity": 9,
+          "signature": "LOCAL POLICY Example",
+          "signature_id": 9000003
+        },
+        "in_iface": "eth0"
+      }
+    },
+    "id": "698f3d289181c6849b88f698fb0eaa33",
+    "issues": [],
+    "kind": "alert"
+  },
+  {
+    "dead_letter": {
+      "error": "no kind of source `suricata` accepts the record",
+      "raw": "{\"timestamp\": \"2026-09-28T12:00:19.000000+0000\", \"event_type\": \"stats\", \"stats\": {\"uptime\": 3600, \"capture\": {\"kernel_packets\": 1000, \"kernel_drops\": 0}}}",
+      "stage": "mapping"
+    }
+  },
+  {
+    "dead_letter": {
+      "error": "EOF while parsing a string at line 1 column 85",
+      "raw": "{\"timestamp\": \"2026-09-28T12:00:20.000000+0000\", \"event_type\": \"flow\", \"src_ip\": \"10.",
+      "stage": "decoding"
+    }
+  }
+]

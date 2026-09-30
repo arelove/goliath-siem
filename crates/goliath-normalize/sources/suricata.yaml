@@ -1,0 +1,317 @@
+# Suricata EVE JSON, as the `eve-log` output writes it: one record per line,
+# its kind in `event_type`, and the protocol's fields under an object of the
+# same name, such as `dns` or `http`.
+#
+# Alerts become OCSF Detection Findings, the rule that fired as the finding's
+# analytic and the flow as its evidence. Protocol records become the network
+# classes: DNS, HTTP, SMB, and SSH Activity, and Network Activity for flows,
+# TLS sessions, anomalies, and packets an IPS dropped. File records become
+# the activity of the protocol that carried the file. Each record's protocol
+# object is kept whole under `unmapped`, as Suricata wrote it, beside what is
+# mapped from it.
+#
+# DNS records are read in version 2 of the format, Suricata 7's default: a
+# query or an answer per record. Engine statistics, `stats`, are not events;
+# a record of them, or of another kind not read here, is reported as a dead
+# letter, so turn them off in the EVE output, or write them to a file of
+# their own.
+
+name: suricata
+version: 1
+framing: lines
+decoding: json
+
+common:
+  # Suricata writes its offset without a colon, `+0000`, which is read.
+  time: { from: timestamp, as: timestamp }
+  metadata.version: { value: "1.5.0" }
+  metadata.product.name: { value: Suricata }
+  metadata.product.vendor_name: { value: OISF }
+  metadata.log_name: event_type
+  metadata.correlation_uid: { from: flow_id, as: string }
+
+kinds:
+  - name: alert
+    when:
+      event_type: alert
+    # Detection Finding: Create. Suricata's severity runs from 1, the most
+    # severe, down.
+    class: { class_uid: 2004, activity_id: 1 }
+    fields:
+      is_alert: { value: true }
+      message: alert.signature
+      finding_info.title: alert.signature
+      finding_info.analytic.uid: { from: alert.signature_id, as: string }
+      finding_info.analytic.name: alert.signature
+      finding_info.analytic.category: alert.category
+      finding_info.analytic.version: { from: alert.rev, as: string }
+      # Rule.
+      finding_info.analytic.type_id: { value: 1 }
+      severity_id:
+        from: alert.severity
+        map: { "1": 4, "2": 3, "3": 2, "4": 1 }
+        otherwise: 99
+      action: alert.action
+      action_id:
+        from: alert.action
+        map: { allowed: 1, blocked: 2 }
+        otherwise: 99
+      evidences.0.src_endpoint.ip: { from: src_ip, as: ip }
+      evidences.0.src_endpoint.port: src_port
+      evidences.0.dst_endpoint.ip: { from: dest_ip, as: ip }
+      evidences.0.dst_endpoint.port: dest_port
+      evidences.0.connection_info.protocol_name: proto
+      evidences.0.connection_info.community_uid: community_id
+    unmapped: ["."]
+
+  - name: dns_query
+    when: { event_type: dns, dns.type: query }
+    # DNS Activity: Query.
+    class: { class_uid: 4003, activity_id: 1 }
+    fields: &dns
+      severity_id: { value: 1 }
+      src_endpoint.ip: { from: src_ip, as: ip }
+      src_endpoint.port: src_port
+      dst_endpoint.ip: { from: dest_ip, as: ip }
+      dst_endpoint.port: dest_port
+      connection_info.protocol_name: proto
+      connection_info.community_uid: community_id
+      query.hostname: dns.rrname
+      query.type: dns.rrtype
+      query.packet_uid: dns.id
+    unmapped: ["."]
+
+  - name: dns_answer
+    when: { event_type: dns, dns.type: answer }
+    # DNS Activity: Response. The answers are kept under `unmapped`, as
+    # Suricata lists them.
+    class: { class_uid: 4003, activity_id: 2 }
+    fields:
+      <<: *dns
+      rcode: dns.rcode
+      rcode_id:
+        from: dns.rcode
+        map: { NOERROR: 0, FORMERR: 1, SERVFAIL: 2, NXDOMAIN: 3, NOTIMP: 4, REFUSED: 5 }
+        otherwise: 99
+    unmapped: ["."]
+
+  - name: http_get
+    when: { event_type: http, http.http_method: GET }
+    # HTTP Activity: Get.
+    class: { class_uid: 4002, activity_id: 3 }
+    fields: &http
+      severity_id: { value: 1 }
+      src_endpoint.ip: { from: src_ip, as: ip }
+      src_endpoint.port: src_port
+      dst_endpoint.ip: { from: dest_ip, as: ip }
+      dst_endpoint.port: dest_port
+      connection_info.protocol_name: proto
+      connection_info.community_uid: community_id
+      http_request.http_method: http.http_method
+      http_request.url.hostname: http.hostname
+      http_request.url.path: http.url
+      http_request.user_agent: http.http_user_agent
+      http_request.referrer: http.http_refer
+      http_request.version: http.protocol
+      http_response.code: http.status
+      http_response.length: http.length
+      http_response.content_type: http.http_content_type
+    unmapped: ["."]
+
+  - name: http_post
+    when: { event_type: http, http.http_method: POST }
+    # HTTP Activity: Post.
+    class: { class_uid: 4002, activity_id: 6 }
+    fields: *http
+    unmapped: ["."]
+
+  - name: http_put
+    when: { event_type: http, http.http_method: PUT }
+    # HTTP Activity: Put.
+    class: { class_uid: 4002, activity_id: 7 }
+    fields: *http
+    unmapped: ["."]
+
+  - name: http_head
+    when: { event_type: http, http.http_method: HEAD }
+    # HTTP Activity: Head.
+    class: { class_uid: 4002, activity_id: 4 }
+    fields: *http
+    unmapped: ["."]
+
+  - name: http_delete
+    when: { event_type: http, http.http_method: DELETE }
+    # HTTP Activity: Delete.
+    class: { class_uid: 4002, activity_id: 2 }
+    fields: *http
+    unmapped: ["."]
+
+  - name: http_connect
+    when: { event_type: http, http.http_method: CONNECT }
+    # HTTP Activity: Connect.
+    class: { class_uid: 4002, activity_id: 1 }
+    fields: *http
+    unmapped: ["."]
+
+  - name: http_options
+    when: { event_type: http, http.http_method: OPTIONS }
+    # HTTP Activity: Options.
+    class: { class_uid: 4002, activity_id: 5 }
+    fields: *http
+    unmapped: ["."]
+
+  - name: http_other
+    when:
+      event_type: http
+    # HTTP Activity: Other, such as WebDAV's methods.
+    class: { class_uid: 4002, activity_id: 99 }
+    fields: *http
+    unmapped: ["."]
+
+  - name: tls
+    when:
+      event_type: tls
+    # Network Activity: Traffic, a TLS session and the server's certificate.
+    # Suricata writes the certificate's times without an offset, in UTC.
+    class: { class_uid: 4001, activity_id: 6 }
+    fields:
+      severity_id: { value: 1 }
+      src_endpoint.ip: { from: src_ip, as: ip }
+      src_endpoint.port: src_port
+      dst_endpoint.ip: { from: dest_ip, as: ip }
+      dst_endpoint.port: dest_port
+      connection_info.protocol_name: proto
+      connection_info.community_uid: community_id
+      tls.version: tls.version
+      tls.sni: tls.sni
+      tls.certificate.subject: tls.subject
+      tls.certificate.issuer: tls.issuerdn
+      tls.certificate.serial_number: tls.serial
+      tls.certificate.created_time: { from: tls.notbefore, as: utc-timestamp }
+      tls.certificate.expiration_time: { from: tls.notafter, as: utc-timestamp }
+      tls.certificate.fingerprints.0.value: tls.fingerprint
+      # SHA-1.
+      tls.certificate.fingerprints.0.algorithm_id: { value: 2 }
+      tls.ja3_hash.value: tls.ja3.hash
+      # MD5.
+      tls.ja3_hash.algorithm_id: { value: 1 }
+    unmapped: ["."]
+
+  - name: flow
+    when:
+      event_type: flow
+    # Network Activity: Traffic, a flow when it ends or times out.
+    class: { class_uid: 4001, activity_id: 6 }
+    fields: &flow
+      severity_id: { value: 1 }
+      src_endpoint.ip: { from: src_ip, as: ip }
+      src_endpoint.port: src_port
+      dst_endpoint.ip: { from: dest_ip, as: ip }
+      dst_endpoint.port: dest_port
+      connection_info.protocol_name: proto
+      connection_info.community_uid: community_id
+      app_name: app_proto
+      start_time: { from: flow.start, as: timestamp }
+      end_time: { from: flow.end, as: timestamp }
+      traffic.packets_out: flow.pkts_toserver
+      traffic.packets_in: flow.pkts_toclient
+      traffic.bytes_out: flow.bytes_toserver
+      traffic.bytes_in: flow.bytes_toclient
+    unmapped: ["."]
+
+  - name: http_file
+    when: { event_type: fileinfo, app_proto: http }
+    # HTTP Activity: Other, a file carried over HTTP.
+    class: { class_uid: 4002, activity_id: 99 }
+    fields: &file
+      severity_id: { value: 1 }
+      src_endpoint.ip: { from: src_ip, as: ip }
+      src_endpoint.port: src_port
+      dst_endpoint.ip: { from: dest_ip, as: ip }
+      dst_endpoint.port: dest_port
+      connection_info.protocol_name: proto
+      connection_info.community_uid: community_id
+      file.name: fileinfo.filename
+      file.size: fileinfo.size
+      file.hashes.0.value: fileinfo.sha256
+      # SHA-256.
+      file.hashes.0.algorithm_id: { value: 3 }
+    unmapped: ["."]
+
+  - name: smb_file
+    when: { event_type: fileinfo, app_proto: smb }
+    # SMB Activity: Other, a file carried over SMB.
+    class: { class_uid: 4006, activity_id: 99 }
+    fields:
+      <<: *file
+      share: smb.share
+    unmapped: ["."]
+
+  - name: smb
+    when:
+      event_type: smb
+    # SMB Activity: Other, one command, such as `SMB2_COMMAND_CREATE`.
+    class: { class_uid: 4006, activity_id: 99 }
+    fields:
+      severity_id: { value: 1 }
+      src_endpoint.ip: { from: src_ip, as: ip }
+      src_endpoint.port: src_port
+      dst_endpoint.ip: { from: dest_ip, as: ip }
+      dst_endpoint.port: dest_port
+      connection_info.protocol_name: proto
+      connection_info.community_uid: community_id
+      command: smb.command
+      dialect: smb.dialect
+      share: smb.share
+      file.name: smb.filename
+    unmapped: ["."]
+
+  - name: ssh
+    when:
+      event_type: ssh
+    # SSH Activity: Other, a session with the software of both ends.
+    class: { class_uid: 4007, activity_id: 99 }
+    fields:
+      severity_id: { value: 1 }
+      src_endpoint.ip: { from: src_ip, as: ip }
+      src_endpoint.port: src_port
+      dst_endpoint.ip: { from: dest_ip, as: ip }
+      dst_endpoint.port: dest_port
+      connection_info.protocol_name: proto
+      connection_info.community_uid: community_id
+      protocol_ver: ssh.server.proto_version
+    unmapped: ["."]
+
+  - name: anomaly
+    when:
+      event_type: anomaly
+    # Network Activity: Other, traffic Suricata could not decode as its
+    # protocol says it should be.
+    class: { class_uid: 4001, activity_id: 99 }
+    fields:
+      severity_id: { value: 1 }
+      src_endpoint.ip: { from: src_ip, as: ip }
+      src_endpoint.port: src_port
+      dst_endpoint.ip: { from: dest_ip, as: ip }
+      dst_endpoint.port: dest_port
+      connection_info.protocol_name: proto
+      connection_info.community_uid: community_id
+      message: anomaly.event
+    unmapped: ["."]
+
+  - name: drop
+    when:
+      event_type: drop
+    # Network Activity: Refuse, a packet the IPS dropped.
+    class: { class_uid: 4001, activity_id: 5 }
+    fields:
+      severity_id: { value: 1 }
+      src_endpoint.ip: { from: src_ip, as: ip }
+      src_endpoint.port: src_port
+      dst_endpoint.ip: { from: dest_ip, as: ip }
+      dst_endpoint.port: dest_port
+      connection_info.protocol_name: proto
+      connection_info.community_uid: community_id
+      # Denied.
+      action_id: { value: 2 }
+    unmapped: ["."]
