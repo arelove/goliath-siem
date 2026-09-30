@@ -17,7 +17,7 @@ publish = false
 [dependencies]
 blake3 = "1"
 clickhouse = { version = "0.15.2", default-features = false, features = ["lz4"] }
-goliath-normalize = { path = "../goliath-normalize", version = "0.2.11" }
+goliath-normalize = { path = "../goliath-normalize", version = "0.2.12" }
 goliath-search = { path = "../goliath-search", version = "0.1.0" }
 serde.workspace = true
 serde_bytes = "0.11"
