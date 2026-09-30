@@ -143,6 +143,7 @@ Without this, nothing after it can be honestly measured. Designed in
 | Attack injector | Labelled chains at known offsets, producing ground truth |
 | Metrics report | Events/s per core, latency percentiles, compression ratio, precision and recall |
 | Platform metrics | A Prometheus endpoint on every role: events in and out, ingestion lag, pipe depth, dead letters by source and stage, query time; the report reads them rather than guessing from outside |
+| Capacity model | The cost of one event in each stage, measured on a machine that runs only the platform, and from it the machines a given rate needs; see [architecture.md](architecture.md#capacity-model) |
 
 **Exit criterion:** a single command produces a reproducible report covering
 every metric listed in [architecture.md](architecture.md#benchmark-method),
@@ -186,7 +187,11 @@ developer machine, with the lag of every reader bounded.
   records/s stored 99,300 events/s on 4.5 cores, receipt to stored p50 1.0 s
   and p99 4.8 s, with nothing lost; its verdict was not sustained by a margin,
   backlog growth of 1,153 records/s against 1,000 allowed. The 30-minute run
-  is to be made on a separate machine.
+  is to be made on a separate machine. The generator used the same machine
+  and its cores, so these numbers are a floor: the exit run puts the
+  generator on one machine and the platform on another, sending over the
+  local network, so that the platform's cores are its own and the capacity
+  model is measured from them.
 - Replay of real recordings for every shipped source, the OTRF Windows atomic
   datasets through a pinned download script and a flat Sysmon definition, and
   ground truth for the events a replayed recording becomes, matched by the
