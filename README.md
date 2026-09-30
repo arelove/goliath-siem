@@ -43,6 +43,9 @@ repository, with details and reproduction steps in
   registry value sets from Sysmon, and the Security log;
 - 56 of 57 AWS CloudTrail rules, all 23 Okta rules, 20 of 21 Microsoft 365
   rules, and all 24 Zeek rules load;
+- against ATT&CK 19.2, 302 of 697 techniques have a rule that can fire on
+  the shipped sources, and 88 more have rules only for log sources not yet
+  mapped;
 - all 359 SigmaHQ regression cases for loaded rules fire exactly as SigmaHQ
   expects on real recorded attack events;
 - the engine evaluates the 2,046 rules of the Sysmon log sources at about

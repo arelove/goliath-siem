@@ -122,6 +122,40 @@ a call the other way round from Zeek: `endpoint: JobAdd` and
 mapping reads the fields as Zeek names them rather than swapping them for
 these rules.
 
+## ATT&CK coverage
+
+`goliath-attack` reads ATT&CK from the STIX bundles MITRE publishes and asks
+two questions of each current technique: does a rule detect it, and can that
+rule fire, which it can when it loads through a shipped mapping set whose log
+source a shipped definition supplies
+([ADR-0009](adr/0009-attack-knowledge-model.md)). Against Enterprise ATT&CK
+19.2, the 3,144 rules of `rules`, and every shipped definition:
+
+| Current techniques | Of 697 |
+| --- | ---: |
+| Detected: a rule that can fire | 302 |
+| Blind: rules, none of which can fire | 88 |
+| Collected: no rule, but data to detect it, as ATT&CK's detection strategies name it | 240 |
+| Uncovered | 67 |
+
+The blind techniques are those whose rules read log sources with no mapping
+yet, such as ESXi, macOS, Linux, Azure, Kubernetes, Bitbucket, and web
+servers. They are the next mappings to write, in the order
+[What stops the rest](#what-stops-the-rest) gives by rule count. With Sysmon
+alone, 264 techniques are detected and 126 blind. No SigmaHQ rule is tagged
+with a revoked or deprecated technique.
+
+Every definition declares the ATT&CK data components its records supply,
+checked against ATT&CK in CI, so that the collected column follows the
+sources configured. Reproduce with:
+
+```text
+cargo run --release -p goliath-attack --example attack_coverage --     enterprise-attack-19.2.json <sigma>/rules all layer.json
+```
+
+`layer.json` opens in the ATT&CK Navigator, coloured by verdict, each
+technique listing its rules and those that cannot fire.
+
 ## What stops the rest
 
 Log sources without a mapping, by number of rules in `rules`:
