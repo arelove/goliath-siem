@@ -9,6 +9,13 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.16] - 2026-09-30
+
+
+### Added
+
+- Definitions declare the ATT&CK data components they supply
+
 ## [0.2.15] - 2026-09-30
 
 

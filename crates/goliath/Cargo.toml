@@ -14,7 +14,7 @@ publish = false
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "matched-path", "tokio"] }
 clap = { version = "4.6", features = ["derive"] }
 flate2 = "1"
-goliath-normalize = { path = "../goliath-normalize", version = "0.2.15" }
+goliath-normalize = { path = "../goliath-normalize", version = "0.2.16" }
 goliath-ocsf = { path = "../goliath-ocsf", version = "0.1.2" }
 goliath-pipe = { path = "../goliath-pipe", version = "0.1.0" }
 goliath-search = { path = "../goliath-search", version = "0.1.0" }
