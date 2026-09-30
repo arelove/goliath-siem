@@ -147,13 +147,28 @@ pub enum DefinitionError {
         reason: &'static str,
     },
 
-    /// A target lies inside an array, so there is no one place to write it.
-    #[error("kind `{kind}`: `{target}` is inside an array, which a field cannot write into")]
+    /// A target lies inside an array without naming an element of it, so
+    /// there is no one place to write it.
+    #[error(
+        "kind `{kind}`: `{target}` is inside an array; name an element by its index after the array, such as `0`"
+    )]
     WithinArray {
         /// The kind; a common field is reported for the first kind it fails
         /// in.
         kind: String,
         /// The target as written.
         target: String,
+    },
+
+    /// A target names an element of an attribute that is not an array.
+    #[error("kind `{kind}`: `{target}` names an element of `{attribute}`, which is not an array")]
+    NotAnArray {
+        /// The kind; a common field is reported for the first kind it fails
+        /// in.
+        kind: String,
+        /// The target as written.
+        target: String,
+        /// The attribute before the index.
+        attribute: String,
     },
 }

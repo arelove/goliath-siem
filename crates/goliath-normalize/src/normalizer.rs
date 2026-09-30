@@ -764,18 +764,13 @@ fn check_schema(
     }
     for field in fields {
         let target = field.target.as_str();
+        let named = attribute_path(kind, class, field.target.segments())?;
         let found = class
-            .resolve(target)
+            .resolve(&named)
             .map_err(|source| DefinitionError::Attribute {
                 kind: kind.to_owned(),
                 source,
             })?;
-        if found.within_array {
-            return Err(DefinitionError::WithinArray {
-                kind: kind.to_owned(),
-                target: target.to_owned(),
-            });
-        }
         // A copy keeps whatever the source holds, and a free-form attribute
         // takes anything, so neither has a type to check.
         let Some(writes) = field.source.writes() else {
@@ -821,6 +816,54 @@ fn check_schema(
         }
     }
     Ok(())
+}
+
+/// The attribute path of a target, without the indexes that name elements
+/// of arrays, such as `evidences.src_endpoint.ip` for
+/// `evidences.0.src_endpoint.ip`. Every array the target passes through
+/// must be followed by an index, and every index must follow an array.
+fn attribute_path(
+    kind: &str,
+    class: &schema::Class,
+    segments: &[String],
+) -> Result<String, DefinitionError> {
+    let target = || segments.join(".");
+    let is_index = |segment: &str| segment.bytes().all(|byte| byte.is_ascii_digit());
+    let mut named = String::new();
+    for (position, segment) in segments.iter().enumerate() {
+        // An index first is a name, which no class has.
+        if is_index(segment) && !named.is_empty() {
+            let array = class
+                .resolve(&named)
+                .is_ok_and(|found| found.attribute.is_array());
+            if !array {
+                return Err(DefinitionError::NotAnArray {
+                    kind: kind.to_owned(),
+                    target: target(),
+                    attribute: named,
+                });
+            }
+            continue;
+        }
+        if !named.is_empty() {
+            named.push('.');
+        }
+        named.push_str(segment);
+        let continues = segments
+            .get(position + 1)
+            .is_some_and(|next| !is_index(next));
+        if continues
+            && class
+                .resolve(&named)
+                .is_ok_and(|found| found.attribute.is_array() && !found.free_form)
+        {
+            return Err(DefinitionError::WithinArray {
+                kind: kind.to_owned(),
+                target: target(),
+            });
+        }
+    }
+    Ok(named)
 }
 
 /// What a field writes, where that is known before any record is read.
@@ -909,24 +952,54 @@ impl Source {
     }
 }
 
-/// Writes `value` at `segments`, creating objects on the way. Overlapping
-/// targets are rejected when the definition is compiled, so the way is
-/// always clear.
+/// Writes `value` at `segments`, creating objects on the way, and arrays
+/// where a segment is an index, such as `0` of `evidences.0.src_endpoint`,
+/// their elements before it empty objects. Overlapping targets are rejected
+/// when the definition is compiled, so the way is always clear.
 fn set(object: &mut Map<String, Value>, segments: &[String], value: Value) {
-    let Some((last, parents)) = segments.split_last() else {
+    let Some((first, rest)) = segments.split_first() else {
         return;
     };
-    let mut object = object;
-    for segment in parents {
-        let child = object
-            .entry(segment.clone())
-            .or_insert_with(|| Value::Object(Map::new()));
-        let Value::Object(child) = child else {
+    if rest.is_empty() {
+        object.insert(first.clone(), value);
+        return;
+    }
+    set_within(
+        object.entry(first.clone()).or_insert(Value::Null),
+        rest,
+        value,
+    );
+}
+
+fn set_within(slot: &mut Value, segments: &[String], value: Value) {
+    let Some((first, rest)) = segments.split_first() else {
+        *slot = value;
+        return;
+    };
+    if let Ok(index) = first.parse::<usize>() {
+        if slot.is_null() {
+            *slot = Value::Array(Vec::new());
+        }
+        let Value::Array(items) = slot else {
             return;
         };
-        object = child;
+        if items.len() <= index {
+            items.resize(index + 1, Value::Object(Map::new()));
+        }
+        set_within(&mut items[index], rest, value);
+    } else {
+        if slot.is_null() {
+            *slot = Value::Object(Map::new());
+        }
+        let Value::Object(object) = slot else {
+            return;
+        };
+        set_within(
+            object.entry(first.clone()).or_insert(Value::Null),
+            rest,
+            value,
+        );
     }
-    object.insert(last.clone(), value);
 }
 
 fn coerce(value: &Value, coercion: Option<Coercion>) -> Result<Value, String> {
