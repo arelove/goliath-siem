@@ -1,0 +1,855 @@
+[
+  {
+    "event": {
+      "activity_id": 6,
+      "app_name": "ssl",
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "community_uid": "1:ExampleCommunityId0000000000=",
+        "protocol_name": "tcp",
+        "uid": "CExample0001zeek"
+      },
+      "dst_endpoint": {
+        "ip": "203.0.113.80",
+        "port": 443
+      },
+      "metadata": {
+        "correlation_uid": "CExample0001zeek",
+        "log_name": "conn",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50001
+      },
+      "time": 1790596801000,
+      "traffic": {
+        "bytes_in": 48211,
+        "bytes_out": 1840,
+        "packets_in": 41,
+        "packets_out": 22
+      },
+      "type_uid": 400106,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:01.000000Z",
+        "conn_state": "SF",
+        "duration": 2.318,
+        "history": "ShADadFf",
+        "local_orig": true,
+        "local_resp": false,
+        "missed_bytes": 0,
+        "orig_ip_bytes": 2992,
+        "resp_ip_bytes": 50363
+      }
+    },
+    "id": "d2e02e1b38fffdb093e6d98d45ef45cb",
+    "issues": [],
+    "kind": "conn"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "app_name": "dns",
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "protocol_name": "udp",
+        "uid": "CExample0002zeek"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.53",
+        "port": 53
+      },
+      "metadata": {
+        "correlation_uid": "CExample0002zeek",
+        "log_name": "conn",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50002
+      },
+      "time": 1790596802000,
+      "traffic": {
+        "bytes_in": 47,
+        "bytes_out": 31,
+        "packets_in": 1,
+        "packets_out": 1
+      },
+      "type_uid": 400106,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:02.000000Z",
+        "conn_state": "SF",
+        "duration": 0.0021,
+        "history": "Dd",
+        "local_orig": true,
+        "local_resp": true,
+        "missed_bytes": 0,
+        "orig_ip_bytes": 59,
+        "resp_ip_bytes": 75
+      }
+    },
+    "id": "9623488a3d8ea8f0dd80d72e63cbf2a4",
+    "issues": [],
+    "kind": "conn"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "category_uid": 4,
+      "class_uid": 4003,
+      "connection_info": {
+        "protocol_name": "udp",
+        "uid": "CExample0003zeek"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.53",
+        "port": 53
+      },
+      "metadata": {
+        "correlation_uid": "CExample0003zeek",
+        "log_name": "dns",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "query": {
+        "class": "C_INTERNET",
+        "hostname": "www.example.com",
+        "packet_uid": 4242,
+        "type": "A"
+      },
+      "rcode": "NOERROR",
+      "rcode_id": 0,
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50003
+      },
+      "time": 1790596803000,
+      "type_uid": 400306,
+      "unmapped": {
+        "AA": false,
+        "RA": true,
+        "RD": true,
+        "TC": false,
+        "TTLs": [
+          300.0
+        ],
+        "Z": 0,
+        "_write_ts": "2026-09-28T12:01:03.000000Z",
+        "answers": [
+          "203.0.113.80"
+        ],
+        "qclass": 1,
+        "qtype": 1,
+        "rejected": false,
+        "rtt": 0.0021
+      }
+    },
+    "id": "ba5fc416ec8e2909ce4545cf2bc57524",
+    "issues": [],
+    "kind": "dns"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "category_uid": 4,
+      "class_uid": 4003,
+      "connection_info": {
+        "protocol_name": "udp",
+        "uid": "CExample0004zeek"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.53",
+        "port": 53
+      },
+      "metadata": {
+        "correlation_uid": "CExample0004zeek",
+        "log_name": "dns",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "query": {
+        "class": "C_INTERNET",
+        "hostname": "missing.example.com",
+        "packet_uid": 4243,
+        "type": "AAAA"
+      },
+      "rcode": "NXDOMAIN",
+      "rcode_id": 3,
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50004
+      },
+      "time": 1790596804000,
+      "type_uid": 400306,
+      "unmapped": {
+        "AA": false,
+        "RA": true,
+        "RD": true,
+        "TC": false,
+        "Z": 0,
+        "_write_ts": "2026-09-28T12:01:04.000000Z",
+        "qclass": 1,
+        "qtype": 28,
+        "rejected": false,
+        "rtt": 0.0034
+      }
+    },
+    "id": "93ef0b711d6b5c9b478bd66c7defc37e",
+    "issues": [],
+    "kind": "dns"
+  },
+  {
+    "event": {
+      "activity_id": 3,
+      "category_uid": 4,
+      "class_uid": 4002,
+      "connection_info": {
+        "uid": "CExample0005zeek"
+      },
+      "dst_endpoint": {
+        "ip": "203.0.113.81",
+        "port": 80
+      },
+      "http_request": {
+        "http_method": "GET",
+        "length": 0,
+        "referrer": "http://www.example.com/",
+        "url": {
+          "hostname": "www.example.com",
+          "path": "/downloads/manual.pdf?lang=en"
+        },
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/131.0",
+        "version": "1.1"
+      },
+      "http_response": {
+        "code": 200,
+        "length": 182044,
+        "message": "OK"
+      },
+      "metadata": {
+        "correlation_uid": "CExample0005zeek",
+        "log_name": "http",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50005
+      },
+      "time": 1790596805000,
+      "type_uid": 400203,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:05.000000Z",
+        "resp_fuids": [
+          "FExample0001zeek"
+        ],
+        "resp_mime_types": [
+          "application/pdf"
+        ],
+        "tags": [],
+        "trans_depth": 1
+      }
+    },
+    "id": "2bf37a0c461f929c6f40d304af3c70c3",
+    "issues": [],
+    "kind": "http_get"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "category_uid": 4,
+      "class_uid": 4002,
+      "connection_info": {
+        "uid": "CExample0006zeek"
+      },
+      "dst_endpoint": {
+        "ip": "203.0.113.81",
+        "port": 80
+      },
+      "http_request": {
+        "http_method": "POST",
+        "length": 512,
+        "url": {
+          "hostname": "api.example.com",
+          "path": "/v1/feedback"
+        },
+        "user_agent": "python-requests/2.32.3",
+        "version": "1.1"
+      },
+      "http_response": {
+        "code": 201,
+        "length": 17,
+        "message": "Created"
+      },
+      "metadata": {
+        "correlation_uid": "CExample0006zeek",
+        "log_name": "http",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50006
+      },
+      "time": 1790596806000,
+      "type_uid": 400206,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:06.000000Z",
+        "tags": [],
+        "trans_depth": 1
+      }
+    },
+    "id": "936ba11438e78cd84f97277cd68fead6",
+    "issues": [],
+    "kind": "http_post"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "category_uid": 4,
+      "class_uid": 4002,
+      "connection_info": {
+        "uid": "CExample0007zeek"
+      },
+      "dst_endpoint": {
+        "ip": "203.0.113.81",
+        "port": 80
+      },
+      "http_request": {
+        "http_method": "PROPFIND",
+        "length": 0,
+        "url": {
+          "hostname": "dav.example.com",
+          "path": "/shared/"
+        },
+        "user_agent": "Microsoft-WebDAV-MiniRedir/10.0.19045",
+        "version": "1.1"
+      },
+      "http_response": {
+        "code": 207,
+        "length": 940,
+        "message": "Multi-Status"
+      },
+      "metadata": {
+        "correlation_uid": "CExample0007zeek",
+        "log_name": "http",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50007
+      },
+      "time": 1790596807000,
+      "type_uid": 400299,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:07.000000Z",
+        "tags": [],
+        "trans_depth": 2
+      }
+    },
+    "id": "7ae741a32bcdd565b7640d0df8b25497",
+    "issues": [],
+    "kind": "http_other"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "uid": "CExample0008zeek"
+      },
+      "dst_endpoint": {
+        "ip": "203.0.113.80",
+        "port": 443
+      },
+      "metadata": {
+        "correlation_uid": "CExample0008zeek",
+        "log_name": "ssl",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50008
+      },
+      "time": 1790596808000,
+      "tls": {
+        "cipher": "TLS_AES_128_GCM_SHA256",
+        "sni": "www.example.com",
+        "version": "TLSv13"
+      },
+      "type_uid": 400106,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:08.000000Z",
+        "curve": "x25519",
+        "established": true,
+        "resumed": false,
+        "sni_matches_cert": true,
+        "ssl_history": "CsiI"
+      }
+    },
+    "id": "6931ae125507890d66c4feb03e074095",
+    "issues": [],
+    "kind": "ssl"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "category_uid": 4,
+      "class_uid": 4001,
+      "metadata": {
+        "log_name": "x509",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "time": 1790596809000,
+      "tls": {
+        "certificate": {
+          "created_time": 1767225600000,
+          "expiration_time": 1798761600000,
+          "issuer": "CN=Example Issuing CA,O=Example",
+          "serial_number": "0A1B2C3D4E5F6071",
+          "subject": "CN=www.example.com",
+          "version": "3"
+        }
+      },
+      "type_uid": 400199,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:09.000000Z",
+        "basic_constraints.ca": false,
+        "certificate.key_alg": "rsaEncryption",
+        "certificate.key_length": 2048,
+        "certificate.key_type": "rsa",
+        "certificate.sig_alg": "sha256WithRSAEncryption",
+        "client_cert": false,
+        "fingerprint": "3f1a0000000000000000000000000000000000000000000000000000000000ab",
+        "host_cert": true,
+        "san.dns": [
+          "www.example.com",
+          "example.com"
+        ]
+      }
+    },
+    "id": "b72f11434e13c4d51343d8aa1f1be34c",
+    "issues": [],
+    "kind": "x509"
+  },
+  {
+    "event": {
+      "activity_id": 2,
+      "category_uid": 4,
+      "class_uid": 4006,
+      "connection_info": {
+        "uid": "CExample0010zeek"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.5",
+        "port": 445
+      },
+      "file": {
+        "name": "Reports\\budget.xlsx",
+        "size": 48211
+      },
+      "metadata": {
+        "correlation_uid": "CExample0010zeek",
+        "log_name": "smb_files",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "share": "\\\\FILESRV01\\Finance",
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50010
+      },
+      "time": 1790596810000,
+      "type_uid": 400602,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:10.000000Z",
+        "action": "SMB::FILE_OPEN",
+        "fuid": "FExample0002zeek",
+        "times.accessed": "2026-09-28T11:59:00.000000Z",
+        "times.changed": "2026-09-27T16:20:00.000000Z",
+        "times.created": "2026-09-01T09:00:00.000000Z",
+        "times.modified": "2026-09-27T16:20:00.000000Z"
+      }
+    },
+    "id": "79cf117ce1504a7731569424463f9625",
+    "issues": [],
+    "kind": "smb_file_open"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "category_uid": 4,
+      "class_uid": 4006,
+      "connection_info": {
+        "uid": "CExample0011zeek"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.5",
+        "port": 445
+      },
+      "file": {
+        "name": "Reports\\budget.xlsx",
+        "size": 48993
+      },
+      "metadata": {
+        "correlation_uid": "CExample0011zeek",
+        "log_name": "smb_files",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "share": "\\\\FILESRV01\\Finance",
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50011
+      },
+      "time": 1790596811000,
+      "type_uid": 400699,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:11.000000Z",
+        "action": "SMB::FILE_WRITE",
+        "fuid": "FExample0003zeek"
+      }
+    },
+    "id": "d46feb8b5d7e318179ecf0e93c4d3aa4",
+    "issues": [],
+    "kind": "smb_file_other"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "category_uid": 4,
+      "class_uid": 4006,
+      "connection_info": {
+        "uid": "CExample0012zeek"
+      },
+      "dce_rpc": {
+        "command": "LsarLookupSids"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.5",
+        "port": 445
+      },
+      "metadata": {
+        "correlation_uid": "CExample0012zeek",
+        "log_name": "dce_rpc",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50012
+      },
+      "time": 1790596812000,
+      "type_uid": 400699,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:12.000000Z",
+        "endpoint": "lsarpc",
+        "named_pipe": "\\pipe\\lsarpc",
+        "rtt": 0.00041
+      }
+    },
+    "id": "5813b3272d8a6537dfa143ec0707ba5e",
+    "issues": [],
+    "kind": "dce_rpc"
+  },
+  {
+    "event": {
+      "activity_id": 3,
+      "auth_protocol": "Kerberos",
+      "auth_protocol_id": 2,
+      "category_uid": 3,
+      "class_uid": 3002,
+      "dst_endpoint": {
+        "ip": "10.20.30.10",
+        "port": 88
+      },
+      "metadata": {
+        "correlation_uid": "CExample0013zeek",
+        "log_name": "kerberos",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "service": {
+        "name": "krbtgt/CONTOSO.LOCAL"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50013
+      },
+      "status_id": 1,
+      "time": 1790596813000,
+      "type_uid": 300203,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:13.000000Z",
+        "cipher": "aes256-cts-hmac-sha1-96",
+        "forwardable": true,
+        "renewable": true,
+        "request_type": "AS",
+        "success": true,
+        "till": "2037-09-13T02:48:05.000000Z"
+      },
+      "user": {
+        "name": "adam/CONTOSO.LOCAL"
+      }
+    },
+    "id": "79f276938be15c7e0a762c72b9be725d",
+    "issues": [],
+    "kind": "kerberos_ticket"
+  },
+  {
+    "event": {
+      "activity_id": 4,
+      "auth_protocol": "Kerberos",
+      "auth_protocol_id": 2,
+      "category_uid": 3,
+      "class_uid": 3002,
+      "dst_endpoint": {
+        "ip": "10.20.30.10",
+        "port": 88
+      },
+      "metadata": {
+        "correlation_uid": "CExample0014zeek",
+        "log_name": "kerberos",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "service": {
+        "name": "cifs/filesrv01.contoso.local"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50014
+      },
+      "status_id": 1,
+      "time": 1790596814000,
+      "type_uid": 300204,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:14.000000Z",
+        "cipher": "aes256-cts-hmac-sha1-96",
+        "forwardable": true,
+        "renewable": true,
+        "request_type": "TGS",
+        "success": true,
+        "till": "2037-09-13T02:48:05.000000Z"
+      },
+      "user": {
+        "name": "adam/CONTOSO.LOCAL"
+      }
+    },
+    "id": "14610f53b0757524dbb1817b4f5ef60b",
+    "issues": [],
+    "kind": "kerberos_service_ticket"
+  },
+  {
+    "event": {
+      "activity_id": 3,
+      "auth_protocol": "Kerberos",
+      "auth_protocol_id": 2,
+      "category_uid": 3,
+      "class_uid": 3002,
+      "dst_endpoint": {
+        "ip": "10.20.30.10",
+        "port": 88
+      },
+      "metadata": {
+        "correlation_uid": "CExample0015zeek",
+        "log_name": "kerberos",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "service": {
+        "name": "krbtgt/CONTOSO.LOCAL"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50015
+      },
+      "status_detail": "KDC_ERR_PREAUTH_FAILED",
+      "status_id": 2,
+      "time": 1790596815000,
+      "type_uid": 300203,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:15.000000Z",
+        "request_type": "AS",
+        "success": false
+      },
+      "user": {
+        "name": "jane/CONTOSO.LOCAL"
+      }
+    },
+    "id": "a5875e276ad4833fc418a823340d270e",
+    "issues": [],
+    "kind": "kerberos_ticket_refused"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "category_uid": 4,
+      "class_uid": 4005,
+      "connection_info": {
+        "uid": "CExample0016zeek"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.21",
+        "port": 3389
+      },
+      "metadata": {
+        "correlation_uid": "CExample0016zeek",
+        "log_name": "rdp",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50016
+      },
+      "time": 1790596816000,
+      "type_uid": 400599,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:16.000000Z",
+        "cert_count": 2,
+        "cert_permanent": true,
+        "cert_type": "X.509",
+        "client_build": "RDP 10.0",
+        "client_channels": [
+          "rdpdr",
+          "rdpsnd",
+          "cliprdr"
+        ],
+        "client_name": "LAPTOP-ADAM",
+        "cookie": "adam",
+        "desktop_height": 1080,
+        "desktop_width": 1920,
+        "encryption_level": "None",
+        "encryption_method": "None",
+        "keyboard_layout": "English - United States",
+        "requested_color_depth": "32bit",
+        "result": "encrypted",
+        "security_protocol": "HYBRID"
+      }
+    },
+    "id": "5236e42cf813e2153682a562ab6feac1",
+    "issues": [],
+    "kind": "rdp"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "category_uid": 4,
+      "class_uid": 4007,
+      "connection_info": {
+        "uid": "CExample0017zeek"
+      },
+      "dst_endpoint": {
+        "ip": "10.20.30.22",
+        "port": 22
+      },
+      "metadata": {
+        "correlation_uid": "CExample0017zeek",
+        "log_name": "ssh",
+        "product": {
+          "name": "Zeek",
+          "vendor_name": "Zeek"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.20.30.40",
+        "port": 50017
+      },
+      "time": 1790596817000,
+      "type_uid": 400799,
+      "unmapped": {
+        "_write_ts": "2026-09-28T12:01:17.000000Z",
+        "auth_attempts": 1,
+        "auth_success": true,
+        "cipher_alg": "chacha20-poly1305@openssh.com",
+        "client": "SSH-2.0-OpenSSH_9.6",
+        "compression_alg": "none",
+        "direction": "OUTBOUND",
+        "host_key": "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99",
+        "host_key_alg": "ssh-ed25519",
+        "kex_alg": "curve25519-sha256",
+        "mac_alg": "umac-64-etm@openssh.com",
+        "server": "SSH-2.0-OpenSSH_9.2p1 Debian-2",
+        "version": 2
+      }
+    },
+    "id": "da9148298dd39dbda26cdf1f28f807cb",
+    "issues": [],
+    "kind": "ssh"
+  }
+]

@@ -90,6 +90,10 @@ pub const OKTA: &str = include_str!("../sources/okta.yaml");
 /// every workload.
 pub const M365: &str = include_str!("../sources/m365.yaml");
 
+/// The Zeek definition shipped with this crate: connections, DNS, HTTP,
+/// TLS, certificates, SMB files, DCE/RPC, Kerberos, RDP, and SSH.
+pub const ZEEK: &str = include_str!("../sources/zeek.yaml");
+
 /// Every definition shipped with this crate, by name.
 pub const BUILTIN: &[(&str, &str)] = &[
     ("auditd", AUDITD),
@@ -101,6 +105,7 @@ pub const BUILTIN: &[(&str, &str)] = &[
     ("sysmon-flat", SYSMON_FLAT),
     ("sysmon", SYSMON),
     ("windows-security", WINDOWS_SECURITY),
+    ("zeek", ZEEK),
 ];
 
 /// The shipped definition named `name`, if there is one.
