@@ -9,6 +9,14 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.15] - 2026-09-30
+
+
+### Added
+
+- Targets that name an element of an array by its index
+- A Suricata EVE definition, alerts as Detection Findings
+
 ## [0.2.14] - 2026-09-30
 
 
