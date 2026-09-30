@@ -12,6 +12,7 @@
 
 mod batch;
 mod error;
+mod health;
 mod migrate;
 mod overview;
 mod search;
@@ -20,6 +21,9 @@ mod writer;
 
 pub use batch::Batch;
 pub use error::StoreError;
+pub use health::{
+    DEFAULT_SILENT_AFTER_MINUTES, DeadLetterHour, Health, SourceHour, Status, Watched, judge,
+};
 pub use migrate::{MIGRATIONS, Migration};
 pub use overview::{Arrived, Bucket, Frequent, HostBucket, Overview};
 pub use search::{Found, Page, SearchLimits, Stored};

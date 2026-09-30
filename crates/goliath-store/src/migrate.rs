@@ -62,6 +62,26 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "events_received_index_built",
         sql: include_str!("../migrations/0006_events_received_index_built.sql"),
     },
+    Migration {
+        version: 7,
+        name: "source_hours",
+        sql: include_str!("../migrations/0007_source_hours.sql"),
+    },
+    Migration {
+        version: 8,
+        name: "source_hours_view",
+        sql: include_str!("../migrations/0008_source_hours_view.sql"),
+    },
+    Migration {
+        version: 9,
+        name: "dead_letter_hours",
+        sql: include_str!("../migrations/0009_dead_letter_hours.sql"),
+    },
+    Migration {
+        version: 10,
+        name: "dead_letter_hours_view",
+        sql: include_str!("../migrations/0010_dead_letter_hours_view.sql"),
+    },
 ];
 
 /// Where applied migrations are recorded. Created before any migration runs,
@@ -107,9 +127,13 @@ mod tests {
                 migration.name
             );
             assert!(
-                ["CREATE TABLE IF NOT EXISTS ", "ALTER TABLE "]
-                    .iter()
-                    .any(|start| statement.starts_with(start))
+                [
+                    "CREATE TABLE IF NOT EXISTS ",
+                    "CREATE MATERIALIZED VIEW IF NOT EXISTS ",
+                    "ALTER TABLE ",
+                ]
+                .iter()
+                .any(|start| statement.starts_with(start))
                     && (!statement.contains(" ADD ") || statement.contains(" IF NOT EXISTS ")),
                 "{} is not repeatable",
                 migration.name
