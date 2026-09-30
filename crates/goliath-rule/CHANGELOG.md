@@ -9,6 +9,13 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-09-30
+
+
+### Added
+
+- A Sigma mapping set for Zeek, all 24 SigmaHQ rules load
+
 ## [0.2.5] - 2026-09-30
 
 

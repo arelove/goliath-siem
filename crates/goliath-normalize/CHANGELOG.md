@@ -9,6 +9,13 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.14] - 2026-09-30
+
+
+### Added
+
+- A Zeek definition for ten logs
+
 ## [0.2.13] - 2026-09-30
 
 
