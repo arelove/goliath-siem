@@ -8,7 +8,7 @@
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use goliath_intel::{Allowlist, Allowlists, Feed, Matcher, RocksStore, finding, observables};
 use goliath_normalize::{Envelope, EventId, Normalized, Outcome};
@@ -19,6 +19,7 @@ use tracing::{info, warn};
 
 use crate::RunError;
 use crate::config::DetectorConfig;
+use crate::fetch::{self, Fetched, Fetcher};
 use crate::metrics::Metrics;
 use crate::roles::{BATCH, Lag, POLL};
 
@@ -31,10 +32,15 @@ const KIND: &str = "indicator_match";
 /// How often the publications of feeds are looked at for a change.
 const REFRESH_EVERY: Duration = Duration::from_secs(30);
 
+/// How soon a fetch that failed is tried again.
+const RETRY_AFTER: Duration = Duration::from_secs(300);
+
 /// A feed, and the file its publication is read from.
 struct Published {
     feed: Feed,
     file: PathBuf,
+    /// Where the file is fetched from, if this process fetches it.
+    remote: Option<Remote>,
     /// The modification time and length of the publication last loaded or
     /// last refused, so that neither is read again until it changes.
     seen: Option<(SystemTime, u64)>,
@@ -42,11 +48,69 @@ struct Published {
     missing: bool,
 }
 
+/// Where a publication is fetched from, and when it was last.
+struct Remote {
+    url: String,
+    /// The tag of the publication last fetched, to ask whether it changed.
+    etag: Option<String>,
+    /// When the publication was last fetched or found unchanged.
+    checked: Option<SystemTime>,
+    /// Not before this, after a fetch that failed.
+    retry_at: Option<Instant>,
+}
+
+impl Published {
+    /// Fetches the publication into its file, if it is fetched and due:
+    /// never fetched, or last checked longer ago than the feed's interval.
+    fn fetch(&mut self, fetcher: &Fetcher, metrics: &Metrics) {
+        let name = &self.feed.name;
+        let Some(remote) = &mut self.remote else {
+            return;
+        };
+        let every = Duration::from_secs(u64::from(self.feed.refresh_minutes) * 60);
+        let due = remote
+            .checked
+            .is_none_or(|checked| checked.elapsed().is_ok_and(|since| since >= every));
+        if !due || remote.retry_at.is_some_and(|at| Instant::now() < at) {
+            return;
+        }
+        let outcome = fetcher
+            .get(&remote.url, remote.etag.as_deref())
+            .and_then(|fetched| match fetched {
+                Fetched::Unchanged => Ok(()),
+                Fetched::Publication { bytes, etag } => {
+                    fetch::publish(&self.file, &bytes).map_err(|error| error.to_string())?;
+                    remote.etag = etag;
+                    info!(feed = name, bytes = bytes.len(), "feed fetched");
+                    Ok(())
+                }
+            });
+        match outcome {
+            Ok(()) => {
+                remote.checked = Some(SystemTime::now());
+                remote.retry_at = None;
+                metrics.feed_checked(name, seconds(SystemTime::now()));
+            }
+            Err(error) => {
+                warn!(
+                    feed = name,
+                    url = remote.url,
+                    error,
+                    "feed not fetched; the store keeps what it had"
+                );
+                remote.retry_at = Some(Instant::now() + RETRY_AFTER);
+                metrics.feed_refreshed(name, "failed", None);
+            }
+        }
+    }
+}
+
 /// The indicators and allowlists the detector asks, and the feeds that fill
 /// them.
 pub(crate) struct Intel {
     matcher: Arc<Matcher<RocksStore>>,
     feeds: Vec<Published>,
+    fetcher: Fetcher,
 }
 
 fn io(error: impl std::fmt::Display) -> RunError {
@@ -77,10 +141,26 @@ impl Intel {
         let feeds = config
             .feeds
             .iter()
-            .map(|feed| {
+            .map(|configured| {
+                let feed = configured.feed()?;
+                // A fetched publication is kept beside the store, and a
+                // restart within the feed's interval does not fetch again.
+                let file = configured
+                    .file
+                    .clone()
+                    .unwrap_or_else(|| state.join("publications").join(&feed.name));
+                let remote = configured.fetched_from(&feed)?.map(|url| Remote {
+                    url,
+                    etag: None,
+                    checked: std::fs::metadata(&file)
+                        .and_then(|metadata| metadata.modified())
+                        .ok(),
+                    retry_at: None,
+                });
                 Ok(Published {
-                    feed: feed.feed()?,
-                    file: feed.file.clone(),
+                    feed,
+                    file,
+                    remote,
                     seen: None,
                     missing: false,
                 })
@@ -104,6 +184,7 @@ impl Intel {
         Ok(Self {
             matcher: Arc::new(Matcher::new(store, allowlists)),
             feeds,
+            fetcher: Fetcher::new(),
         })
     }
 
@@ -112,18 +193,21 @@ impl Intel {
         Arc::clone(&self.matcher)
     }
 
-    /// Loads every feed whose publication changed since it was last looked
-    /// at. A publication that is missing or refused leaves the feed as the
-    /// store has it, and is reported.
+    /// Fetches every feed that is due, and loads every feed whose
+    /// publication changed since it was last looked at. A publication that
+    /// is missing, not fetched, or refused leaves the feed as the store has
+    /// it, and is reported.
     fn refresh(&mut self, metrics: &Metrics) {
         for published in &mut self.feeds {
+            published.fetch(&self.fetcher, metrics);
             let name = published.feed.name.clone();
             let changed = match std::fs::metadata(&published.file) {
                 Ok(metadata) => (metadata.modified().unwrap_or(UNIX_EPOCH), metadata.len()),
                 Err(error) => {
-                    if !published.missing {
+                    // A fetch that failed has said so already.
+                    if !published.missing && published.remote.is_none() {
                         warn!(feed = name, file = %published.file.display(), %error, "no publication");
-                        metrics.feed_refreshed(&name, false, None);
+                        metrics.feed_refreshed(&name, "refused", None);
                     }
                     published.missing = true;
                     published.seen = None;
@@ -154,14 +238,19 @@ impl Intel {
                         rejected = loaded.rejected,
                         "feed loaded"
                     );
-                    metrics.feed_refreshed(&name, true, Some((loaded.indicators, modified)));
+                    metrics.feed_refreshed(&name, "loaded", Some((loaded.indicators, modified)));
+                    // A file put there by other means is current as of when
+                    // it was written; a fetched one as of its fetch.
+                    if published.remote.is_none() {
+                        metrics.feed_checked(&name, modified);
+                    }
                 }
                 Err(error) => {
                     warn!(
                         feed = name,
                         error, "feed refused; the store keeps what it had"
                     );
-                    metrics.feed_refreshed(&name, false, None);
+                    metrics.feed_refreshed(&name, "refused", None);
                 }
             }
         }
@@ -339,6 +428,10 @@ fn detect_run(matcher: &Matcher<RocksStore>, deliveries: &[Delivery]) -> Detecte
 mod tests {
     #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+    use std::io::{Read, Write};
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
     use goliath_normalize::{Envelope, Normalizer, Outcome, SYSMON};
     use goliath_pipe::Delivery;
 
@@ -466,6 +559,154 @@ file = "feeds/feodo.csv"
             ),
             "{text}"
         );
+    }
+
+    /// Serves `body` on a port of this host, with a tag, and answers 304 to
+    /// a request that names the tag. Counts the requests it answered.
+    fn serve(body: &'static str) -> (u16, Arc<AtomicUsize>) {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let requests = Arc::new(AtomicUsize::new(0));
+        let counted = Arc::clone(&requests);
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(mut stream) = stream else { break };
+                let mut request = Vec::new();
+                let mut buffer = [0u8; 1024];
+                while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+                    match stream.read(&mut buffer) {
+                        Ok(0) | Err(_) => break,
+                        Ok(read) => request.extend_from_slice(&buffer[..read]),
+                    }
+                }
+                let request = String::from_utf8_lossy(&request).to_ascii_lowercase();
+                let answer = if request.contains("if-none-match: \"v1\"") {
+                    "HTTP/1.1 304 Not Modified\r\nETag: \"v1\"\r\nConnection: close\r\n\r\n"
+                        .to_owned()
+                } else {
+                    format!(
+                        "HTTP/1.1 200 OK\r\nETag: \"v1\"\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                        body.len()
+                    )
+                };
+                counted.fetch_add(1, Ordering::SeqCst);
+                let _ = stream.write_all(answer.as_bytes());
+            }
+        });
+        (port, requests)
+    }
+
+    #[test]
+    fn a_feed_is_fetched_when_due_and_asked_whether_it_changed() {
+        let (port, requests) = serve(
+            "\"first_seen_utc\",\"dst_ip\",\"dst_port\",\"c2_status\",\"last_online\",\"malware\"\n\
+             \"2026-01-01 00:00:00\",\"192.0.2.10\",\"443\",\"online\",\"2099-01-01\",\"Example\"\n",
+        );
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("goliath.toml");
+        std::fs::write(
+            &path,
+            format!(
+                "roles = [\"detector\"]\ndata = \"data\"\n\n[[detector.feeds]]\ndefinition = \"feodo-tracker\"\nurl = \"http://127.0.0.1:{port}/ipblocklist.csv\"\n"
+            ),
+        )
+        .unwrap();
+        let config = Config::load(&path).unwrap();
+        let state = config.detector_state().unwrap();
+        let metrics = Metrics::new();
+        let mut intel = Intel::open(config.detector.as_ref().unwrap(), &state).unwrap();
+        let events = deliveries();
+        let hits = |intel: &Intel| detect_run(&intel.matcher(), &events).unwrap().0.len();
+
+        // Never fetched: fetched now, kept beside the store, and loaded.
+        intel.refresh(&metrics);
+        assert_eq!(requests.load(Ordering::SeqCst), 1);
+        assert!(state.join("publications/feodo-tracker").exists());
+        assert_eq!(hits(&intel), 1);
+
+        // Within the feed's interval nothing is asked.
+        intel.refresh(&metrics);
+        assert_eq!(requests.load(Ordering::SeqCst), 1);
+
+        // Due again: the server is asked with the tag, says it is unchanged,
+        // and nothing is loaded a second time.
+        intel.feeds[0].remote.as_mut().unwrap().checked = None;
+        intel.refresh(&metrics);
+        assert_eq!(requests.load(Ordering::SeqCst), 2);
+        let text = metrics.encode();
+        assert!(
+            text.contains(
+                "goliath_feed_refreshes_total{feed=\"feodo-tracker\",result=\"loaded\"} 1"
+            ),
+            "{text}"
+        );
+        assert!(text.contains("goliath_feed_checked_timestamp_seconds{feed=\"feodo-tracker\"}"));
+
+        // The server gone: the fetch fails, is counted, is not tried again
+        // at once, and the store keeps the feed.
+        let remote = intel.feeds[0].remote.as_mut().unwrap();
+        remote.checked = None;
+        remote.url = "http://127.0.0.1:1/ipblocklist.csv".to_owned();
+        intel.refresh(&metrics);
+        intel.feeds[0].remote.as_mut().unwrap().checked = None;
+        intel.refresh(&metrics);
+        let text = metrics.encode();
+        assert!(
+            text.contains(
+                "goliath_feed_refreshes_total{feed=\"feodo-tracker\",result=\"failed\"} 1"
+            ),
+            "{text}"
+        );
+        assert_eq!(hits(&intel), 1);
+
+        // Started again within the interval, with the publication kept: no
+        // fetch, and the feed is in the store.
+        drop(intel);
+        let intel = {
+            let mut intel = Intel::open(config.detector.as_ref().unwrap(), &state).unwrap();
+            intel.refresh(&metrics);
+            intel
+        };
+        assert_eq!(requests.load(Ordering::SeqCst), 2);
+        assert_eq!(hits(&intel), 1);
+    }
+
+    #[test]
+    fn a_feed_needs_a_file_or_a_url_it_may_be_fetched_from() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("goliath.toml");
+        std::fs::write(
+            directory.path().join("list.yaml"),
+            "name: list\nconfidence: 50\nformat: stix\n",
+        )
+        .unwrap();
+        let feed = |body: &str| {
+            format!("roles = [\"detector\"]\ndata = \"data\"\n[[detector.feeds]]\n{body}")
+        };
+        for (body, expected) in [
+            (
+                feed("definition = \"list.yaml\"\n"),
+                "needs a `file` or a `url`",
+            ),
+            (
+                feed("definition = \"list.yaml\"\nurl = \"http://feeds.example.com/list\"\n"),
+                "without TLS from another host",
+            ),
+        ] {
+            std::fs::write(&path, body).unwrap();
+            let error = Config::load(&path).unwrap_err().to_string();
+            assert!(error.contains(expected), "{error}");
+        }
+        // The shipped definitions name their own URL, over HTTPS; a file
+        // alone means nothing is fetched.
+        for body in [
+            feed("definition = \"urlhaus\"\n"),
+            feed("definition = \"list.yaml\"\nfile = \"list.json\"\n"),
+            feed("definition = \"list.yaml\"\nurl = \"https://feeds.example.com/list\"\n"),
+        ] {
+            std::fs::write(&path, body).unwrap();
+            Config::load(&path).unwrap();
+        }
     }
 
     #[test]
