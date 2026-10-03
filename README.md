@@ -117,6 +117,9 @@ The password and the token stay in `.env`, which git ignores, and reach
 goliath as mounted secret files, not environment variables. `scripts/compose-smoke.sh`
 does all of this end to end for either stack, and CI runs both.
 
+To send it the Sysmon and Security logs of Windows machines on a home
+network, see [docs/lab.md](docs/lab.md).
+
 ## Try it
 
 ```text

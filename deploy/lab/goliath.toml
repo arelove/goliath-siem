@@ -1,0 +1,45 @@
+# A lab on a home network, as compose.lab.yaml runs it: every role in one
+# container, with the receiver taking Windows event logs from other machines
+# over HTTPS. See docs/lab.md.
+
+roles = ["collector", "receiver", "normalizer", "writer", "api"]
+data = "/var/lib/goliath/data"
+
+# Reachable from the network, so it serves HTTPS with the certificate
+# scripts/lab/setup.ps1 makes. Compose publishes it on port 8514.
+[receiver]
+listen = "0.0.0.0:8514"
+tls = { certificate = "/run/secrets/receiver_certificate", key = "/run/secrets/receiver_key" }
+
+# Each source has a token of its own: a sender that holds one can write to
+# that source only.
+[[sources]]
+definition = "sysmon"
+inbox = "/var/lib/goliath/inbox/sysmon"
+http = { token_file = "/run/secrets/sysmon_token" }
+
+[[sources]]
+definition = "windows-security"
+inbox = "/var/lib/goliath/inbox/windows-security"
+http = { token_file = "/run/secrets/security_token" }
+
+[store]
+url = "http://clickhouse:8123"
+database = "goliath"
+user = "goliath"
+password_file = "/run/secrets/clickhouse_password"
+retention_days = 30
+
+[writer]
+max_rows = 50000
+max_delay_ms = 1000
+
+# Compose publishes it on 127.0.0.1:8080 only: the interface is opened on
+# the machine that runs the lab.
+[api]
+listen = "0.0.0.0:8080"
+token_file = "/run/secrets/api_token"
+ui = "/usr/share/goliath/ui"
+
+[metrics]
+listen = "0.0.0.0:9464"
