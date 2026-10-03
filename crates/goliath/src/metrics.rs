@@ -92,6 +92,8 @@ struct Inner {
     detected_events: Counter,
     detected_observables: Counter,
     detector_skipped: Counter,
+    detector_rematched: Counter,
+    detector_unmatched_ranges: Gauge,
     indicator_hits: Family<Hit, Counter>,
     feed_refreshes: Family<FeedRefresh, Counter>,
     feed_indicators: Family<Feed, Gauge>,
@@ -150,6 +152,8 @@ impl Metrics {
         let detected_events = Counter::default();
         let detected_observables = Counter::default();
         let detector_skipped = Counter::default();
+        let detector_rematched = Counter::default();
+        let detector_unmatched_ranges = Gauge::default();
         let indicator_hits = Family::default();
         let feed_refreshes = Family::default();
         let feed_indicators = Family::default();
@@ -245,6 +249,16 @@ impl Metrics {
             detector_skipped.clone(),
         );
         registry.register(
+            "detector_rematched_events",
+            "Events read back from the store and matched: what the detector had been moved past",
+            detector_rematched.clone(),
+        );
+        registry.register(
+            "detector_unmatched_ranges",
+            "Ranges of receipt time whose events are stored and wait to be matched from the store",
+            detector_unmatched_ranges.clone(),
+        );
+        registry.register(
             "indicator_hits",
             "Observables an indicator names, reported or suppressed by an allowlist",
             indicator_hits.clone(),
@@ -292,6 +306,8 @@ impl Metrics {
             detected_events,
             detected_observables,
             detector_skipped,
+            detector_rematched,
+            detector_unmatched_ranges,
             indicator_hits,
             feed_refreshes,
             feed_indicators,
@@ -431,6 +447,18 @@ impl Metrics {
     /// The detector was moved past `records` it did not match.
     pub(crate) fn detector_skipped(&self, records: u64) {
         self.0.detector_skipped.inc_by(records);
+    }
+
+    /// The detector matched `events` read back from the store.
+    pub(crate) fn rematched(&self, events: u64) {
+        self.0.detector_rematched.inc_by(events);
+    }
+
+    /// `ranges` of receipt time wait to be matched from the store.
+    pub(crate) fn unmatched_ranges(&self, ranges: usize) {
+        self.0
+            .detector_unmatched_ranges
+            .set(i64::try_from(ranges).unwrap_or(i64::MAX));
     }
 
     /// `feed` is known to be current at `at`, in seconds since the epoch.
