@@ -335,10 +335,17 @@ pub struct FeedConfig {
     /// The feed's definition: the name of a shipped one, such as `urlhaus`,
     /// or the path of a YAML file.
     pub definition: String,
-    /// The file the feed's publication is kept in, by whatever fetches it.
-    /// It is read at start and again whenever it changes. Write it under
-    /// another name and rename it, so that it is never read half written.
-    pub file: PathBuf,
+    /// The file the feed's publication is kept in, read at start and again
+    /// whenever it changes. With a file and no `url`, nothing is fetched:
+    /// whatever puts the file there writes it under another name and
+    /// renames it, so that it is never read half written. Without a file,
+    /// the publication is fetched and kept in the indicator store's
+    /// directory.
+    pub file: Option<PathBuf>,
+    /// Where the publication is fetched from, every `refresh_minutes` of
+    /// the definition; the definition's own `url` if left out. HTTPS, or
+    /// HTTP on this host alone.
+    pub url: Option<String>,
 }
 
 impl FeedConfig {
@@ -359,6 +366,29 @@ impl FeedConfig {
         };
         goliath_intel::Feed::from_yaml(&yaml)
             .map_err(|error| RunError::Config(format!("{}: {error}", self.definition)))
+    }
+
+    /// Where the publication is fetched from, if it is fetched: the
+    /// configured `url`, or the definition's when no `file` is given.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RunError::Config`] if there is neither a file nor a URL,
+    /// or the URL is not one a feed may be fetched from.
+    pub fn fetched_from(&self, feed: &goliath_intel::Feed) -> Result<Option<String>, RunError> {
+        let url = match (&self.url, &self.file) {
+            (Some(url), _) => url.clone(),
+            (None, Some(_)) => return Ok(None),
+            (None, None) => feed.url.clone().ok_or_else(|| {
+                RunError::Config(format!(
+                    "feed `{}` needs a `file` or a `url`: its definition names no URL",
+                    feed.name
+                ))
+            })?,
+        };
+        crate::fetch::check_url(&url)
+            .map_err(|why| RunError::Config(format!("feed `{}`: {why}", feed.name)))?;
+        Ok(Some(url))
     }
 }
 
@@ -482,7 +512,9 @@ impl Config {
                 *list = base.join(&*list);
             }
             for feed in &mut detector.feeds {
-                feed.file = base.join(&feed.file);
+                if let Some(file) = &mut feed.file {
+                    *file = base.join(&*file);
+                }
                 let shipped = goliath_intel::FEEDS
                     .iter()
                     .any(|(name, _)| *name == feed.definition);
@@ -585,13 +617,14 @@ impl Config {
         };
         if detector.feeds.is_empty() {
             return Err(RunError::Config(
-                "the detector role needs a feed: [[detector.feeds]] with `definition` and `file`"
-                    .to_owned(),
+                "the detector role needs a feed: [[detector.feeds]] with a `definition`".to_owned(),
             ));
         }
         let mut names = BTreeSet::new();
         for feed in &detector.feeds {
-            let name = feed.feed()?.name;
+            let definition = feed.feed()?;
+            feed.fetched_from(&definition)?;
+            let name = definition.name;
             if !names.insert(name.clone()) {
                 return Err(RunError::Config(format!(
                     "feed `{name}` is configured twice"

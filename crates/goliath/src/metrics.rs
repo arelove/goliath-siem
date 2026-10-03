@@ -95,6 +95,7 @@ struct Inner {
     feed_refreshes: Family<FeedRefresh, Counter>,
     feed_indicators: Family<Feed, Gauge>,
     feed_published_timestamp_seconds: Family<Feed, Gauge>,
+    feed_checked_timestamp_seconds: Family<Feed, Gauge>,
     receipt_to_stored_seconds: Histogram,
     flush_seconds: Histogram,
     searches: Family<Answer, Counter>,
@@ -151,6 +152,7 @@ impl Metrics {
         let feed_refreshes = Family::default();
         let feed_indicators = Family::default();
         let feed_published_timestamp_seconds = Family::default();
+        let feed_checked_timestamp_seconds = Family::default();
         // From 10 milliseconds to about five minutes.
         let receipt_to_stored_seconds = Histogram::new(exponential_buckets(0.01, 2.0, 15));
         // From a millisecond to about 30 seconds.
@@ -242,7 +244,7 @@ impl Metrics {
         );
         registry.register(
             "feed_refreshes",
-            "Publications of a feed read, by whether they were loaded or refused",
+            "Publications of a feed asked for, by result: loaded, refused as not the feed, or failed to be fetched",
             feed_refreshes.clone(),
         );
         registry.register(
@@ -252,8 +254,13 @@ impl Metrics {
         );
         registry.register(
             "feed_published_timestamp_seconds",
-            "When the publication of a feed last loaded was written; a feed is stale when this stops moving",
+            "When the publication of a feed last loaded was written",
             feed_published_timestamp_seconds.clone(),
+        );
+        registry.register(
+            "feed_checked_timestamp_seconds",
+            "When a feed was last known to be current: its publication loaded, or found unchanged. A feed is stale when this stops moving",
+            feed_checked_timestamp_seconds.clone(),
         );
         registry.register(
             "searches",
@@ -281,6 +288,7 @@ impl Metrics {
             feed_refreshes,
             feed_indicators,
             feed_published_timestamp_seconds,
+            feed_checked_timestamp_seconds,
             receipt_to_stored_seconds,
             flush_seconds,
             searches,
@@ -412,14 +420,30 @@ impl Metrics {
         }
     }
 
-    /// A publication of `feed` was read: loaded with so many indicators and
-    /// written at that time, in seconds since the epoch, or refused.
-    pub(crate) fn feed_refreshed(&self, feed: &str, loaded: bool, now: Option<(usize, i64)>) {
+    /// `feed` is known to be current at `at`, in seconds since the epoch.
+    pub(crate) fn feed_checked(&self, feed: &str, at: i64) {
+        self.0
+            .feed_checked_timestamp_seconds
+            .get_or_create(&Feed {
+                feed: feed.to_owned(),
+            })
+            .set(at);
+    }
+
+    /// A publication of `feed` was asked for, with `result`: `loaded`, with
+    /// so many indicators and written at that time, in seconds since the
+    /// epoch; `refused`; or `failed`.
+    pub(crate) fn feed_refreshed(
+        &self,
+        feed: &str,
+        result: &'static str,
+        now: Option<(usize, i64)>,
+    ) {
         self.0
             .feed_refreshes
             .get_or_create(&FeedRefresh {
                 feed: feed.to_owned(),
-                result: if loaded { "loaded" } else { "refused" },
+                result,
             })
             .inc();
         if let Some((indicators, published)) = now {

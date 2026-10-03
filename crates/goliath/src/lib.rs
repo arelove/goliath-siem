@@ -13,6 +13,7 @@
 mod api;
 pub mod config;
 mod detector;
+mod fetch;
 mod metrics;
 mod otlp;
 pub mod raw;
