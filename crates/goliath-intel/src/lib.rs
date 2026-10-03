@@ -32,18 +32,39 @@
 mod allow;
 #[cfg(feature = "rocksdb")]
 mod bloom;
+mod feed;
 mod key;
 mod matcher;
 #[cfg(feature = "rocksdb")]
 mod rocks;
+mod stix;
 mod store;
 
 pub use allow::{Allowed, Allowlist, Allowlists, Entry};
+pub use feed::{Csv, Feed, Format, Loaded, Parsed};
 pub use key::{Key, Kind, PrefixLengths};
 pub use matcher::{Hit, Matcher};
 #[cfg(feature = "rocksdb")]
 pub use rocks::RocksStore;
 pub use store::{MemoryStore, Store};
+
+/// The definition of abuse.ch Feodo Tracker shipped with this crate, ready
+/// for [`Feed::from_yaml`].
+pub const FEODO_TRACKER: &str = include_str!("../feeds/feodo-tracker.yaml");
+/// The definition of abuse.ch SSLBL shipped with this crate.
+pub const SSLBL: &str = include_str!("../feeds/sslbl.yaml");
+/// The definition of abuse.ch `ThreatFox` shipped with this crate.
+pub const THREATFOX: &str = include_str!("../feeds/threatfox.yaml");
+/// The definition of abuse.ch `URLhaus` shipped with this crate.
+pub const URLHAUS: &str = include_str!("../feeds/urlhaus.yaml");
+
+/// Every feed definition shipped with this crate, by name.
+pub const FEEDS: &[(&str, &str)] = &[
+    ("feodo-tracker", FEODO_TRACKER),
+    ("sslbl", SSLBL),
+    ("threatfox", THREATFOX),
+    ("urlhaus", URLHAUS),
+];
 
 /// What one feed asserts of an indicator: the provenance a hit is reported
 /// with. Times are seconds since the epoch.
@@ -127,6 +148,14 @@ pub enum IntelError {
     Allowlist {
         /// The list's name.
         list: String,
+        /// What is wrong with it.
+        why: String,
+    },
+    /// A feed whose definition or publication cannot be used.
+    #[error("feed `{feed}`: {why}")]
+    Feed {
+        /// The feed's name.
+        feed: String,
         /// What is wrong with it.
         why: String,
     },

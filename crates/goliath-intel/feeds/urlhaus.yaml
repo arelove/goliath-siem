@@ -1,0 +1,19 @@
+# abuse.ch URLhaus: URLs that distribute malware, the recent additions. The
+# header row is in a comment, so the columns are named here.
+
+name: urlhaus
+description: URLs distributing malware, reported to abuse.ch URLhaus
+url: https://urlhaus.abuse.ch/downloads/csv_recent/
+licence: CC0-1.0
+confidence: 80
+refresh_minutes: 30
+# Such URLs are short-lived, and their hosts are often compromised sites
+# that are cleaned.
+valid_days: 14
+format: csv
+csv:
+  columns: [id, dateadded, url, url_status, last_online, threat, tags, urlhaus_link, reporter]
+  value: url
+  kind: url
+  first_seen: dateadded
+  last_seen: last_online

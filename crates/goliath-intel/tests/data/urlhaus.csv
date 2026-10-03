@@ -1,0 +1,7 @@
+################################################################
+# abuse.ch URLhaus Database Dump (CSV - recent URLs only)      #
+################################################################
+#
+# id,dateadded,url,url_status,last_online,threat,tags,urlhaus_link,reporter
+"3927480","2026-10-03 09:40:33","http://203.0.113.7:8080/files/a.bin","online","2026-10-03 09:40:33","malware_download","32-bit,elf","https://urlhaus.abuse.ch/url/3927480/","someone"
+"3927481","2026-10-02 08:00:00","https://Files.Example.NET/dl/b.bin","offline","","malware_download","None","https://urlhaus.abuse.ch/url/3927481/","someone"

@@ -1,0 +1,44 @@
+# abuse.ch ThreatFox: indicators of several kinds shared by its community,
+# the recent additions, each with a confidence of its own. The header row is
+# in a comment, so the columns are named here.
+
+name: threatfox
+description: Indicators shared through abuse.ch ThreatFox
+url: https://threatfox.abuse.ch/export/csv/recent/
+licence: CC0-1.0
+# For a row that gives none.
+confidence: 50
+refresh_minutes: 30
+valid_days: 60
+format: csv
+csv:
+  columns:
+    - first_seen_utc
+    - ioc_id
+    - ioc_value
+    - ioc_type
+    - threat_type
+    - fk_malware
+    - malware_alias
+    - malware_printable
+    - last_seen_utc
+    - confidence_level
+    - is_compromised
+    - reference
+    - tags
+    - anonymous
+    - reporter
+  value: ioc_value
+  kind_column: ioc_type
+  # An address comes with its port, which is dropped. Rows of other kinds
+  # are ignored.
+  kinds:
+    "ip:port": ip
+    domain: domain
+    url: url
+    md5_hash: md5
+    sha1_hash: sha1
+    sha256_hash: sha256
+  first_seen: first_seen_utc
+  last_seen: last_seen_utc
+  confidence: confidence_level

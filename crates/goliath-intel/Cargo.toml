@@ -15,7 +15,9 @@ publish = false
 
 [dependencies]
 goliath-sigma = { path = "../goliath-sigma", version = "0.1.2" }
+jiff = { version = "0.2", default-features = false, features = ["std"] }
 serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 # Behind `rocksdb`, since it is a C++ library built from source, which needs
 # a C++ compiler and libclang. See docs/adr/0020-state-beyond-events.md.
