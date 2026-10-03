@@ -176,6 +176,95 @@ fn hashes_are_told_apart_by_their_algorithm_and_where_they_are() {
 }
 
 #[test]
+fn a_url_logged_as_host_and_path_is_put_together() {
+    let request = |url: Value, port: u64| {
+        json!({
+            "class_uid": 4002,
+            "time": 1,
+            "dst_endpoint": { "port": port },
+            "http_request": { "url": url }
+        })
+    };
+    let urls = |event: &Value| -> Vec<String> {
+        found(event)
+            .into_iter()
+            .filter(|(_, kind, _)| *kind == Kind::Url)
+            .map(|(path, _, value)| format!("{path} {value}"))
+            .collect()
+    };
+    // As Zeek and Suricata log a request: the host, and the path with its
+    // query, on the connection's port.
+    assert_eq!(
+        urls(&request(
+            json!({ "hostname": "Bad.Example.com", "path": "/gate.php?id=1" }),
+            8080
+        )),
+        ["http_request.url http://Bad.Example.com:8080/gate.php?id=1"]
+    );
+    assert_eq!(
+        urls(&request(
+            json!({ "hostname": "2001:db8::1", "path": "a", "query_string": "x=1" }),
+            80
+        )),
+        ["http_request.url http://[2001:db8::1]:80/a?x=1"]
+    );
+    // The object's own scheme and port come first.
+    assert_eq!(
+        urls(&request(
+            json!({ "hostname": "bad.example.com", "path": "/", "scheme": "https", "port": 8443 }),
+            80
+        )),
+        ["http_request.url https://bad.example.com:8443/"]
+    );
+    // A request through a proxy names the whole URL as its path.
+    assert_eq!(
+        urls(&request(
+            json!({ "hostname": "proxy.corp.example", "path": "http://bad.example.com/a" }),
+            3128
+        )),
+        ["http_request.url http://bad.example.com/a"]
+    );
+    // A whole URL is taken as it is, and no host gives none.
+    assert_eq!(
+        urls(&request(
+            json!({ "hostname": "bad.example.com", "path": "/a", "url_string": "https://bad.example.com/a" }),
+            443
+        )),
+        ["http_request.url.url_string https://bad.example.com/a"]
+    );
+    assert_eq!(urls(&request(json!({ "path": "/a" }), 80)), [] as [&str; 0]);
+
+    // Put together on the default port, it meets the indicator as feeds
+    // write it.
+    let store = MemoryStore::new();
+    store
+        .replace_feed(
+            "feed-a",
+            "1",
+            [(
+                Key::new(Kind::Url, "http://bad.example.com/gate.php?id=1").expect("a key"),
+                Assertion::new(80),
+            )],
+        )
+        .expect("replaced");
+    let matcher = Matcher::new(store, Allowlists::default());
+    let event = request(
+        json!({ "hostname": "bad.example.com", "path": "/gate.php?id=1" }),
+        80,
+    );
+    let hits: usize = observables(&event)
+        .iter()
+        .map(|observed| {
+            matcher
+                .lookup(observed.kind, &observed.value, 1)
+                .expect("looked up")
+                .len()
+        })
+        .sum();
+    assert_eq!(hits, 1);
+}
+
+#[test]
 fn events_without_a_known_class_give_no_observables() {
     for event in [
         json!({ "class_uid": 999_999, "dst_endpoint": { "ip": "203.0.113.7" } }),
@@ -451,7 +540,6 @@ fn each_shipped_source_gives_the_kinds_its_events_hold() {
             .into_owned();
         found.insert(name, kinds.into_iter().collect::<Vec<_>>().join(" "));
     }
-    // No source gives a URL yet.
     let expected = [
         ("auditd", "domain file-path ip user"),
         ("cloudtrail", "ip user"),
@@ -461,7 +549,7 @@ fn each_shipped_source_gives_the_kinds_its_events_hold() {
         ("okta", "ip user"),
         (
             "suricata",
-            "certificate-hash domain file-name ip ja3 sha256",
+            "certificate-hash domain file-name ip ja3 sha256 url",
         ),
         ("sysmon", "domain file-path ip registry-key sha256 user"),
         (
@@ -469,7 +557,7 @@ fn each_shipped_source_gives_the_kinds_its_events_hold() {
             "domain file-path ip registry-key sha256 user",
         ),
         ("windows-security", "domain file-path ip user"),
-        ("zeek", "domain file-name ip user"),
+        ("zeek", "domain file-name ip url user"),
     ];
     let found: Vec<(&str, &str)> = found
         .iter()

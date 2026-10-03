@@ -49,6 +49,27 @@ fn values_are_kept_in_one_spelling() {
             "hxxps://Bad.Example[.]com:8443/Path?Q=1#top",
             "https://bad.example.com:8443/Path?Q=1",
         ),
+        // The port a scheme implies is dropped; another is kept.
+        (
+            Kind::Url,
+            "http://Bad.Example.com:80/a",
+            "http://bad.example.com/a",
+        ),
+        (
+            Kind::Url,
+            "https://bad.example.com:443",
+            "https://bad.example.com",
+        ),
+        (
+            Kind::Url,
+            "http://bad.example.com:443/a",
+            "http://bad.example.com:443/a",
+        ),
+        (
+            Kind::Url,
+            "http://203.0.113.7:8080/a",
+            "http://203.0.113.7:8080/a",
+        ),
         (Kind::Asn, "AS13335", "13335"),
         (Kind::Asn, "13335", "13335"),
         (

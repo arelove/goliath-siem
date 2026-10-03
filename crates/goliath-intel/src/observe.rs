@@ -40,7 +40,10 @@ pub fn observables(event: &Value) -> Vec<Observed<'_>> {
     let Some(members) = event.as_object() else {
         return Vec::new();
     };
-    let mut walk = Walk::default();
+    let mut walk = Walk {
+        port: event.pointer("/dst_endpoint/port").and_then(Value::as_u64),
+        ..Walk::default()
+    };
     for (name, value) in members {
         if let Some(attribute) = class.attribute(name) {
             walk.attribute(attribute, value, None);
@@ -55,6 +58,9 @@ struct Walk<'a> {
     path: Vec<Cow<'static, str>>,
     seen: HashSet<(Kind, &'a str)>,
     found: Vec<Observed<'a>>,
+    /// The port the event's connection goes to, for a URL written without
+    /// one.
+    port: Option<u64>,
 }
 
 impl<'a> Walk<'a> {
@@ -97,6 +103,12 @@ impl<'a> Walk<'a> {
                         self.attribute(attribute, member, Some(value));
                     }
                 }
+                if object.name() == "url"
+                    && !members.contains_key("url_string")
+                    && let Some(url) = self.url(members)
+                {
+                    self.find(Kind::Url, Cow::Owned(url), None);
+                }
             }
             (Base::String, Value::String(text)) => {
                 if let Some(kind) = self.kind(attribute, text, within) {
@@ -121,6 +133,44 @@ impl<'a> Walk<'a> {
             kind,
             value,
         });
+    }
+
+    /// The URL of a `url` object that holds its parts and not the whole, as
+    /// sources that log the host and the path of a request apart write it.
+    /// The scheme is `http` unless the object says; the port is the
+    /// object's, or else the one the event's connection goes to.
+    fn url(&self, parts: &serde_json::Map<String, Value>) -> Option<String> {
+        let text = |name: &str| parts.get(name).and_then(Value::as_str);
+        let path = text("path").unwrap_or_default();
+        // A request through a proxy names the whole URL as its path.
+        if path.contains("://") {
+            return Some(path.to_owned());
+        }
+        let host = text("hostname").filter(|host| !host.is_empty())?;
+        let scheme = text("scheme").unwrap_or("http");
+        let mut url = format!("{scheme}://");
+        // An IPv6 address is bracketed in a URL.
+        if host.contains(':') && !host.starts_with('[') {
+            url.push('[');
+            url.push_str(host);
+            url.push(']');
+        } else {
+            url.push_str(host);
+        }
+        let port = parts.get("port").and_then(Value::as_u64).or(self.port);
+        if let Some(port) = port {
+            url.push(':');
+            url.push_str(&port.to_string());
+        }
+        if !path.is_empty() && !path.starts_with('/') {
+            url.push('/');
+        }
+        url.push_str(path);
+        if let Some(query) = text("query_string").filter(|query| !query.is_empty()) {
+            url.push('?');
+            url.push_str(query);
+        }
+        Some(url)
     }
 
     /// Whether the value being visited is under an attribute named `name`.
