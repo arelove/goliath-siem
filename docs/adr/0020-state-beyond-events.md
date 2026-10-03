@@ -1,6 +1,6 @@
 # 0020. State beyond the event store
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-09-30
 
 ## Context
