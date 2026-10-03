@@ -261,6 +261,7 @@ Enrichment that makes an alert actionable rather than a row.
 | `goliath-attack` | Versioned framework loader, technique mapping, coverage versus capability ([ADR-0009](adr/0009-attack-knowledge-model.md)) |
 | `goliath-enrich` | Entity and asset snapshot into local RocksDB, refresh scheduling |
 | Detector role | Reads the event topic beside the writer, matches indicators, and writes each match as a Detection Finding with its provenance; suppressed matches are stored too ([ADR-0021](adr/0021-enrichment-placement.md)) |
+| A reader that does not hold a topic | The detector reads the event topic as an ordinary group today, so one stalled beyond the topic's bound slows ingestion, as [ADR-0015](adr/0015-pipe-semantics.md) accepts. The exit criterion asks that it never does: a group that is skipped forward when it falls behind the bound, with the gap reported and matched afterwards from the stored events |
 | Reference lists | An importer for curated community lists in CSV, starting with [mthcht/awesome-lists](https://github.com/mthcht/awesome-lists) (MIT): vulnerable drivers, named pipes, services and scheduled tasks of known tools, suspicious TLDs and ASNs, VPN and proxy ranges, dynamic DNS domains, offensive tool keywords, user agents. Each list is pinned to a commit, typed as indicators, allowlist, or context, and keeps its source and licence as provenance, so an enrichment says which list and which version matched |
 
 **Exit criterion:** the detector matches 10^8 indicators at no less than 90%
