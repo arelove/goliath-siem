@@ -9,6 +9,14 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.17] - 2026-10-03
+
+
+### Added
+
+- Events made by the platform itself can be built
+- Sysmon file hashes become fingerprints, and stay as one string for rules
+
 ## [0.2.16] - 2026-09-30
 
 
