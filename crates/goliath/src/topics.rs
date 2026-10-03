@@ -34,6 +34,14 @@ pub(crate) trait Topics: Sync {
         topic: &Self::Topic,
         group: &str,
     ) -> impl Future<Output = Result<Self::Receiver, RunError>> + Send;
+
+    /// A receiver of `topic` for `group` as an observer, which senders
+    /// never wait for.
+    fn observe(
+        &self,
+        topic: &Self::Topic,
+        group: &str,
+    ) -> impl Future<Output = Result<Self::Receiver, RunError>> + Send;
 }
 
 /// Topics as files in a data directory; every role that uses one must be in
@@ -79,6 +87,14 @@ impl Topics for Disk {
         group: &str,
     ) -> impl Future<Output = Result<DiskReceiver, RunError>> + Send {
         future::ready(topic.subscribe(group).map_err(RunError::from))
+    }
+
+    fn observe(
+        &self,
+        topic: &DiskTopic,
+        group: &str,
+    ) -> impl Future<Output = Result<DiskReceiver, RunError>> + Send {
+        future::ready(topic.observe(group).map_err(RunError::from))
     }
 }
 
@@ -140,6 +156,14 @@ mod kafka {
             group: &str,
         ) -> Result<KafkaReceiver, RunError> {
             Ok(topic.subscribe(&format!("{}{group}", self.prefix)).await?)
+        }
+
+        async fn observe(
+            &self,
+            topic: &KafkaTopic,
+            group: &str,
+        ) -> Result<KafkaReceiver, RunError> {
+            Ok(topic.observe(&format!("{}{group}", self.prefix)).await?)
         }
     }
 }

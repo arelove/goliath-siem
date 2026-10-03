@@ -4,7 +4,7 @@
 //! the process ends. See `docs/adr/0015-pipe-semantics.md` for where that is
 //! acceptable.
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::future::{self, Future};
 use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
@@ -40,6 +40,8 @@ struct State {
     capacity: usize,
     /// Each group's first unacknowledged offset.
     groups: BTreeMap<String, u64>,
+    /// The groups senders do not wait for.
+    observers: BTreeSet<String>,
 }
 
 impl State {
@@ -48,12 +50,45 @@ impl State {
         self.base + self.records.len() as u64
     }
 
-    /// Releases records every group has acknowledged. Returns whether any
+    /// The first offset some group that holds the topic has not
+    /// acknowledged. With observers alone, nothing is held.
+    fn floor(&self) -> u64 {
+        let holding = self
+            .groups
+            .iter()
+            .filter(|(group, _)| !self.observers.contains(*group))
+            .map(|(_, position)| *position)
+            .min();
+        match holding {
+            Some(floor) => floor,
+            None if self.observers.is_empty() => self.base,
+            None => self.end(),
+        }
+    }
+
+    /// Records senders wait for: those a holding group has not
+    /// acknowledged.
+    fn held(&self) -> usize {
+        usize::try_from(self.end() - self.floor().max(self.base)).unwrap_or(usize::MAX)
+    }
+
+    /// Releases records every holding group has acknowledged, keeping for
+    /// observers that have not what the bound allows. Returns whether any
     /// were released.
     fn release(&mut self) -> bool {
-        let floor = self.groups.values().copied().min().unwrap_or(self.base);
+        let floor = self.floor();
+        let observed = self
+            .groups
+            .iter()
+            .filter(|(group, _)| self.observers.contains(*group))
+            .map(|(_, position)| *position)
+            .min()
+            .unwrap_or(u64::MAX);
         let mut released = false;
-        while self.base < floor && self.records.pop_front().is_some() {
+        while self.base < floor && (self.base < observed || self.records.len() > self.capacity) {
+            if self.records.pop_front().is_none() {
+                break;
+            }
             self.base += 1;
             released = true;
         }
@@ -71,6 +106,7 @@ impl MemoryTopic {
                     records: VecDeque::new(),
                     capacity: capacity.get(),
                     groups: BTreeMap::new(),
+                    observers: BTreeSet::new(),
                 }),
                 arrived: Notify::new(),
                 released: Notify::new(),
@@ -94,12 +130,28 @@ impl MemoryTopic {
     /// topic is full.
     pub fn subscribe(&self, group: &str) -> MemoryReceiver {
         let mut state = lock(&self.shared.state);
+        state.observers.remove(group);
+        self.receiver(&mut state, group)
+    }
+
+    /// A receiver for `group` as an observer: senders never wait for it.
+    /// It is kept the records the topic's bound allows beyond what other
+    /// groups need; if it falls further behind, it is moved forward, and
+    /// [`Receiver::skipped`] says by how many records.
+    pub fn observe(&self, group: &str) -> MemoryReceiver {
+        let mut state = lock(&self.shared.state);
+        state.observers.insert(group.to_owned());
+        self.receiver(&mut state, group)
+    }
+
+    fn receiver(&self, state: &mut State, group: &str) -> MemoryReceiver {
         let end = state.end();
         let position = *state.groups.entry(group.to_owned()).or_insert(end);
         MemoryReceiver {
             shared: Arc::clone(&self.shared),
             group: group.to_owned(),
             next: position,
+            skipped: 0,
         }
     }
 
@@ -108,6 +160,7 @@ impl MemoryTopic {
     pub fn unsubscribe(&self, group: &str) {
         let mut state = lock(&self.shared.state);
         state.groups.remove(group);
+        state.observers.remove(group);
         if state.release() {
             self.shared.released.notify_waiters();
         }
@@ -141,10 +194,11 @@ impl Sender for MemorySender {
             let released = self.shared.released.notified();
             {
                 let mut state = lock(&self.shared.state);
-                if state.records.is_empty()
-                    || state.records.len() + payloads.len() <= state.capacity
-                {
+                let held = state.held();
+                if held == 0 || held + payloads.len() <= state.capacity {
                     state.records.extend(payloads);
+                    // What is kept for observers gives way to what is new.
+                    state.release();
                     drop(state);
                     self.shared.arrived.notify_waiters();
                     return Ok(());
@@ -162,6 +216,8 @@ pub struct MemoryReceiver {
     group: String,
     /// The next offset to deliver to this receiver.
     next: u64,
+    /// Records it was moved past, not yet reported.
+    skipped: u64,
 }
 
 impl Receiver for MemoryReceiver {
@@ -177,6 +233,11 @@ impl Receiver for MemoryReceiver {
                 // Records below `base` were acknowledged by this group, so
                 // this receiver has nothing to redeliver from there.
                 let from = self.next.max(state.base);
+                // An observer below `base` was moved past records it never
+                // received.
+                if state.observers.contains(&self.group) {
+                    self.skipped += from - self.next;
+                }
                 if from < state.end() || max == 0 {
                     let skip = usize::try_from(from - state.base).unwrap_or(usize::MAX);
                     let batch: Vec<Delivery> = state
@@ -212,6 +273,10 @@ impl Receiver for MemoryReceiver {
             Some(position) => Ok(state.end().saturating_sub(*position)),
             None => Err(PipeError::Unsubscribed(self.group.clone())),
         })
+    }
+
+    fn skipped(&mut self) -> u64 {
+        std::mem::take(&mut self.skipped)
     }
 }
 

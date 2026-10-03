@@ -42,6 +42,15 @@ stops acknowledging therefore stops its topic once the bound is reached. That
 is deliberate: dropping records a group has not handled would break point 4
 for it. A group that is gone for good is removed explicitly.
 
+6. **Observers.** A group may read as an observer. Senders never wait for
+   it. It is kept what the bound allows beyond what the other groups need,
+   and it acknowledges and resumes like any group. If it falls further
+   behind, it is moved forward to the oldest record kept, and is told how
+   many records it was moved past. Point 4 holds for it only within what is
+   kept. Added on 2026-10-03 for the detector, whose
+   [exit criterion](0021-enrichment-placement.md) is that it never slows the
+   writer: the condition under "When to revisit" was met.
+
 A group can ask its lag: the records in the topic it has not acknowledged.
 Received but unacknowledged records count, since a restart delivers them
 again. The roles report it as a metric, and a rate counts as sustained only
@@ -100,11 +109,18 @@ such as a file the collector tails. Single-binary mode uses the disk log.
 - A role's loop is the same everywhere: receive, handle, write, acknowledge.
 - The writer acknowledges only after a successful flush, and the detector only
   after its alerts are emitted, so neither loses records on a crash.
-- A detector that falls behind by more than a topic's bound slows ingestion
-  rather than losing events. Where that is unacceptable, the bound is raised
-  or the detector reads from a separate topic.
+- A group that holds a topic and falls behind by more than its bound slows
+  ingestion rather than losing records. The writer is such a group.
+- The detector reads as an observer. One that falls behind by more than the
+  bound does not slow ingestion; it is moved past events, which are stored
+  and were not matched as they arrived. The count is a metric, and matching
+  them afterwards from the store is the query of
+  [ADR-0021](0021-enrichment-placement.md) for indicators that arrive late.
+- On disk, records are kept for an observer a whole segment at a time, so a
+  topic takes up to its capacity and one segment. In Kafka they are kept by
+  the topic's retention, which is set well beyond the bound.
 
 ## When to revisit
 
-A deployment needs to keep ingesting while a consumer group is stalled beyond
-the bound, and the operators accept that group losing records.
+A group that must neither slow ingestion nor miss a record: that needs a
+topic of its own with a larger bound, or storage that grows.

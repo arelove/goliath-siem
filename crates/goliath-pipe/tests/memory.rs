@@ -30,6 +30,10 @@ impl Fixture for Memory {
         ready(self.0.subscribe(group))
     }
 
+    fn observe(&self, group: &str) -> impl Future<Output = MemoryReceiver> + Send {
+        ready(self.0.observe(group))
+    }
+
     fn unsubscribe(&self, group: &str) -> impl Future<Output = ()> + Send {
         self.0.unsubscribe(group);
         ready(())
@@ -65,4 +69,37 @@ async fn unsubscribing_releases_what_only_that_group_held() {
     topic.unsubscribe("gone");
     assert!(topic.is_empty());
     assert!(writer.receive(10, SHORT).await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn an_observer_is_kept_the_bound_and_no_more() {
+    let topic = MemoryTopic::new(NonZeroUsize::new(4).unwrap());
+    let mut writer = topic.subscribe("writer");
+    let mut observer = topic.observe("observer");
+    let sender = topic.sender();
+    for _ in 0..3 {
+        sender.send(records(&["a", "b", "c", "d"])).await.unwrap();
+        let batch = receive_all(&mut writer, 4).await;
+        writer.acknowledge(batch[3].offset).await.unwrap();
+        // Everything the writer acknowledged, kept for the observer, up to
+        // the bound.
+        assert_eq!(topic.len(), 4);
+    }
+    // Of 12 records the newest 4 are kept, and it missed the 8 before.
+    let batch = receive_all(&mut observer, 4).await;
+    assert_eq!(batch[0].offset, 8);
+    assert_eq!(observer.skipped(), 8);
+    observer.acknowledge(batch[3].offset).await.unwrap();
+    assert!(topic.is_empty());
+
+    // Subscribed again as a group that holds the topic, senders wait for it.
+    let _holding = topic.subscribe("observer");
+    sender.send(records(&["a", "b", "c", "d"])).await.unwrap();
+    let batch = receive_all(&mut writer, 4).await;
+    writer.acknowledge(batch[3].offset).await.unwrap();
+    let blocked = tokio::time::timeout(SHORT, sender.send(records(&["e"]))).await;
+    assert!(
+        blocked.is_err(),
+        "the topic is full of what it has not read"
+    );
 }

@@ -47,6 +47,10 @@ impl contract::Fixture for Disk {
         std::future::ready(self.topic.subscribe(group).unwrap())
     }
 
+    fn observe(&self, group: &str) -> impl Future<Output = DiskReceiver> + Send {
+        std::future::ready(self.topic.observe(group).unwrap())
+    }
+
     fn unsubscribe(&self, group: &str) -> impl Future<Output = ()> + Send {
         self.topic.unsubscribe(group).unwrap();
         std::future::ready(())
@@ -269,4 +273,64 @@ async fn many_senders_lose_nothing_across_segments() {
         sender.await.unwrap();
     }
     assert!(segments(directory.path()).len() <= 2);
+}
+
+#[tokio::test]
+async fn an_observer_keeps_its_place_across_a_restart_and_only_what_fits() {
+    let directory = tempfile::tempdir().unwrap();
+    // Segments of two records, and a capacity of four.
+    let open = || DiskTopic::open(directory.path(), options(36, 18)).unwrap();
+    let segments = || {
+        fs::read_dir(directory.path())
+            .unwrap()
+            .filter(|entry| {
+                entry
+                    .as_ref()
+                    .unwrap()
+                    .path()
+                    .extension()
+                    .is_some_and(|extension| extension == "log")
+            })
+            .count()
+    };
+    {
+        let topic = open();
+        let mut writer = topic.subscribe("writer").unwrap();
+        let mut observer = topic.observe("observer").unwrap();
+        let sender = topic.sender();
+        sender.send(records(&["a", "b"])).await.unwrap();
+        let batch = observer.receive(10, SHORT).await.unwrap();
+        assert_eq!(payloads(&batch), [b"a", b"b"]);
+        observer.acknowledge(batch[0].offset).await.unwrap();
+        let batch = writer.receive(10, SHORT).await.unwrap();
+        writer.acknowledge(batch[1].offset).await.unwrap();
+    }
+    {
+        // Its place is kept: it receives again what it had not acknowledged.
+        let topic = open();
+        let mut writer = topic.subscribe("writer").unwrap();
+        let mut observer = topic.observe("observer").unwrap();
+        let batch = observer.receive(10, SHORT).await.unwrap();
+        assert_eq!(payloads(&batch), [b"b"]);
+        assert_eq!(observer.skipped(), 0);
+
+        // It reads nothing more while ten records pass: senders do not
+        // wait, and the directory stays within the capacity and a segment.
+        let sender = topic.sender();
+        for _ in 0..5 {
+            sender.send(records(&["c", "d"])).await.unwrap();
+            let batch = writer.receive(10, SHORT).await.unwrap();
+            writer
+                .acknowledge(batch.last().unwrap().offset)
+                .await
+                .unwrap();
+            assert!(segments() <= 4, "{} segments", segments());
+        }
+        let batch = observer.receive(20, SHORT).await.unwrap();
+        let first = batch[0].offset;
+        assert!(first > 2, "moved past what was no longer kept");
+        // Counted from the record after the one it last received.
+        assert_eq!(observer.skipped(), first - 2);
+        assert_eq!(batch.last().unwrap().offset, 11);
+    }
 }
