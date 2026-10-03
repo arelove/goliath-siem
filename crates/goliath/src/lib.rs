@@ -12,6 +12,7 @@
 
 mod api;
 pub mod config;
+mod detector;
 mod metrics;
 mod otlp;
 pub mod raw;
@@ -144,6 +145,8 @@ async fn start_pipeline<T: Topics>(
     stopped: &watch::Receiver<bool>,
 ) -> Result<(), RunError> {
     let outcomes = topics.open("normalized", "writer").await?;
+    // What the detector finds, for the writer to store beside the events.
+    let findings = topics.open("findings", "writer").await?;
 
     // Readers subscribe before anything is sent, so that no record is sent
     // before the group that needs it exists.
@@ -162,15 +165,45 @@ async fn start_pipeline<T: Topics>(
             max_rows: config.writer.max_rows,
             max_delay: config.writer.max_delay(),
         };
-        roles.spawn(roles::write(
-            store,
-            limits,
-            config.writer.threads(),
-            topics.subscribe(&outcomes, "writer").await?,
+        for (name, topic) in [("normalized", &outcomes), ("findings", &findings)] {
+            roles.spawn(roles::write(
+                store.clone(),
+                limits,
+                config.writer.threads(),
+                name,
+                topics.subscribe(topic, "writer").await?,
+                metrics.clone(),
+                stopped.clone(),
+            ));
+        }
+    }
+    if config.roles.contains(&Role::Detector) {
+        let (Some(settings), Some(state)) = (&config.detector, config.detector_state()) else {
+            return Err(RunError::Config("no [detector]".to_owned()));
+        };
+        let intel = detector::Intel::open(settings, &state)?;
+        roles.spawn(detector::detect(
+            intel.matcher(),
+            settings.threads(),
+            topics.subscribe(&outcomes, "detector").await?,
+            T::sender(&findings),
             metrics.clone(),
             stopped.clone(),
         ));
+        roles.spawn(detector::refresh(intel, metrics.clone(), stopped.clone()));
     }
+    start_sources(config, topics, &outcomes, metrics, roles, stopped).await
+}
+
+/// Starts, for each source, the roles that take and normalize its records.
+async fn start_sources<T: Topics>(
+    config: &Config,
+    topics: &T,
+    outcomes: &T::Topic,
+    metrics: &Metrics,
+    roles: &mut JoinSet<Result<(), RunError>>,
+    stopped: &watch::Receiver<bool>,
+) -> Result<(), RunError> {
     let mut over_http = std::collections::BTreeMap::new();
     for source in &config.sources {
         let normalizer = source.normalizer()?;
@@ -183,7 +216,7 @@ async fn start_pipeline<T: Topics>(
                 normalizer.clone(),
                 config.normalizer.threads(),
                 receiver,
-                T::sender(&outcomes),
+                T::sender(outcomes),
                 metrics.clone(),
                 stopped.clone(),
             ));

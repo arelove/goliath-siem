@@ -256,6 +256,89 @@ max_delay_ms = 100
 
 /// Sends one HTTP/1.1 request to the API and returns the status and the JSON
 /// body.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn an_indicator_match_is_stored_as_a_finding_beside_its_event() {
+    let Some(url) = clickhouse_url() else {
+        return;
+    };
+    let user = clickhouse_user();
+    let database = format!("goliath_test_detector_{}", std::process::id());
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("goliath.toml");
+    std::fs::write(
+        &path,
+        format!(
+            r#"
+roles = ["collector", "normalizer", "detector", "writer"]
+data = "data"
+
+[[sources]]
+definition = "sysmon"
+inbox = "inbox/sysmon"
+
+[[detector.feeds]]
+definition = "feodo-tracker"
+file = "feodo.csv"
+
+[store]
+url = "{url}"
+database = "{database}"
+user = "{user}"
+password_env = "GOLIATH_CLICKHOUSE_PASSWORD"
+retention_days = 30
+
+[writer]
+max_rows = 1000
+max_delay_ms = 100
+"#
+        ),
+    )
+    .unwrap();
+    // The address the fixture's network connection goes to, online until
+    // long after the test runs.
+    std::fs::write(
+        directory.path().join("feodo.csv"),
+        "\"first_seen_utc\",\"dst_ip\",\"dst_port\",\"c2_status\",\"last_online\",\"malware\"\n\
+         \"2026-01-01 00:00:00\",\"192.0.2.10\",\"443\",\"online\",\"2099-01-01\",\"Example\"\n",
+    )
+    .unwrap();
+    let client = connect(&url).with_database(&database);
+    let inbox = directory.path().join("inbox/sysmon");
+    let (events, _) = expected(KINDS);
+
+    let (stop, running) = start(Config::load(&path).unwrap());
+    drop_file(&inbox, "001-kinds.json", KINDS);
+    // Every event is stored as it was, and one finding beside them.
+    eventually(&client, "SELECT count() FROM events", events + 1).await;
+    eventually(
+        &client,
+        "SELECT count() FROM events WHERE class_uid = 2004",
+        1,
+    )
+    .await;
+    stop.send(()).unwrap();
+    running.await.unwrap().unwrap();
+
+    // Restarted with the same file: the same finding, stored once.
+    let (stop, running) = start(Config::load(&path).unwrap());
+    drop_file(&inbox, "002-kinds-again.json", KINDS);
+    eventually(&client, "SELECT count() FROM events", 2 * (events + 1)).await;
+    eventually(
+        &client,
+        "SELECT count() FROM events FINAL WHERE class_uid = 2004",
+        1,
+    )
+    .await;
+    stop.send(()).unwrap();
+    running.await.unwrap().unwrap();
+
+    connect(&url)
+        .query(&format!("DROP DATABASE IF EXISTS {database}"))
+        .execute()
+        .await
+        .unwrap();
+}
+
 async fn http(port: u16, method: &str, path: &str, token: &str, body: &str) -> (u16, Value) {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 

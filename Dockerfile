@@ -15,10 +15,11 @@ COPY ui/ ./
 RUN pnpm build
 
 # Build stage: the toolchain, what librdkafka's configure script needs for
-# the Kafka feature, and cargo caches kept between builds by BuildKit.
+# the Kafka feature, clang for generating RocksDB's bindings, and cargo
+# caches kept between builds by BuildKit.
 FROM rust:1.98-slim-bookworm AS build
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends g++ make perl python3 \
+    && apt-get install --yes --no-install-recommends clang g++ libclang-dev make perl python3 \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY . .

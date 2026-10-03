@@ -157,6 +157,19 @@ pub struct Normalized {
     pub issues: Vec<Issue>,
 }
 
+impl Normalized {
+    /// An event made by the platform itself, such as a finding, with the
+    /// identity `id` and no issues.
+    pub fn new(id: EventId, event: Value, kind: impl Into<String>) -> Self {
+        Self {
+            id,
+            event,
+            kind: kind.into(),
+            issues: Vec::new(),
+        }
+    }
+}
+
 /// The identity of a record: 128 bits of the BLAKE3 hash of the source's
 /// name and the record's raw bytes.
 ///
