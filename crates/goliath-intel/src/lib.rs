@@ -33,8 +33,10 @@ mod allow;
 #[cfg(feature = "rocksdb")]
 mod bloom;
 mod feed;
+mod finding;
 mod key;
 mod matcher;
+mod observe;
 #[cfg(feature = "rocksdb")]
 mod rocks;
 mod stix;
@@ -42,8 +44,10 @@ mod store;
 
 pub use allow::{Allowed, Allowlist, Allowlists, Entry};
 pub use feed::{Csv, Feed, Format, Loaded, Parsed};
+pub use finding::{finding, finding_uid};
 pub use key::{Key, Kind, PrefixLengths};
 pub use matcher::{Hit, Matcher};
+pub use observe::{Observed, observables};
 #[cfg(feature = "rocksdb")]
 pub use rocks::RocksStore;
 pub use store::{MemoryStore, Store};

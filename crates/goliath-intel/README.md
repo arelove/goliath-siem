@@ -44,6 +44,26 @@ and says what it became, to check a definition against the feed as it is
 today. This crate reads publications; fetching them on a schedule is the
 detector's.
 
+## From an event to a finding
+
+`observables` takes the values of an OCSF event that an indicator could
+name. It finds them by the type the schema gives each attribute, `ip_t`,
+`hostname_t`, `url_t`, `file_hash_t`, and the rest, so it follows the events
+as the schema describes them and needs no list of paths. A fingerprint is a
+file hash, a certificate hash, or a JA3 by where it is and by its algorithm.
+
+`finding` turns a hit into an OCSF Detection Finding: every feed that asserts
+the indicator in `osint`, the event and the attribute that held the value in
+`evidences`, and the status Suppressed with the allowlist entry when one
+applies. Its identifier depends only on the event and the indicator, so an
+event read twice gives one finding.
+
+A test holds, for each shipped source definition, the kinds of observable
+its events give. Today every source gives addresses, most give host names
+and file paths, Suricata gives file hashes, certificate hashes, and JA3, and
+none gives a URL; Sysmon keeps its hashes in one string under `unmapped`,
+where no indicator reaches them yet.
+
 ## Stores
 
 Two stores hold indicators behind one trait:

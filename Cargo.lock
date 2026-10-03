@@ -833,6 +833,8 @@ dependencies = [
 name = "goliath-intel"
 version = "0.1.0"
 dependencies = [
+ "blake3",
+ "goliath-ocsf",
  "goliath-sigma",
  "jiff",
  "rocksdb",
