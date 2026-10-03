@@ -167,6 +167,12 @@ impl<'a> Walk<'a> {
 /// Which hash a fingerprint holds: as its `algorithm_id` says, or else by
 /// its length.
 fn hash(text: &str, fingerprint: Option<&Value>) -> Option<Kind> {
+    let named = fingerprint
+        .and_then(|fingerprint| fingerprint.get("algorithm"))
+        .and_then(Value::as_str);
+    if named.is_some_and(|name| name.eq_ignore_ascii_case("imphash")) {
+        return Some(Kind::Imphash);
+    }
     let algorithm = fingerprint
         .and_then(|fingerprint| fingerprint.get("algorithm_id"))
         .and_then(Value::as_u64);

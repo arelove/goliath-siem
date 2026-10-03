@@ -59,10 +59,9 @@ applies. Its identifier depends only on the event and the indicator, so an
 event read twice gives one finding.
 
 A test holds, for each shipped source definition, the kinds of observable
-its events give. Today every source gives addresses, most give host names
-and file paths, Suricata gives file hashes, certificate hashes, and JA3, and
-none gives a URL; Sysmon keeps its hashes in one string under `unmapped`,
-where no indicator reaches them yet.
+its events give. Today every source but Falco gives addresses, most give host
+names and file paths, Sysmon and Suricata give file hashes, Suricata also
+certificate hashes and JA3, and none gives a URL yet.
 
 ## Stores
 

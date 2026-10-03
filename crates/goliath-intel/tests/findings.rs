@@ -451,8 +451,7 @@ fn each_shipped_source_gives_the_kinds_its_events_hold() {
             .into_owned();
         found.insert(name, kinds.into_iter().collect::<Vec<_>>().join(" "));
     }
-    // No source gives a URL, and only Suricata a file hash: Sysmon's hashes
-    // stay under `unmapped`, as one string for Sigma rules to read.
+    // No source gives a URL yet.
     let expected = [
         ("auditd", "domain file-path ip user"),
         ("cloudtrail", "ip user"),
@@ -464,8 +463,11 @@ fn each_shipped_source_gives_the_kinds_its_events_hold() {
             "suricata",
             "certificate-hash domain file-name ip ja3 sha256",
         ),
-        ("sysmon", "domain file-path ip registry-key user"),
-        ("sysmon-flat", "domain file-path ip registry-key user"),
+        ("sysmon", "domain file-path ip registry-key sha256 user"),
+        (
+            "sysmon-flat",
+            "domain file-path ip registry-key sha256 user",
+        ),
         ("windows-security", "domain file-path ip user"),
         ("zeek", "domain file-name ip user"),
     ];
