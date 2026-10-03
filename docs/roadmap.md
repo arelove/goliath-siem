@@ -260,16 +260,15 @@ Enrichment that makes an alert actionable rather than a row.
 | `goliath-intel` | STIX 2.1 model, feed connectors, bloom-prefiltered RocksDB lookup, allowlists, provenance ([ADR-0008](adr/0008-threat-intelligence-model.md)) |
 | `goliath-attack` | Versioned framework loader, technique mapping, coverage versus capability ([ADR-0009](adr/0009-attack-knowledge-model.md)) |
 | `goliath-enrich` | Entity and asset snapshot into local RocksDB, refresh scheduling |
+| Detector role | Reads the event topic beside the writer, matches indicators, and writes each match as a Detection Finding with its provenance; suppressed matches are stored too ([ADR-0021](adr/0021-enrichment-placement.md)) |
 | Reference lists | An importer for curated community lists in CSV, starting with [mthcht/awesome-lists](https://github.com/mthcht/awesome-lists) (MIT): vulnerable drivers, named pipes, services and scheduled tasks of known tools, suspicious TLDs and ASNs, VPN and proxy ranges, dynamic DNS domains, offensive tool keywords, user agents. Each list is pinned to a commit, typed as indicators, allowlist, or context, and keeps its source and licence as provenance, so an enrichment says which list and which version matched |
 
-**Exit criterion:** 10^8 indicators matched against the event stream with no
-measurable reduction in throughput, and an ATT&CK Navigator layer exported that
-distinguishes covered techniques from techniques lacking a data source.
-
-**Review note (2026-09-27):** "no measurable reduction" needs a tolerance,
-confidence interval, indicator mix, hit rate, and memory budget. A finite
-lookup cannot promise zero cost. Benchmark cold and warm caches separately
-and include refresh pressure at both indicator counts named in architecture.md.
+**Exit criterion:** the detector matches 10^8 indicators at no less than 90%
+of the events a second a core it reaches with 10^3, within the memory, disk,
+cold start, feed refresh, and correctness budgets of
+[ADR-0021](adr/0021-enrichment-placement.md), and without changing the
+writer's rate; and an ATT&CK Navigator layer is exported that distinguishes
+covered techniques from techniques lacking a data source.
 
 ## M4.5 - Entity graph
 
@@ -306,7 +305,7 @@ links of an alert's subject is returned in under one second.
 
 | Deliverable | Detail |
 | --- | --- |
-| Streaming detector | The match engine as a role, with rule hot reload |
+| Streaming detector | The match engine in the detector role of M4, with rule hot reload |
 | Correlation in the stream | Sigma correlation rules (event count, value count, temporal, ordered temporal) evaluated as events arrive, with window state in RocksDB, not only as scheduled SQL |
 | Backtesting | Any rule run over stored history before it is enabled: how often it would have fired, on which events, and how many alerts a day it would add |
 | `goliath-sigma-clickhouse` | Sigma to ClickHouse SQL compilation, moved from M1, checked against the reference evaluator on stored events |

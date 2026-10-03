@@ -62,6 +62,11 @@ delays alerts but never stops events from being stored. Once the detector
 recovers, it resumes from its own offset in the buffer, so no event goes
 unevaluated.
 
+Indicators are matched and context is added in the detector, not in the
+normalizer or the writer. A match is written as a finding of its own, through
+a topic the writer stores like events, and a stored event is never rewritten.
+See [ADR-0021](adr/0021-enrichment-placement.md).
+
 Storage decisions are in [ADR-0002](adr/0002-storage-stack.md); the boundary
 between layers is [ADR-0003](adr/0003-data-boundary.md).
 
