@@ -12,6 +12,7 @@ orchestration, and incident handling in one system.
 | [sigma-coverage.md](sigma-coverage.md) | How much of the SigmaHQ repository loads and fires on real attack events |
 | [benchmarks.md](benchmarks.md) | How the engine's speed is measured, and how CI stops regressions |
 | [benchmark-rig.md](benchmark-rig.md) | Running the benchmark rig against the whole platform, and how its report decides |
+| [lab.md](lab.md) | A lab on a home network: one machine runs the platform, and others send it their Sysmon and Security logs over HTTPS |
 | [adr/](adr/) | Architecture decision records, one file per decision |
 
 ## Decisions

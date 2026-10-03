@@ -1,0 +1,32 @@
+# A lab on a home network: compose.yaml, with the receiver published to the
+# network over HTTPS so that other machines send it their Windows event logs.
+#
+#   scripts/lab/setup.ps1 -Address 192.168.1.10    # once, on this machine
+#   docker compose -f compose.yaml -f compose.lab.yaml up -d --build
+#
+# Senders run scripts/lab/send-windows-logs.ps1. See docs/lab.md.
+#
+# Only the receiver's port is open to the network. The interface and
+# ClickHouse stay on 127.0.0.1, as in compose.yaml.
+
+services:
+  goliath:
+    volumes:
+      - ./deploy/lab/goliath.toml:/etc/goliath/goliath.toml:ro
+    ports:
+      - "8514:8514"
+    secrets:
+      - receiver_certificate
+      - receiver_key
+      - sysmon_token
+      - security_token
+
+secrets:
+  receiver_certificate:
+    file: ./deploy/lab/tls/receiver.crt
+  receiver_key:
+    file: ./deploy/lab/tls/receiver.key
+  sysmon_token:
+    environment: SYSMON_TOKEN
+  security_token:
+    environment: SECURITY_TOKEN

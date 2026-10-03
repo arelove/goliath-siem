@@ -54,3 +54,6 @@ Thumbs.db
 
 # Obsidian vault metadata
 .obsidian/
+
+# The lab's certificate, made by scripts/lab/setup.ps1
+/deploy/lab/tls/
