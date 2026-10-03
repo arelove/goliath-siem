@@ -774,6 +774,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "goliath-intel"
+version = "0.1.0"
+dependencies = [
+ "goliath-sigma",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "goliath-match"
 version = "0.2.6"
 dependencies = [
