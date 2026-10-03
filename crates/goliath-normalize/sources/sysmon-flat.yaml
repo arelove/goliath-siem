@@ -45,6 +45,8 @@ kinds:
     class: { class_uid: 1007, activity_id: 1 }
     fields:
       process.file.path: Image
+      # Also kept under `unmapped` as one string, where Sigma rules read it.
+      process.file.hashes: { from: Hashes, as: fingerprints }
       process.cmd_line: CommandLine
       process.pid: { from: ProcessId, as: integer }
       process.uid: ProcessGuid
@@ -95,6 +97,7 @@ kinds:
       actor.process.uid: ProcessGuid
       actor.user.name: User
       module.file.path: ImageLoaded
+      module.file.hashes: { from: Hashes, as: fingerprints }
       module.file.product.name: Product
       module.file.company_name: Company
       module.file.desc: Description

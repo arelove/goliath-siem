@@ -24,6 +24,13 @@
         "file": {
           "company_name": "Microsoft Corporation",
           "desc": "Notepad",
+          "hashes": [
+            {
+              "algorithm": "SHA-256",
+              "algorithm_id": 3,
+              "value": "0000000000000000000000000000000000000000000000000000000000000001"
+            }
+          ],
           "path": "C:\\Windows\\System32\\notepad.exe",
           "product": {
             "name": "Microsoft® Windows® Operating System"
@@ -175,6 +182,13 @@
         "file": {
           "company_name": "Microsoft Corporation",
           "desc": "Microsoft UxTheme Library",
+          "hashes": [
+            {
+              "algorithm": "SHA-256",
+              "algorithm_id": 3,
+              "value": "0000000000000000000000000000000000000000000000000000000000000002"
+            }
+          ],
           "path": "C:\\Windows\\System32\\uxtheme.dll",
           "product": {
             "name": "Microsoft® Windows® Operating System"

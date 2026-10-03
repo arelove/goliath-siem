@@ -47,6 +47,8 @@ kinds:
     class: { class_uid: 1007, activity_id: 1 }
     fields:
       process.file.path: Event.EventData.Image
+      # Also kept under `unmapped` as one string, where Sigma rules read it.
+      process.file.hashes: { from: Event.EventData.Hashes, as: fingerprints }
       process.cmd_line: Event.EventData.CommandLine
       process.pid: { from: Event.EventData.ProcessId, as: integer }
       process.uid: Event.EventData.ProcessGuid
@@ -97,6 +99,7 @@ kinds:
       actor.process.uid: Event.EventData.ProcessGuid
       actor.user.name: Event.EventData.User
       module.file.path: Event.EventData.ImageLoaded
+      module.file.hashes: { from: Event.EventData.Hashes, as: fingerprints }
       module.file.product.name: Event.EventData.Product
       module.file.company_name: Event.EventData.Company
       module.file.desc: Event.EventData.Description

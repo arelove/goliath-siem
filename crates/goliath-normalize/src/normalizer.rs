@@ -593,7 +593,9 @@ impl Normalizer {
             else {
                 continue;
             };
-            consumed.push(path);
+            if !field.source.keeps_source() {
+                consumed.push(path);
+            }
             match field.source.convert(found) {
                 Ok(value) => set(&mut event, field.target.segments(), value),
                 Err(reason) => {
@@ -801,14 +803,15 @@ fn check_schema(
             continue;
         }
         let attribute = found.attribute;
-        let fits = !attribute.is_array()
-            && match writes {
-                Writes::Boolean => attribute.base() == Base::Boolean,
-                Writes::Integer => matches!(attribute.base(), Base::Integer | Base::Long),
-                Writes::Text => attribute.base() == Base::String,
-                Writes::Timestamp => attribute.type_name() == "timestamp_t",
-                Writes::Ip => attribute.type_name() == "ip_t",
-            };
+        let fits = match writes {
+            Writes::Fingerprints => attribute.is_array() && attribute.type_name() == "fingerprint",
+            _ if attribute.is_array() => false,
+            Writes::Boolean => attribute.base() == Base::Boolean,
+            Writes::Integer => matches!(attribute.base(), Base::Integer | Base::Long),
+            Writes::Text => attribute.base() == Base::String,
+            Writes::Timestamp => attribute.type_name() == "timestamp_t",
+            Writes::Ip => attribute.type_name() == "ip_t",
+        };
         if !fits {
             let holds = match (attribute.is_array(), attribute.base()) {
                 (true, _) => format!("an array of `{}`", attribute.type_name()),
@@ -895,6 +898,7 @@ enum Writes {
     Text,
     Timestamp,
     Ip,
+    Fingerprints,
 }
 
 impl Writes {
@@ -915,6 +919,7 @@ impl Writes {
             Self::Text => "text",
             Self::Timestamp => "a timestamp",
             Self::Ip => "an IP address",
+            Self::Fingerprints => "an array of fingerprints",
         }
     }
 }
@@ -937,8 +942,20 @@ impl Source {
                     Writes::Timestamp
                 }
                 Coercion::Ip => Writes::Ip,
+                Coercion::Fingerprints => Writes::Fingerprints,
             }),
         }
+    }
+
+    /// Whether the source value also stays under `unmapped`, as written.
+    fn keeps_source(&self) -> bool {
+        matches!(
+            self,
+            Self::Path {
+                coercion: Some(Coercion::Fingerprints),
+                ..
+            }
+        )
     }
 }
 
@@ -1058,11 +1075,49 @@ fn coerce(value: &Value, coercion: Option<Coercion>) -> Result<Value, String> {
             .map(|_| value.clone())
             .map_err(|_| format!("`{text}` is not an IP address")),
         (Coercion::UnixSeconds, Value::Number(number)) => unix_seconds(&number.to_string()),
+        (Coercion::Fingerprints, Value::String(text)) => fingerprints(text),
         (coercion, other) => Err(format!(
             "cannot convert {} to {coercion:?}",
             describe(other)
         )),
     }
+}
+
+/// File hashes written as `NAME=hash` joined by commas, as OCSF
+/// fingerprints. A name OCSF has no algorithm for, such as `IMPHASH`, is
+/// `Other`, with the name kept.
+fn fingerprints(text: &str) -> Result<Value, String> {
+    let mut found = Vec::new();
+    for pair in text
+        .split(',')
+        .map(str::trim)
+        .filter(|pair| !pair.is_empty())
+    {
+        let Some((name, hash)) = pair.split_once('=') else {
+            return Err(format!("`{pair}` is not a hash written as NAME=hash"));
+        };
+        let name = name.trim().to_ascii_uppercase();
+        let hash = hash.trim();
+        if hash.is_empty() || !hash.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            return Err(format!("`{pair}` does not hold a hexadecimal hash"));
+        }
+        let (algorithm, algorithm_id) = match name.as_str() {
+            "MD5" => ("MD5", 1),
+            "SHA1" | "SHA-1" => ("SHA-1", 2),
+            "SHA256" | "SHA-256" => ("SHA-256", 3),
+            "SHA512" | "SHA-512" => ("SHA-512", 4),
+            other => (other, 99),
+        };
+        found.push(serde_json::json!({
+            "algorithm": algorithm,
+            "algorithm_id": algorithm_id,
+            "value": hash,
+        }));
+    }
+    if found.is_empty() {
+        return Err("it holds no hash".to_owned());
+    }
+    Ok(Value::Array(found))
 }
 
 /// An RFC 3339 time, with or without an offset, as milliseconds; one

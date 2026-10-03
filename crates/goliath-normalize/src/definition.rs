@@ -180,6 +180,13 @@ pub enum Coercion {
     /// `2026-09-28T12:00:01`, taken as UTC, as milliseconds. A time with an
     /// offset is read with it.
     UtcTimestamp,
+    /// File hashes as Sysmon writes them in one string, such as
+    /// `SHA256=...,MD5=...,IMPHASH=...`, as an array of OCSF fingerprints,
+    /// each with its algorithm. The target is an array of fingerprints, such
+    /// as `process.file.hashes`. Unlike other fields, the source is also
+    /// kept under `unmapped` as written, where rules that read the string
+    /// find it.
+    Fingerprints,
 }
 
 /// A constant or a value to compare with, as YAML writes it.
