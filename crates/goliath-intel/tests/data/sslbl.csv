@@ -1,0 +1,7 @@
+################################################################
+# abuse.ch SSLBL SSL Certificate Blacklist (SHA1 Fingerprints) #
+################################################################
+#
+# Listingdate,SHA1,Listingreason
+2026-10-03 06:27:08,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,Example C&C
+2026-10-02 16:02:09,bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,Example C&C

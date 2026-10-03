@@ -1,0 +1,10 @@
+################################################################
+# ThreatFox IOCs: recent additions - CSV format                #
+################################################################
+#
+# "first_seen_utc","ioc_id","ioc_value","ioc_type","threat_type","fk_malware","malware_alias","malware_printable","last_seen_utc","confidence_level","is_compromised","reference","tags","anonymous","reporter"
+"2026-10-03 09:45:06", "1948396", "203.0.113.7:56003", "ip:port", "botnet_cc", "win.example", "None", "Example", "", "75", "False", "None", "RAT", "0", "someone"
+"2026-10-03 09:44:51", "1948393", "c2.bad.example.com", "domain", "botnet_cc", "win.example", "None", "Example", "2026-10-03 10:00:00", "100", "False", "None", "RAT", "0", "someone"
+"2026-10-03 09:44:41", "1948391", "https://bad.example.com/gate", "url", "botnet_cc", "win.example", "None", "Example", "", "50", "False", "None", "None", "0", "someone"
+"2026-10-03 09:44:30", "1948390", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "sha256_hash", "payload", "win.example", "None", "Example", "", "", "False", "None", "None", "0", "someone"
+"2026-10-03 09:44:20", "1948389", "abcdef", "sha3_384_hash", "payload", "win.example", "None", "Example", "", "75", "False", "None", "None", "0", "someone"

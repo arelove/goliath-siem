@@ -834,8 +834,10 @@ name = "goliath-intel"
 version = "0.1.0"
 dependencies = [
  "goliath-sigma",
+ "jiff",
  "rocksdb",
  "serde",
+ "serde_json",
  "tempfile",
  "thiserror",
 ]

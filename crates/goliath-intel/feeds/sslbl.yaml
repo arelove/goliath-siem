@@ -1,0 +1,17 @@
+# abuse.ch SSLBL: SHA-1 fingerprints of TLS certificates used by botnet
+# command and control servers. The header row is in a comment, so the
+# columns are named here.
+
+name: sslbl
+description: Certificates of botnet command and control servers, listed by abuse.ch SSLBL
+url: https://sslbl.abuse.ch/blacklist/sslblacklist.csv
+licence: CC0-1.0
+confidence: 90
+refresh_minutes: 60
+valid_days: 365
+format: csv
+csv:
+  columns: [listing_date, sha1, listing_reason]
+  value: sha1
+  kind: certificate-hash
+  first_seen: listing_date

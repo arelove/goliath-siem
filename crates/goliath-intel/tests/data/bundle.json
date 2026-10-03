@@ -1,0 +1,67 @@
+{
+  "type": "bundle",
+  "id": "bundle--00000000-0000-4000-8000-000000000001",
+  "objects": [
+    {
+      "type": "identity",
+      "spec_version": "2.1",
+      "id": "identity--00000000-0000-4000-8000-000000000002",
+      "name": "Example"
+    },
+    {
+      "type": "indicator",
+      "spec_version": "2.1",
+      "id": "indicator--00000000-0000-4000-8000-000000000003",
+      "created": "2026-09-01T00:00:00Z",
+      "modified": "2026-09-02T00:00:00Z",
+      "pattern": "[domain-name:value = 'Bad.Example.com'] OR [ipv4-addr:value = '203.0.113.7']",
+      "pattern_type": "stix",
+      "valid_from": "2026-09-01T00:00:00Z",
+      "valid_until": "2026-12-01T00:00:00Z",
+      "confidence": 85
+    },
+    {
+      "type": "indicator",
+      "spec_version": "2.1",
+      "id": "indicator--00000000-0000-4000-8000-000000000004",
+      "created": "2026-09-01T00:00:00Z",
+      "modified": "2026-09-01T00:00:00Z",
+      "pattern": "[file:hashes.'SHA-256' = 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB' OR ipv4-addr:value = '198.51.100.0/24']",
+      "pattern_type": "stix",
+      "valid_from": "2026-09-01T00:00:00Z"
+    },
+    {
+      "type": "indicator",
+      "spec_version": "2.1",
+      "id": "indicator--00000000-0000-4000-8000-000000000005",
+      "pattern": "[ipv4-addr:value = '203.0.113.8' AND domain-name:value = 'both.example.com']",
+      "pattern_type": "stix",
+      "valid_from": "2026-09-01T00:00:00Z"
+    },
+    {
+      "type": "indicator",
+      "spec_version": "2.1",
+      "id": "indicator--00000000-0000-4000-8000-000000000006",
+      "pattern": "[domain-name:value = 'revoked.example.com']",
+      "pattern_type": "stix",
+      "valid_from": "2026-09-01T00:00:00Z",
+      "revoked": true
+    },
+    {
+      "type": "indicator",
+      "spec_version": "2.1",
+      "id": "indicator--00000000-0000-4000-8000-000000000007",
+      "pattern": "alert tcp any any -> any any (msg:\"x\"; sid:1;)",
+      "pattern_type": "snort",
+      "valid_from": "2026-09-01T00:00:00Z"
+    },
+    {
+      "type": "indicator",
+      "spec_version": "2.1",
+      "id": "indicator--00000000-0000-4000-8000-000000000008",
+      "pattern": "[process:command_line = 'something']",
+      "pattern_type": "stix",
+      "valid_from": "2026-09-01T00:00:00Z"
+    }
+  ]
+}
