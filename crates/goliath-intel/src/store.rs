@@ -24,7 +24,7 @@ pub trait Store {
     fn prefix_lengths(&self) -> PrefixLengths;
 
     /// Replaces everything `feed` asserted with `indicators`, each asserted
-    /// at the feed's `version`, and returns how many it now asserts. An
+    /// at the feed's `version`, and returns how many were given. An
     /// indicator named twice keeps the later assertion.
     ///
     /// # Errors
@@ -101,12 +101,13 @@ impl Store for MemoryStore {
         // Gathered before the lock is taken, so readers wait for the swap
         // alone and not for the feed to be read.
         let mut incoming: HashMap<Key, Assertion> = HashMap::new();
+        let mut count = 0;
         for (key, mut assertion) in indicators {
+            count += 1;
             feed.clone_into(&mut assertion.feed);
             version.clone_into(&mut assertion.version);
             incoming.insert(key, assertion);
         }
-        let count = incoming.len();
 
         let mut inner = self.inner.write().unwrap_or_else(PoisonError::into_inner);
         inner.indicators.retain(|_, assertions| {

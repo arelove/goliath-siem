@@ -190,7 +190,8 @@ fn a_feed_is_replaced_whole_and_leaves_the_others() {
             ],
         )
         .expect("replaced");
-    assert_eq!(count, 1);
+    // Counted as given.
+    assert_eq!(count, 2);
 
     let feeds = |key: &Key| -> Vec<(String, String, u8)> {
         store

@@ -30,13 +30,19 @@
 //! ```
 
 mod allow;
+#[cfg(feature = "rocksdb")]
+mod bloom;
 mod key;
 mod matcher;
+#[cfg(feature = "rocksdb")]
+mod rocks;
 mod store;
 
 pub use allow::{Allowed, Allowlist, Allowlists, Entry};
 pub use key::{Key, Kind, PrefixLengths};
 pub use matcher::{Hit, Matcher};
+#[cfg(feature = "rocksdb")]
+pub use rocks::RocksStore;
 pub use store::{MemoryStore, Store};
 
 /// What one feed asserts of an indicator: the provenance a hit is reported
