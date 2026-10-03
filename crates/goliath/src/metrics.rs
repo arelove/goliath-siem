@@ -59,6 +59,22 @@ struct Request {
     answer: &'static str,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, EncodeLabelSet)]
+struct Feed {
+    feed: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, EncodeLabelSet)]
+struct FeedRefresh {
+    feed: String,
+    result: &'static str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, EncodeLabelSet)]
+struct Hit {
+    status: &'static str,
+}
+
 /// The metrics of one process, cheap to clone.
 #[derive(Clone)]
 pub(crate) struct Metrics(Arc<Inner>);
@@ -73,6 +89,12 @@ struct Inner {
     dead_letters: Family<DeadLetter, Counter>,
     stored: Counter,
     lag: Family<Reader, Gauge>,
+    detected_events: Counter,
+    detected_observables: Counter,
+    indicator_hits: Family<Hit, Counter>,
+    feed_refreshes: Family<FeedRefresh, Counter>,
+    feed_indicators: Family<Feed, Gauge>,
+    feed_published_timestamp_seconds: Family<Feed, Gauge>,
     receipt_to_stored_seconds: Histogram,
     flush_seconds: Histogram,
     searches: Family<Answer, Counter>,
@@ -123,6 +145,12 @@ impl Metrics {
         let dead_letters = Family::default();
         let stored = Counter::default();
         let lag = Family::default();
+        let detected_events = Counter::default();
+        let detected_observables = Counter::default();
+        let indicator_hits = Family::default();
+        let feed_refreshes = Family::default();
+        let feed_indicators = Family::default();
+        let feed_published_timestamp_seconds = Family::default();
         // From 10 milliseconds to about five minutes.
         let receipt_to_stored_seconds = Histogram::new(exponential_buckets(0.01, 2.0, 15));
         // From a millisecond to about 30 seconds.
@@ -198,6 +226,36 @@ impl Metrics {
             flush_seconds.clone(),
         );
         registry.register(
+            "detected_events",
+            "Events the detector looked at",
+            detected_events.clone(),
+        );
+        registry.register(
+            "detected_observables",
+            "Observables the detector looked up among the indicators",
+            detected_observables.clone(),
+        );
+        registry.register(
+            "indicator_hits",
+            "Observables an indicator names, reported or suppressed by an allowlist",
+            indicator_hits.clone(),
+        );
+        registry.register(
+            "feed_refreshes",
+            "Publications of a feed read, by whether they were loaded or refused",
+            feed_refreshes.clone(),
+        );
+        registry.register(
+            "feed_indicators",
+            "Indicators a feed asserts, as last loaded",
+            feed_indicators.clone(),
+        );
+        registry.register(
+            "feed_published_timestamp_seconds",
+            "When the publication of a feed last loaded was written; a feed is stale when this stops moving",
+            feed_published_timestamp_seconds.clone(),
+        );
+        registry.register(
             "searches",
             "Searches the API answered, by how",
             searches.clone(),
@@ -217,6 +275,12 @@ impl Metrics {
             dead_letters,
             stored,
             lag,
+            detected_events,
+            detected_observables,
+            indicator_hits,
+            feed_refreshes,
+            feed_indicators,
+            feed_published_timestamp_seconds,
             receipt_to_stored_seconds,
             flush_seconds,
             searches,
@@ -329,6 +393,48 @@ impl Metrics {
                 reader,
             })
             .set(i64::try_from(records).unwrap_or(i64::MAX));
+    }
+
+    /// What the detector found in a batch.
+    pub(crate) fn detected(&self, tally: &crate::detector::Tally) {
+        self.0.detected_events.inc_by(tally.events);
+        self.0.detected_observables.inc_by(tally.observables);
+        for (status, count) in [
+            ("reported", tally.hits - tally.suppressed),
+            ("suppressed", tally.suppressed),
+        ] {
+            if count > 0 {
+                self.0
+                    .indicator_hits
+                    .get_or_create(&Hit { status })
+                    .inc_by(count);
+            }
+        }
+    }
+
+    /// A publication of `feed` was read: loaded with so many indicators and
+    /// written at that time, in seconds since the epoch, or refused.
+    pub(crate) fn feed_refreshed(&self, feed: &str, loaded: bool, now: Option<(usize, i64)>) {
+        self.0
+            .feed_refreshes
+            .get_or_create(&FeedRefresh {
+                feed: feed.to_owned(),
+                result: if loaded { "loaded" } else { "refused" },
+            })
+            .inc();
+        if let Some((indicators, published)) = now {
+            let feed = Feed {
+                feed: feed.to_owned(),
+            };
+            self.0
+                .feed_indicators
+                .get_or_create(&feed)
+                .set(i64::try_from(indicators).unwrap_or(i64::MAX));
+            self.0
+                .feed_published_timestamp_seconds
+                .get_or_create(&feed)
+                .set(published);
+        }
     }
 
     pub(crate) fn flushed(&self, took: Duration) {

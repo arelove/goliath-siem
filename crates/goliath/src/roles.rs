@@ -20,10 +20,10 @@ use crate::RunError;
 use crate::metrics::Metrics;
 
 /// How long a loop waits for records before checking for shutdown.
-const POLL: Duration = Duration::from_millis(200);
+pub(crate) const POLL: Duration = Duration::from_millis(200);
 
 /// Records a normalizer or writer takes at once.
-const BATCH: usize = 1024;
+pub(crate) const BATCH: usize = 1024;
 
 /// How often a reader reports how far behind it is. Asking costs a request
 /// to the broker when topics are in Kafka.
@@ -31,14 +31,14 @@ const LAG_EVERY: Duration = Duration::from_secs(1);
 
 /// Reports a reader's lag at most every [`LAG_EVERY`]. A failure to learn it
 /// is not the reader's failure: the next receive reports what is wrong.
-struct Lag {
+pub(crate) struct Lag {
     topic: String,
     reader: &'static str,
     last: Option<std::time::Instant>,
 }
 
 impl Lag {
-    fn new(topic: String, reader: &'static str) -> Self {
+    pub(crate) fn new(topic: String, reader: &'static str) -> Self {
         Self {
             topic,
             reader,
@@ -46,7 +46,7 @@ impl Lag {
         }
     }
 
-    async fn report(&mut self, receiver: &impl Receiver, metrics: &Metrics) {
+    pub(crate) async fn report(&mut self, receiver: &impl Receiver, metrics: &Metrics) {
         if self.last.is_some_and(|last| last.elapsed() < LAG_EVERY) {
             return;
         }
@@ -269,6 +269,7 @@ pub(crate) async fn write(
     store: Store,
     limits: Limits,
     threads: NonZeroUsize,
+    topic: &'static str,
     mut outcomes: impl Receiver + Sync,
     metrics: Metrics,
     mut stop: watch::Receiver<bool>,
@@ -279,7 +280,7 @@ pub(crate) async fn write(
     let mut received = None;
     let mut pending = Vec::new();
     let mut inserts = VecDeque::new();
-    let mut lag = Lag::new("normalized".to_owned(), "writer");
+    let mut lag = Lag::new(topic.to_owned(), "writer");
     loop {
         lag.report(&outcomes, &metrics).await;
         let stopping = *stop.borrow_and_update();

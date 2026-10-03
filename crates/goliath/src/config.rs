@@ -37,6 +37,8 @@ pub struct Config {
     /// How the normalizer uses the machine.
     #[serde(default)]
     pub normalizer: NormalizerConfig,
+    /// The indicators the detector matches; needed by the detector role.
+    pub detector: Option<DetectorConfig>,
     /// Where and how the API listens.
     #[serde(default)]
     pub api: ApiConfig,
@@ -72,6 +74,9 @@ pub enum Role {
     Api,
     /// Takes records sent over the network into sources' raw topics.
     Receiver,
+    /// Matches indicators against normalized events, and sends each match
+    /// on as a finding for the writer to store.
+    Detector,
 }
 
 /// The receiver: where it listens, and with what certificate.
@@ -294,6 +299,69 @@ impl NormalizerConfig {
     }
 }
 
+/// The indicators the detector matches, and where it keeps them. See
+/// docs/adr/0021-enrichment-placement.md.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DetectorConfig {
+    /// The directory of the indicator store; `intel` in the data directory
+    /// if left out.
+    pub state: Option<PathBuf>,
+    /// The feeds of indicators.
+    #[serde(default)]
+    pub feeds: Vec<FeedConfig>,
+    /// Allowlists, each a YAML file: what is never reported, whatever a
+    /// feed says.
+    #[serde(default)]
+    pub allowlists: Vec<PathBuf>,
+    /// Threads that match a batch at once; every core by default.
+    pub threads: Option<NonZeroUsize>,
+    /// The block cache of the indicator store, in mebibytes; 1024 if left
+    /// out.
+    pub cache_mebibytes: Option<NonZeroU64>,
+}
+
+impl DetectorConfig {
+    /// The threads to match on.
+    pub fn threads(&self) -> NonZeroUsize {
+        self.threads.unwrap_or_else(every_core)
+    }
+}
+
+/// One feed: how it is read, and where its publication is.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FeedConfig {
+    /// The feed's definition: the name of a shipped one, such as `urlhaus`,
+    /// or the path of a YAML file.
+    pub definition: String,
+    /// The file the feed's publication is kept in, by whatever fetches it.
+    /// It is read at start and again whenever it changes. Write it under
+    /// another name and rename it, so that it is never read half written.
+    pub file: PathBuf,
+}
+
+impl FeedConfig {
+    /// The feed's definition, loaded.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RunError::Config`] if the definition cannot be read or
+    /// used.
+    pub fn feed(&self) -> Result<goliath_intel::Feed, RunError> {
+        let shipped = goliath_intel::FEEDS
+            .iter()
+            .find(|(name, _)| *name == self.definition);
+        let yaml = match shipped {
+            Some((_, yaml)) => (*yaml).to_owned(),
+            None => std::fs::read_to_string(&self.definition)
+                .map_err(|error| RunError::Config(format!("{}: {error}", self.definition)))?,
+        };
+        goliath_intel::Feed::from_yaml(&yaml)
+            .map_err(|error| RunError::Config(format!("{}: {error}", self.definition)))
+    }
+}
+
 /// How the writer batches.
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -406,6 +474,23 @@ impl Config {
                 source.definition = base.join(&source.definition).to_string_lossy().into_owned();
             }
         }
+        if let Some(detector) = &mut config.detector {
+            if let Some(state) = &mut detector.state {
+                *state = base.join(&*state);
+            }
+            for list in &mut detector.allowlists {
+                *list = base.join(&*list);
+            }
+            for feed in &mut detector.feeds {
+                feed.file = base.join(&feed.file);
+                let shipped = goliath_intel::FEEDS
+                    .iter()
+                    .any(|(name, _)| *name == feed.definition);
+                if !shipped {
+                    feed.definition = base.join(&feed.definition).to_string_lossy().into_owned();
+                }
+            }
+        }
         config.check()?;
         Ok(config)
     }
@@ -415,7 +500,7 @@ impl Config {
         self.roles.iter().any(|role| {
             matches!(
                 role,
-                Role::Collector | Role::Normalizer | Role::Writer | Role::Receiver
+                Role::Collector | Role::Normalizer | Role::Writer | Role::Receiver | Role::Detector
             )
         })
     }
@@ -445,6 +530,9 @@ impl Config {
         }
         if self.roles.contains(&Role::Receiver) {
             self.check_receiver()?;
+        }
+        if self.roles.contains(&Role::Detector) {
+            self.check_detector()?;
         }
         match &self.kafka {
             None if self.data.is_none() && self.has_pipeline() => {
@@ -485,6 +573,46 @@ impl Config {
             ));
         }
         Ok(())
+    }
+
+    /// Checks the detector: feeds to match, each definition loading and
+    /// named once, and a place for the indicator store.
+    fn check_detector(&self) -> Result<(), RunError> {
+        let Some(detector) = &self.detector else {
+            return Err(RunError::Config(
+                "the detector role needs a [detector] section".to_owned(),
+            ));
+        };
+        if detector.feeds.is_empty() {
+            return Err(RunError::Config(
+                "the detector role needs a feed: [[detector.feeds]] with `definition` and `file`"
+                    .to_owned(),
+            ));
+        }
+        let mut names = BTreeSet::new();
+        for feed in &detector.feeds {
+            let name = feed.feed()?.name;
+            if !names.insert(name.clone()) {
+                return Err(RunError::Config(format!(
+                    "feed `{name}` is configured twice"
+                )));
+            }
+        }
+        if detector.state.is_none() && self.data.is_none() {
+            return Err(RunError::Config(
+                "set `state` in [detector], or `data`, for the indicator store".to_owned(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// The directory of the detector's indicator store.
+    pub fn detector_state(&self) -> Option<PathBuf> {
+        let detector = self.detector.as_ref()?;
+        detector
+            .state
+            .clone()
+            .or_else(|| self.data.as_ref().map(|data| data.join("intel")))
     }
 
     /// Checks the receiver: something to receive, tokens that each name one
