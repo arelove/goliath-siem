@@ -8,7 +8,10 @@
 //! - each reading role reads under a group of its own, at its own pace;
 //! - a group acknowledges what it has handled, and after a restart receives
 //!   again everything it had not acknowledged: delivery is at least once;
-//! - a topic holds a bounded amount, and sending waits while it is full.
+//! - a topic holds a bounded amount, and sending waits while it is full;
+//! - a group may read as an observer, which senders never wait for: it is
+//!   kept what the bound allows, and one that falls further behind is moved
+//!   forward and told how many records it missed.
 //!
 //! # Example
 //!
@@ -123,4 +126,10 @@ pub trait Receiver {
     /// behind the senders. Received but unacknowledged records count, since
     /// a restart would deliver them again.
     fn lag(&self) -> impl Future<Output = Result<u64, PipeError>> + Send;
+
+    /// Records this receiver was moved past without receiving them, since
+    /// this was last asked. Only an observer is ever moved: it fell further
+    /// behind than the topic keeps for a group it does not wait for. The
+    /// records were sent, and other groups received them.
+    fn skipped(&mut self) -> u64;
 }

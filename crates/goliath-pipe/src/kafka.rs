@@ -99,8 +99,10 @@ struct Shared {
     name: String,
     options: KafkaOptions,
     producer: FutureProducer,
-    /// Groups subscribed through this topic.
+    /// Groups subscribed through this topic, which senders wait for.
     local: Mutex<BTreeSet<String>>,
+    /// Groups observing through this topic, which senders do not wait for.
+    observers: Mutex<BTreeSet<String>>,
     /// One idle consumer per group, to read its committed offset.
     lookups: Mutex<BTreeMap<String, Arc<BaseConsumer>>>,
 }
@@ -194,6 +196,7 @@ impl KafkaTopic {
                 options,
                 producer,
                 local: Mutex::new(BTreeSet::new()),
+                observers: Mutex::new(BTreeSet::new()),
                 lookups: Mutex::new(BTreeMap::new()),
             }),
         };
@@ -242,10 +245,29 @@ impl KafkaTopic {
     ///
     /// Returns [`PipeError::Io`] if the brokers cannot be reached.
     pub async fn subscribe(&self, group: &str) -> Result<KafkaReceiver, PipeError> {
+        self.receiver(group, false).await
+    }
+
+    /// A receiver for `group` as an observer: senders never wait for it.
+    /// Kafka keeps records by its own retention, which is set well beyond
+    /// the topic's bound; an observer that falls behind even that is moved
+    /// forward to the oldest record kept, and [`Receiver::skipped`] says by
+    /// how many records.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PipeError::Io`] if the brokers cannot be reached.
+    pub async fn observe(&self, group: &str) -> Result<KafkaReceiver, PipeError> {
+        self.receiver(group, true).await
+    }
+
+    async fn receiver(&self, group: &str, observer: bool) -> Result<KafkaReceiver, PipeError> {
         let consumer: BaseConsumer = self
             .shared
             .options
             .config()
+            // Where a position is no longer kept, the oldest record that is.
+            .set("auto.offset.reset", "earliest")
             .set("group.id", group)
             .set("enable.auto.commit", "false")
             .set("enable.auto.offset.store", "false")
@@ -276,12 +298,19 @@ impl KafkaTopic {
             }
         })
         .await?;
-        lock(&self.shared.local).insert(group.to_owned());
+        let (joined, left) = if observer {
+            (&self.shared.observers, &self.shared.local)
+        } else {
+            (&self.shared.local, &self.shared.observers)
+        };
+        lock(joined).insert(group.to_owned());
+        lock(left).remove(group);
         Ok(KafkaReceiver {
             shared: Arc::clone(&self.shared),
             consumer,
             group: group.to_owned(),
             next,
+            skipped: 0,
         })
     }
 
@@ -293,6 +322,7 @@ impl KafkaTopic {
     /// Returns [`PipeError::Io`] if the brokers refuse.
     pub async fn unsubscribe(&self, group: &str) -> Result<(), PipeError> {
         lock(&self.shared.local).remove(group);
+        lock(&self.shared.observers).remove(group);
         lock(&self.shared.lookups).remove(group);
         let admin: AdminClient<DefaultClientContext> =
             self.shared.options.config().create().map_err(kafka)?;
@@ -423,6 +453,8 @@ pub struct KafkaReceiver {
     consumer: Arc<BaseConsumer>,
     group: String,
     next: u64,
+    /// Records it was moved past, not yet reported.
+    skipped: u64,
 }
 
 impl std::fmt::Debug for KafkaReceiver {
@@ -437,9 +469,7 @@ impl std::fmt::Debug for KafkaReceiver {
 
 impl Receiver for KafkaReceiver {
     async fn receive(&mut self, max: usize, wait: Duration) -> Result<Vec<Delivery>, PipeError> {
-        if !lock(&self.shared.local).contains(&self.group) {
-            return Err(PipeError::Unsubscribed(self.group.clone()));
-        }
+        self.subscribed()?;
         if max == 0 {
             return Ok(Vec::new());
         }
@@ -463,7 +493,10 @@ impl Receiver for KafkaReceiver {
             Ok(batch)
         })
         .await?;
-        if let Some(last) = batch.last() {
+        if let (Some(first), Some(last)) = (batch.first(), batch.last()) {
+            // Past the next one expected: the records between were no
+            // longer kept.
+            self.skipped += first.offset.saturating_sub(self.next);
             self.next = last.offset + 1;
         }
         Ok(batch)
@@ -476,18 +509,14 @@ impl Receiver for KafkaReceiver {
                 received: self.next,
             });
         }
-        if !lock(&self.shared.local).contains(&self.group) {
-            return Err(PipeError::Unsubscribed(self.group.clone()));
-        }
+        self.subscribed()?;
         let consumer = Arc::clone(&self.consumer);
         let name = self.shared.name.clone();
         blocking(move || commit(&consumer, &name, offset + 1)).await
     }
 
     async fn lag(&self) -> Result<u64, PipeError> {
-        if !lock(&self.shared.local).contains(&self.group) {
-            return Err(PipeError::Unsubscribed(self.group.clone()));
-        }
+        self.subscribed()?;
         let consumer = Arc::clone(&self.consumer);
         let name = self.shared.name.clone();
         blocking(move || {
@@ -498,6 +527,23 @@ impl Receiver for KafkaReceiver {
             Ok(end.saturating_sub(position))
         })
         .await
+    }
+
+    fn skipped(&mut self) -> u64 {
+        std::mem::take(&mut self.skipped)
+    }
+}
+
+impl KafkaReceiver {
+    /// Fails if the group was removed from the topic.
+    fn subscribed(&self) -> Result<(), PipeError> {
+        if lock(&self.shared.local).contains(&self.group)
+            || lock(&self.shared.observers).contains(&self.group)
+        {
+            Ok(())
+        } else {
+            Err(PipeError::Unsubscribed(self.group.clone()))
+        }
     }
 }
 

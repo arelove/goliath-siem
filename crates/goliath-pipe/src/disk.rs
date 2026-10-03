@@ -17,7 +17,7 @@
 //! else is an error: that is not a crash, and cutting the history there would
 //! drop records every group still needs.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufWriter, Read, Seek, SeekFrom, Write};
 use std::num::NonZeroU64;
@@ -85,6 +85,8 @@ struct Log {
     active: File,
     /// Each group's first unacknowledged offset.
     groups: BTreeMap<String, u64>,
+    /// The groups senders do not wait for, as subscribed in this process.
+    observers: BTreeSet<String>,
 }
 
 #[derive(Debug)]
@@ -112,13 +114,30 @@ impl Log {
         self.segments.first().map_or(0, |segment| segment.base)
     }
 
-    /// The first offset some group has not acknowledged, or the end.
+    /// The first offset some group that holds the topic has not
+    /// acknowledged. With observers alone, nothing is held.
     fn floor(&self) -> u64 {
+        let holding = self
+            .groups
+            .iter()
+            .filter(|(group, _)| !self.observers.contains(*group))
+            .map(|(_, position)| *position)
+            .min();
+        match holding {
+            Some(floor) => floor,
+            None if self.observers.is_empty() => self.base(),
+            None => self.end(),
+        }
+    }
+
+    /// The first offset some observer has not acknowledged.
+    fn observed(&self) -> u64 {
         self.groups
-            .values()
-            .copied()
+            .iter()
+            .filter(|(group, _)| self.observers.contains(*group))
+            .map(|(_, position)| *position)
             .min()
-            .unwrap_or_else(|| self.base())
+            .unwrap_or(u64::MAX)
     }
 
     /// Bytes from `offset` to the end.
@@ -134,11 +153,18 @@ impl Log {
             .sum()
     }
 
-    /// Deletes segments every group has acknowledged, never the active one.
+    /// Deletes segments every holding group has acknowledged, never the
+    /// active one, keeping for observers that have not what the capacity
+    /// allows.
     fn release(&mut self) -> io::Result<bool> {
         let floor = self.floor();
+        let observed = self.observed();
+        let capacity = self.options.capacity.get();
         let mut released = false;
-        while self.segments.len() > 1 && self.segments[0].end() <= floor {
+        while self.segments.len() > 1
+            && self.segments[0].end() <= floor
+            && (self.segments[0].end() <= observed || self.bytes_from(self.base()) > capacity)
+        {
             let segment = self.segments.remove(0);
             fs::remove_file(&segment.path)?;
             released = true;
@@ -318,6 +344,7 @@ impl DiskTopic {
                     segments,
                     active,
                     groups,
+                    observers: BTreeSet::new(),
                 }),
                 arrived: Notify::new(),
                 released: Notify::new(),
@@ -342,6 +369,23 @@ impl DiskTopic {
     /// digits, `-`, and `_`, and [`PipeError::Io`] if the new group's
     /// position cannot be written.
     pub fn subscribe(&self, group: &str) -> Result<DiskReceiver, PipeError> {
+        self.receiver(group, false)
+    }
+
+    /// A receiver for `group` as an observer: senders never wait for it.
+    /// It is kept the records the topic's capacity allows beyond what other
+    /// groups need, a whole segment at a time; if it falls further behind,
+    /// it is moved forward, and [`Receiver::skipped`] says by how many
+    /// records. Its position is kept across a restart like any group's.
+    ///
+    /// # Errors
+    ///
+    /// As [`subscribe`](Self::subscribe).
+    pub fn observe(&self, group: &str) -> Result<DiskReceiver, PipeError> {
+        self.receiver(group, true)
+    }
+
+    fn receiver(&self, group: &str, observer: bool) -> Result<DiskReceiver, PipeError> {
         if group.is_empty()
             || !group
                 .chars()
@@ -358,10 +402,16 @@ impl DiskTopic {
             log.groups.insert(group.to_owned(), end);
             end
         };
+        if observer {
+            log.observers.insert(group.to_owned());
+        } else {
+            log.observers.remove(group);
+        }
         Ok(DiskReceiver {
             shared: Arc::clone(&self.shared),
             group: group.to_owned(),
             next: position,
+            skipped: 0,
         })
     }
 
@@ -376,6 +426,7 @@ impl DiskTopic {
         if log.groups.remove(group).is_some() {
             fs::remove_file(group_path(&log.directory, group)).map_err(PipeError::from)?;
         }
+        log.observers.remove(group);
         if log.release().map_err(PipeError::from)? {
             drop(log);
             self.shared.released.notify_waiters();
@@ -419,6 +470,8 @@ impl Sender for DiskSender {
                     // Written while holding the lock: appends are ordered,
                     // and a batch is on disk before anyone can receive it.
                     log.append(&payloads)?;
+                    // What is kept for observers gives way to what is new.
+                    log.release()?;
                     Ok(None)
                 } else {
                     Ok(Some(payloads))
@@ -445,6 +498,7 @@ pub struct DiskReceiver {
     shared: Arc<Shared>,
     group: String,
     next: u64,
+    skipped: u64,
 }
 
 impl Receiver for DiskReceiver {
@@ -458,6 +512,9 @@ impl Receiver for DiskReceiver {
                     return Err(PipeError::Unsubscribed(self.group.clone()));
                 }
                 let from = self.next.max(log.base());
+                if log.observers.contains(&self.group) {
+                    self.skipped += from - self.next;
+                }
                 self.next = from;
                 (from < log.end() && max > 0).then(|| log.locate(from, max))
             };
@@ -513,6 +570,10 @@ impl Receiver for DiskReceiver {
             Some(position) => Ok(log.end().saturating_sub(*position)),
             None => Err(PipeError::Unsubscribed(self.group.clone())),
         })
+    }
+
+    fn skipped(&mut self) -> u64 {
+        std::mem::take(&mut self.skipped)
     }
 }
 

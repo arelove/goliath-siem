@@ -29,6 +29,8 @@ pub(crate) trait Fixture: Send + Sync + 'static {
     fn sender(&self) -> Self::Sender;
     /// A receiver for `group`.
     fn subscribe(&self, group: &str) -> impl Future<Output = Self::Receiver> + Send;
+    /// A receiver for `group` as an observer.
+    fn observe(&self, group: &str) -> impl Future<Output = Self::Receiver> + Send;
     /// Removes `group`.
     fn unsubscribe(&self, group: &str) -> impl Future<Output = ()> + Send;
 }
@@ -258,6 +260,82 @@ pub(crate) async fn many_senders_lose_nothing<F: Fixture>() {
     }
 }
 
+/// An observer that keeps up is a group like any other: it receives every
+/// record in order, and after a restart what it had not acknowledged.
+pub(crate) async fn an_observer_receives_in_order_and_resumes_like_any_group<F: Fixture>() {
+    let fixture = F::create(8).await;
+    let mut writer = fixture.subscribe("writer").await;
+    let mut observer = fixture.observe("observer").await;
+    fixture
+        .sender()
+        .send(records(&["a", "b", "c"]))
+        .await
+        .unwrap();
+    let batch = receive_all(&mut observer, 3).await;
+    assert_eq!(payloads(&batch), [b"a", b"b", b"c"]);
+    assert_eq!(observer.lag().await.unwrap(), 3);
+    observer.acknowledge(batch[0].offset).await.unwrap();
+    assert_eq!(observer.lag().await.unwrap(), 2);
+    assert_eq!(observer.skipped(), 0);
+    drop(observer);
+
+    let mut observer = fixture.observe("observer").await;
+    let again = receive_all(&mut observer, 2).await;
+    assert_eq!(payloads(&again), [b"b", b"c"]);
+    assert_eq!(observer.skipped(), 0);
+    // The other group is not disturbed, and is never told it missed any.
+    let batch = receive_all(&mut writer, 3).await;
+    assert_eq!(payloads(&batch), [b"a", b"b", b"c"]);
+    assert_eq!(writer.skipped(), 0);
+}
+
+/// A topic several times over its bound with an observer that reads
+/// nothing: every send goes through as soon as the holding group has
+/// acknowledged.
+pub(crate) async fn senders_never_wait_for_an_observer<F: Fixture>() {
+    let fixture = F::create(4).await;
+    let mut writer = fixture.subscribe("writer").await;
+    let _observer = fixture.observe("observer").await;
+    let sender = fixture.sender();
+    for round in 0..5 {
+        let sent = tokio::time::timeout(LONG, sender.send(records(&["a", "b", "c", "d"]))).await;
+        assert!(sent.is_ok(), "round {round} waited for the observer");
+        let batch = receive_all(&mut writer, 4).await;
+        writer.acknowledge(batch[3].offset).await.unwrap();
+    }
+}
+
+/// An observer that read nothing while the topic went several times over
+/// its bound: what it then receives is in order with no gap inside, and
+/// what it missed before is exactly what it is told.
+pub(crate) async fn an_observer_is_told_exactly_what_it_missed<F: Fixture>() {
+    let fixture = F::create(4).await;
+    let mut writer = fixture.subscribe("writer").await;
+    let mut observer = fixture.observe("observer").await;
+    let sender = fixture.sender();
+    for _ in 0..5 {
+        sender.send(records(&["a", "b", "c", "d"])).await.unwrap();
+        let batch = receive_all(&mut writer, 4).await;
+        writer.acknowledge(batch[3].offset).await.unwrap();
+    }
+    let mut received = Vec::new();
+    loop {
+        let batch = observer.receive(20, SHORT).await.unwrap();
+        if batch.is_empty() {
+            break;
+        }
+        received.extend(batch);
+    }
+    let first = received
+        .first()
+        .expect("the newest records are kept")
+        .offset;
+    assert_eq!(observer.skipped(), first, "told what it was moved past");
+    assert_eq!(observer.skipped(), 0, "and told once");
+    let offsets: Vec<u64> = received.iter().map(|delivery| delivery.offset).collect();
+    assert_eq!(offsets, (first..20).collect::<Vec<_>>());
+}
+
 /// One test per clause of the contract, for the fixture `$fixture`.
 #[macro_export]
 macro_rules! contract {
@@ -275,6 +353,9 @@ macro_rules! contract {
             an_unsubscribed_group_s_receivers_fail,
             lag_counts_what_the_group_has_not_acknowledged,
             many_senders_lose_nothing,
+            an_observer_receives_in_order_and_resumes_like_any_group,
+            senders_never_wait_for_an_observer,
+            an_observer_is_told_exactly_what_it_missed,
         );
     };
     (@tests $fixture:ty; $($name:ident),* $(,)?) => {

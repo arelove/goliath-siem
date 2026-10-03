@@ -70,6 +70,13 @@ impl contract::Fixture for Kafka {
             .unwrap()
     }
 
+    async fn observe(&self, group: &str) -> KafkaReceiver {
+        self.topic
+            .observe(&format!("{}-{group}", self.name))
+            .await
+            .unwrap()
+    }
+
     async fn unsubscribe(&self, group: &str) {
         self.topic
             .unsubscribe(&format!("{}-{group}", self.name))
