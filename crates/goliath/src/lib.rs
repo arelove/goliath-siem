@@ -186,7 +186,8 @@ async fn start_pipeline<T: Topics>(
         roles.spawn(detector::detect(
             intel.matcher(),
             settings.threads(),
-            topics.subscribe(&outcomes, "detector").await?,
+            // As an observer: the writer's topic never waits for it.
+            topics.observe(&outcomes, "detector").await?,
             T::sender(&findings),
             metrics.clone(),
             stopped.clone(),

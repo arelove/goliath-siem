@@ -91,6 +91,7 @@ struct Inner {
     lag: Family<Reader, Gauge>,
     detected_events: Counter,
     detected_observables: Counter,
+    detector_skipped: Counter,
     indicator_hits: Family<Hit, Counter>,
     feed_refreshes: Family<FeedRefresh, Counter>,
     feed_indicators: Family<Feed, Gauge>,
@@ -148,6 +149,7 @@ impl Metrics {
         let lag = Family::default();
         let detected_events = Counter::default();
         let detected_observables = Counter::default();
+        let detector_skipped = Counter::default();
         let indicator_hits = Family::default();
         let feed_refreshes = Family::default();
         let feed_indicators = Family::default();
@@ -238,6 +240,11 @@ impl Metrics {
             detected_observables.clone(),
         );
         registry.register(
+            "detector_skipped_records",
+            "Events stored but not matched as they arrived: the detector fell behind what the topic keeps",
+            detector_skipped.clone(),
+        );
+        registry.register(
             "indicator_hits",
             "Observables an indicator names, reported or suppressed by an allowlist",
             indicator_hits.clone(),
@@ -284,6 +291,7 @@ impl Metrics {
             lag,
             detected_events,
             detected_observables,
+            detector_skipped,
             indicator_hits,
             feed_refreshes,
             feed_indicators,
@@ -418,6 +426,11 @@ impl Metrics {
                     .inc_by(count);
             }
         }
+    }
+
+    /// The detector was moved past `records` it did not match.
+    pub(crate) fn detector_skipped(&self, records: u64) {
+        self.0.detector_skipped.inc_by(records);
     }
 
     /// `feed` is known to be current at `at`, in seconds since the epoch.

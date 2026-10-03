@@ -288,6 +288,10 @@ pub(crate) async fn refresh(
 
 /// Looks the observables of every event up, and sends each hit on as a
 /// finding, acknowledging events only once their findings are sent.
+///
+/// It reads as an observer, so it never slows the writer. If it falls
+/// further behind than the topic keeps, it is moved past the events between,
+/// which is counted and logged: they are stored, and not matched.
 pub(crate) async fn detect(
     matcher: Arc<Matcher<RocksStore>>,
     threads: NonZeroUsize,
@@ -300,6 +304,15 @@ pub(crate) async fn detect(
     while !*stop.borrow_and_update() {
         lag.report(&events, &metrics).await;
         let deliveries = events.receive(BATCH, POLL).await?;
+        let skipped = events.skipped();
+        if skipped > 0 {
+            // Stored all the same; only not matched as they arrived.
+            warn!(
+                skipped,
+                "the detector fell behind what the topic keeps, and was moved past events it did not match"
+            );
+            metrics.detector_skipped(skipped);
+        }
         let Some(last) = deliveries.last().map(|delivery| delivery.offset) else {
             continue;
         };
