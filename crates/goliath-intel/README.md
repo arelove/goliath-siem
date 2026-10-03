@@ -20,9 +20,24 @@ observables go through.
   recorded. A network allows its addresses, `*.name` allows a domain and
   every name under it, and an allowed host allows its URLs.
 
-The store here is in memory. The store for 10^8 indicators, RocksDB behind
-bloom filters, follows; see
-[ADR-0008](../../docs/adr/0008-threat-intelligence-model.md),
+Two stores hold indicators behind one trait:
+
+- `MemoryStore`, for tests and small sets.
+- `RocksStore`, behind the `rocksdb` feature, for sets too large for memory:
+  RocksDB in the process, with a bloom filter in memory in front, so that a
+  lookup of what no feed names does not reach the disk. A feed is replaced
+  by writing a new generation beside the old and naming it current in one
+  write, in bounded memory whatever the feed's size. Building it needs a C++
+  compiler and libclang.
+
+On one core of a laptop, with 10^7 indicators in `RocksStore`
+(`examples/intel_lookup.rs`): a lookup that finds nothing takes about 0.4
+microseconds, one that finds its indicator 4 to 6, loading runs at about a
+million indicators a second, the filter takes 24 MiB and the store 580 MB,
+and opening the full store takes 5 seconds. The 10^8 run is the exit
+measurement of M4.
+
+See [ADR-0008](../../docs/adr/0008-threat-intelligence-model.md),
 [ADR-0020](../../docs/adr/0020-state-beyond-events.md), and
 [ADR-0021](../../docs/adr/0021-enrichment-placement.md).
 

@@ -105,6 +105,17 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test -p goliath-pipe -p goliath --features kafka
 
+  intel:
+    # The indicator store on disk: RocksDB, a C++ library built from source,
+    # which the plain test job leaves out.
+    name: intel / rocksdb
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p goliath-intel --features rocksdb
+
   container:
     # The image and each compose file, as a user runs them: build, start,
     # drop a Sysmon file, and find its events in ClickHouse.
