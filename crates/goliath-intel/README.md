@@ -50,7 +50,9 @@ detector's.
 name. It finds them by the type the schema gives each attribute, `ip_t`,
 `hostname_t`, `url_t`, `file_hash_t`, and the rest, so it follows the events
 as the schema describes them and needs no list of paths. A fingerprint is a
-file hash, a certificate hash, or a JA3 by where it is and by its algorithm.
+file hash, a certificate hash, or a JA3 by where it is and by its algorithm. A
+URL that a source logs as a host and a path is put together from them, with
+the port of the connection.
 
 `finding` turns a hit into an OCSF Detection Finding: every feed that asserts
 the indicator in `osint`, the event and the attribute that held the value in
@@ -61,7 +63,7 @@ event read twice gives one finding.
 A test holds, for each shipped source definition, the kinds of observable
 its events give. Today every source but Falco gives addresses, most give host
 names and file paths, Sysmon and Suricata give file hashes, Suricata also
-certificate hashes and JA3, and none gives a URL yet.
+certificate hashes and JA3, and Zeek and Suricata give URLs.
 
 ## Stores
 
