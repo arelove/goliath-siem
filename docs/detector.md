@@ -86,12 +86,22 @@ On the metrics endpoint:
 | `goliath_indicator_hits_total{status}` | Matches `reported` and `suppressed` |
 | `goliath_detected_events_total`, `goliath_detected_observables_total` | What the detector looked at |
 | `goliath_reader_lag_records{topic="normalized",reader="detector"}` | Events the detector has yet to look at |
+| `goliath_detector_skipped_records_total` | Events stored but not matched as they arrived. Above zero, the detector is too slow for the rate: give it threads or cores |
 
 A stale feed in Prometheus, for a feed fetched every 30 minutes:
 
 ```text
 time() - goliath_feed_checked_timestamp_seconds{feed="urlhaus"} > 3 * 30 * 60
 ```
+
+## The detector never slows storage
+
+The detector reads the event topic as an observer: the normalizer and the
+writer never wait for it. A detector that is stopped, or slower than the
+events arrive, falls behind. Within the topic's bound it catches up and
+misses nothing. Beyond it, it is moved forward past the oldest events, which
+are stored like every other and were not matched; the count is
+`goliath_detector_skipped_records_total`.
 
 ## Finding the findings
 
