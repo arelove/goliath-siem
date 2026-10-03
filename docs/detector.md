@@ -87,6 +87,8 @@ On the metrics endpoint:
 | `goliath_detected_events_total`, `goliath_detected_observables_total` | What the detector looked at |
 | `goliath_reader_lag_records{topic="normalized",reader="detector"}` | Events the detector has yet to look at |
 | `goliath_detector_skipped_records_total` | Events stored but not matched as they arrived. Above zero, the detector is too slow for the rate: give it threads or cores |
+| `goliath_detector_unmatched_ranges` | Ranges of receipt time that wait to be matched from the store. Alarm when it stays above zero |
+| `goliath_detector_rematched_events_total` | Events read back from the store and matched |
 
 A stale feed in Prometheus, for a feed fetched every 30 minutes:
 
@@ -103,9 +105,26 @@ misses nothing. Beyond it, it is moved forward past the oldest events, which
 are stored like every other and were not matched; the count is
 `goliath_detector_skipped_records_total`.
 
+The detector then matches those events from the store:
+
+- It notes the range of receipt time they lie in, in `unmatched.json` in the
+  store's directory. A restart forgets none.
+- When the writer is past the range, it reads the range back from ClickHouse
+  and matches it. The findings are the ones it would have made as the events
+  arrived, and an event matched twice gives one finding.
+- This needs a `[store]` section in the configuration of the process that
+  runs the detector. Without one the ranges are noted, and wait.
+- A range waits for an event taken after it to be stored. With no events
+  arriving, it waits until one does.
+
+A detector that is too slow all the time never catches up this way either:
+`goliath_detector_unmatched_ranges` stays above zero. Give it threads or
+cores.
+
 ## Finding the findings
 
 A finding is an event of class 2004 from the source `goliath-intel`. It names
 the feeds that assert the indicator in `osint`, and the event it was found
 in, with the attribute that held the value, in `evidences`. Its time is the
-event's.
+event's, and it is kept as long as the event: retention counts from when the
+event was taken.

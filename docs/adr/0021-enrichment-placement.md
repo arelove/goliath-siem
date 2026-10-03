@@ -1,6 +1,6 @@
 # 0021. Where indicators are matched and context is added
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-03
 
 ## Context
@@ -49,8 +49,8 @@ rewrite a stored event.**
   the rule engine to the same role, so rules and indicators share one reader
   of the event topic, one finding model, and one place where context is
   added.
-- It reads the event topic as its own group. The writer does not wait for it,
-  and it resumes from its own offset after a restart
+- It reads the event topic as its own group, as an observer. The writer does
+  not wait for it, and it resumes from its own offset after a restart
   ([ADR-0015](0015-pipe-semantics.md)).
 - It holds the indicator store of ADR-0020: RocksDB in the process, with a
   bloom filter for each indicator type in front.
@@ -81,6 +81,10 @@ rewrite a stored event.**
   of suppressions ADR-0008 asks for, kept as events.
 - Findings go to a `findings` topic. The writer reads it as it reads events
   and stores them in the same table, so a finding is searched like any event.
+- A finding is taken when its event was: its receipt time is the event's.
+  The two are then kept for the same time, and a finding made twice, as the
+  event arrived and from the store, falls in the same partition and is
+  stored once.
 
 ### Context
 
@@ -97,6 +101,24 @@ When a feed refresh adds indicators, a scheduled query looks for the new keys
 alone in the stored events of the hot retention, and writes the same
 findings. The stream match and this query together cover events before and
 after the indicator arrived.
+
+### Events the detector was moved past
+
+An observer that falls further behind than the topic keeps is moved forward.
+The events between are stored and were not matched.
+
+- The detector notes the range of receipt time they lie in: from the last
+  record it matched to the first it was moved to. The range is kept in a
+  file beside the indicator store, so a restart forgets none.
+- The range is widened by a minute at both ends. Records are not in the
+  topic in the exact order they were taken, and the writer keeps several
+  inserts in flight.
+- When the store holds an event taken after the range, the writer is past
+  it. The detector then reads the range back, a minute of receipt time at
+  once, and matches those events as it matches arriving ones. The finding is
+  the same, so an event matched twice is stored once.
+- This needs the event store. A detector with no `[store]` counts and notes
+  the ranges, and they wait.
 
 ### Exit criterion for M4
 
@@ -148,9 +170,11 @@ the budget changes by a record like this one.
 
 ## When to revisit
 
-If the interface's lookups from findings to events take more than 100
-milliseconds at the 95th percentile, store the matched event's summary in the
-finding. If searches by context on events are asked for before M6, decide the
+If reading a range back is measured to be slower than events arrive, the
+detector never catches up from the store: read by partition and class in
+parallel, or give the detector cores. If the interface's lookups from
+findings to events take more than 100 milliseconds at the 95th percentile,
+store the matched event's summary in the finding. If searches by context on events are asked for before M6, decide the
 ClickHouse dictionaries then. If a deployment must match in the branch,
 before events reach the centre, a detector there with a feed subset is the
 answer, not matching in the normalizer.
