@@ -349,6 +349,63 @@ fn a_target_names_an_element_of_an_array_by_its_index() {
 }
 
 #[test]
+fn hashes_in_one_string_become_fingerprints_and_the_string_is_kept() {
+    let definition = MINIMAL.replace(
+        "user.name: who",
+        "certificate.fingerprints: { from: extra.Hashes, as: fingerprints }",
+    );
+    let event = |hashes: &str| match one(
+        &definition,
+        &format!(r#"{{"type": "login", "extra": {{"Hashes": "{hashes}", "Other": 1}}}}"#),
+    ) {
+        Outcome::Event(normalized) => (normalized.event, normalized.issues),
+        other => panic!("{other:?}"),
+    };
+
+    let (found, issues) = event("MD5=AA11,SHA256=bb22, sha1=cc33,IMPHASH=dd44,SHA512=ee55");
+    assert_eq!(issues, []);
+    assert_eq!(
+        found["certificate"]["fingerprints"],
+        json!([
+            { "algorithm": "MD5", "algorithm_id": 1, "value": "AA11" },
+            { "algorithm": "SHA-256", "algorithm_id": 3, "value": "bb22" },
+            { "algorithm": "SHA-1", "algorithm_id": 2, "value": "cc33" },
+            // OCSF has no import hash: Other, with its name.
+            { "algorithm": "IMPHASH", "algorithm_id": 99, "value": "dd44" },
+            { "algorithm": "SHA-512", "algorithm_id": 4, "value": "ee55" }
+        ])
+    );
+    // Unlike any other field, the source stays under `unmapped` as written.
+    assert_eq!(
+        found["unmapped"],
+        json!({ "Hashes": "MD5=AA11,SHA256=bb22, sha1=cc33,IMPHASH=dd44,SHA512=ee55", "Other": 1 })
+    );
+
+    for (hashes, reason) in [
+        ("AA11", "`AA11` is not a hash written as NAME=hash"),
+        ("MD5=xyz", "`MD5=xyz` does not hold a hexadecimal hash"),
+        ("MD5=", "`MD5=` does not hold a hexadecimal hash"),
+        (",", "it holds no hash"),
+    ] {
+        let (found, issues) = event(hashes);
+        assert!(found.get("certificate").is_none(), "{hashes}");
+        assert_eq!(issues.len(), 1, "{hashes}");
+        assert_eq!(issues[0].reason, reason);
+        assert_eq!(found["unmapped"]["Hashes"], hashes);
+    }
+
+    // The target must be an array of fingerprints.
+    let wrong = MINIMAL.replace(
+        "user.name: who",
+        "user.name: { from: who, as: fingerprints }",
+    );
+    assert_eq!(
+        error(&wrong).to_string(),
+        "kind `login`: `user.name` holds `username_t`, but the field writes an array of fingerprints"
+    );
+}
+
+#[test]
 fn a_time_without_an_offset_is_utc_when_the_definition_says_so() {
     let definition = MINIMAL.replace("user.name: who", "time: { from: at, as: utc-timestamp }");
     let time = |at: &str| match one(
