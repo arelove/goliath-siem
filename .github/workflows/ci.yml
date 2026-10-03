@@ -171,7 +171,10 @@ jobs:
         run: cargo fmt --all --check
       - name: clippy
         # `--all-features` includes the benchmarks, which need a feature.
-        run: cargo clippy --workspace --all-targets --all-features
+        # `assert_is_empty`, new in 1.99, asks tests to compare with an empty
+        # array instead of `assert!(x.is_empty())`; allowed here and not in
+        # Cargo.toml, which the minimum supported toolchain also reads.
+        run: cargo clippy --workspace --all-targets --all-features -- -A clippy::assert_is_empty
 
   msrv:
     name: minimum supported rust version
