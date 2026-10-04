@@ -187,34 +187,51 @@ async fn start_pipeline<T: Topics>(
         let unmatched = rematch::Unmatched::open(&state, raw::now())?;
         metrics.unmatched_ranges(unmatched.len());
         let unmatched = std::sync::Arc::new(std::sync::Mutex::new(unmatched));
-        roles.spawn(detector::detect(
-            intel.matcher(),
-            settings.threads(),
-            // As an observer: the writer's topic never waits for it.
-            topics.observe(&outcomes, "detector").await?,
-            T::sender(&findings),
-            std::sync::Arc::clone(&unmatched),
-            metrics.clone(),
+        // Nothing is matched until the feeds were looked at once.
+        let (looked, is_looked) = watch::channel(false);
+        roles.spawn(detector::after_feeds(
+            is_looked.clone(),
             stopped.clone(),
+            detector::detect(
+                intel.matcher(),
+                settings.threads(),
+                // As an observer: the writer's topic never waits for it.
+                topics.observe(&outcomes, "detector").await?,
+                T::sender(&findings),
+                std::sync::Arc::clone(&unmatched),
+                metrics.clone(),
+                stopped.clone(),
+            ),
         ));
         // What it is moved past is matched from the store, where there is
         // one to read; without, it is counted and noted, and waits.
         if let Some(store) = &config.store {
-            roles.spawn(rematch::rematch(
-                connect(store)?,
-                intel.matcher(),
-                settings.threads(),
-                unmatched,
-                T::sender(&findings),
-                metrics.clone(),
+            // A range matched before the feeds are in the store would be
+            // given up with nothing found.
+            roles.spawn(detector::after_feeds(
+                is_looked,
                 stopped.clone(),
+                rematch::rematch(
+                    connect(store)?,
+                    intel.matcher(),
+                    settings.threads(),
+                    unmatched,
+                    T::sender(&findings),
+                    metrics.clone(),
+                    stopped.clone(),
+                ),
             ));
         } else {
             info!(
                 "no [store]: events the detector is moved past are noted, and not matched from the store"
             );
         }
-        roles.spawn(detector::refresh(intel, metrics.clone(), stopped.clone()));
+        roles.spawn(detector::refresh(
+            intel,
+            looked,
+            metrics.clone(),
+            stopped.clone(),
+        ));
     }
     start_sources(config, topics, &outcomes, metrics, roles, stopped).await
 }
