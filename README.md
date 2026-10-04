@@ -19,9 +19,9 @@ Other languages: [Русский](README_ru.md)
 
 ## What works today
 
-The first milestone is the detection engine, built to be useful on its own,
-and the second has started with normalization. A raw Sysmon event and a Sigma
-rule already meet in a match:
+The detection engine came first, built to be useful on its own; ingestion,
+storage, search, and indicator matching followed. A raw Sysmon event and a
+Sigma rule meet in a match:
 
 | Step | Crate |
 | --- | --- |
