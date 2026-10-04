@@ -55,6 +55,9 @@ SSLBL: `feodo-tracker`, `urlhaus`, `threatfox`, `sslbl`.
 - A feed given as a `file` is read at start and whenever the file changes. A
   site without internet access puts the file there by other means: write it
   under another name and rename it.
+- At a start, no event is matched until every feed was looked at once: an
+  event matched against a store still empty would not be matched again.
+  Events wait in the topic meanwhile, and storage does not wait for them.
 - A fetch that fails is tried again after five minutes. A publication that is
   not the feed, such as an error page or a changed format, is refused whole.
   Either way the store keeps what it had, and matching goes on.

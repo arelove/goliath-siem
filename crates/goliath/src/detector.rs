@@ -268,8 +268,10 @@ fn seconds(time: SystemTime) -> i64 {
 
 /// Loads the feeds, then again whenever a publication changes, until
 /// stopped. Reading a publication blocks, so it runs off the async threads.
+/// Says through `looked` when every feed was looked at once.
 pub(crate) async fn refresh(
     mut intel: Intel,
+    looked: watch::Sender<bool>,
     metrics: Metrics,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
@@ -281,12 +283,37 @@ pub(crate) async fn refresh(
         })
         .await
         .map_err(|error| RunError::Role(format!("refreshing feeds: {error}")))?;
+        looked.send_replace(true);
         tokio::select! {
             () = tokio::time::sleep(REFRESH_EVERY) => {}
             _ = stop.changed() => {}
         }
     }
     Ok(())
+}
+
+/// Waits until every feed was looked at once, or until stopped. An event
+/// matched before that is matched against a store that may be empty, and
+/// nothing matches it again. Events wait in the topic meanwhile; a feed that
+/// could not be had does not hold them longer than its fetch takes to fail.
+pub(crate) async fn feeds_looked_at(
+    looked: &mut watch::Receiver<bool>,
+    stop: &mut watch::Receiver<bool>,
+) {
+    tokio::select! {
+        _ = looked.wait_for(|looked| *looked) => {}
+        _ = stop.wait_for(|stop| *stop) => {}
+    }
+}
+
+/// Runs `role` once every feed was looked at.
+pub(crate) async fn after_feeds(
+    mut looked: watch::Receiver<bool>,
+    mut stop: watch::Receiver<bool>,
+    role: impl Future<Output = Result<(), RunError>>,
+) -> Result<(), RunError> {
+    feeds_looked_at(&mut looked, &mut stop).await;
+    role.await
 }
 
 /// Looks the observables of every event up, and sends each hit on as a
@@ -654,6 +681,39 @@ file = "feeds/feodo.csv"
             ),
             "{text}"
         );
+    }
+
+    #[tokio::test]
+    async fn matching_waits_until_the_feeds_were_looked_at() {
+        let directory = tempfile::tempdir().unwrap();
+        let config = config(directory.path());
+        let intel = Intel::open(
+            config.detector.as_ref().unwrap(),
+            &config.detector_state().unwrap(),
+        )
+        .unwrap();
+        publish(directory.path(), "192.0.2.10");
+        let matcher = intel.matcher();
+        let (looked, mut is_looked) = tokio::sync::watch::channel(false);
+        let (stop, mut stopped) = tokio::sync::watch::channel(false);
+        let refreshing = tokio::spawn(super::refresh(
+            intel,
+            looked,
+            Metrics::new(),
+            stopped.clone(),
+        ));
+
+        // Whoever waited finds the feed in the store.
+        super::feeds_looked_at(&mut is_looked, &mut stopped).await;
+        assert!(*is_looked.borrow());
+        assert_eq!(detect_run(&matcher, &deliveries()).unwrap().0.len(), 1);
+        stop.send(true).unwrap();
+        refreshing.await.unwrap().unwrap();
+
+        // Stopped before any feed was looked at: the wait ends.
+        let (_never, mut is_looked) = tokio::sync::watch::channel(false);
+        super::feeds_looked_at(&mut is_looked, &mut stopped).await;
+        assert!(!*is_looked.borrow());
     }
 
     #[test]
