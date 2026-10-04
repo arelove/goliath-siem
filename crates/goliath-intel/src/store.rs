@@ -6,6 +6,17 @@ use std::sync::{PoisonError, RwLock};
 use crate::key::{Key, PrefixLengths};
 use crate::{Assertion, IntelError};
 
+/// What replacing a feed did.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Replaced {
+    /// The indicators given. One named twice is counted twice.
+    pub indicators: usize,
+    /// Of those, the ones the feed did not assert before. One named twice
+    /// is counted once or twice, as the store finds cheaper: the count says
+    /// whether the feed grew, and about by how much.
+    pub added: usize,
+}
+
 /// A set of indicators, each with what every feed asserts of it.
 ///
 /// A feed is replaced whole and never edited: a reader sees a feed as it was
@@ -25,7 +36,8 @@ pub trait Store {
 
     /// Replaces everything `feed` asserted with `indicators`, each asserted
     /// at the feed's `version`, and returns how many were given. An
-    /// indicator named twice keeps the later assertion.
+    /// indicator named twice keeps the later assertion. One the feed
+    /// asserted before keeps when it was [added](Assertion::added).
     ///
     /// # Errors
     ///
@@ -36,7 +48,7 @@ pub trait Store {
         feed: &str,
         version: &str,
         indicators: impl IntoIterator<Item = (Key, Assertion)>,
-    ) -> Result<usize, IntelError>;
+    ) -> Result<Replaced, IntelError>;
 }
 
 /// A store in memory, for tests and for sets small enough to hold there.
@@ -97,7 +109,7 @@ impl Store for MemoryStore {
         feed: &str,
         version: &str,
         indicators: impl IntoIterator<Item = (Key, Assertion)>,
-    ) -> Result<usize, IntelError> {
+    ) -> Result<Replaced, IntelError> {
         // Gathered before the lock is taken, so readers wait for the swap
         // alone and not for the feed to be read.
         let mut incoming: HashMap<Key, Assertion> = HashMap::new();
@@ -110,6 +122,17 @@ impl Store for MemoryStore {
         }
 
         let mut inner = self.inner.write().unwrap_or_else(PoisonError::into_inner);
+        let mut added = 0;
+        for (key, assertion) in &mut incoming {
+            let before = inner
+                .indicators
+                .get(key)
+                .and_then(|assertions| assertions.iter().find(|before| before.feed == feed));
+            match before {
+                Some(before) => assertion.added = before.added,
+                None => added += 1,
+            }
+        }
         inner.indicators.retain(|_, assertions| {
             assertions.retain(|assertion| assertion.feed != feed);
             !assertions.is_empty()
@@ -123,6 +146,9 @@ impl Store for MemoryStore {
             assertions.sort_by(|a, b| a.feed.cmp(&b.feed));
         }
         inner.lengths = lengths;
-        Ok(count)
+        Ok(Replaced {
+            indicators: count,
+            added,
+        })
     }
 }

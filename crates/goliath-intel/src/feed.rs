@@ -132,6 +132,8 @@ pub struct Parsed {
 pub struct Loaded {
     /// The indicators the feed now asserts.
     pub indicators: usize,
+    /// Of those, the ones it did not assert before.
+    pub added: usize,
     /// Rows or objects ignored.
     pub ignored: usize,
     /// Rows or objects whose value cannot be of its kind.
@@ -250,8 +252,10 @@ impl Feed {
         fetched_at: i64,
     ) -> Result<Loaded, IntelError> {
         let parsed = self.parse(bytes, fetched_at)?;
+        let replaced = store.replace_feed(&self.name, version, parsed.indicators)?;
         Ok(Loaded {
-            indicators: store.replace_feed(&self.name, version, parsed.indicators)?,
+            indicators: replaced.indicators,
+            added: replaced.added,
             ignored: parsed.ignored,
             rejected: parsed.rejected,
             reasons: parsed.reasons,
@@ -275,6 +279,7 @@ impl Feed {
         Assertion::new(confidence.unwrap_or(self.confidence))
             .valid(None, until)
             .seen(first_seen, last_seen)
+            .added_at(fetched_at)
     }
 
     fn rows(

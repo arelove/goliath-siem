@@ -19,7 +19,7 @@ use rocksdb::{
 
 use crate::bloom::Bloom;
 use crate::key::{Key, PrefixLengths};
-use crate::store::Store;
+use crate::store::{Replaced, Store};
 use crate::{Assertion, IntelError};
 
 /// The column family of indicators; the default one holds the feeds.
@@ -287,12 +287,11 @@ impl Store for RocksStore {
         feed: &str,
         version: &str,
         indicators: impl IntoIterator<Item = (Key, Assertion)>,
-    ) -> Result<usize, IntelError> {
+    ) -> Result<Replaced, IntelError> {
         if feed.is_empty() || feed.contains('\0') {
             return Err(failed("a feed needs a name without a NUL"));
         }
         let _writing = self.writer.lock().unwrap_or_else(PoisonError::into_inner);
-        let column = self.indicators()?;
         let mut durable = WriteOptions::default();
         durable.set_sync(true);
 
@@ -325,24 +324,25 @@ impl Store for RocksStore {
 
         // The new generation, beside the old. An indicator named twice
         // overwrites itself, so the later assertion is kept.
+        let before = self
+            .feeds
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(feed)
+            .map(|current| current.generation);
         let mut lengths = self.prefix_lengths();
-        let mut batch = WriteBatch::default();
-        let mut count = 0usize;
+        let mut chunk = Vec::with_capacity(CHUNK);
+        let (mut count, mut added) = (0usize, 0usize);
         for (key, assertion) in indicators {
             let indicator = key.to_bytes();
-            bloom.add(&indicator);
             lengths.add(&key);
-            batch.put_cf(
-                column,
-                entry_key(&indicator, feed, generation),
-                encode(&assertion),
-            );
+            chunk.push((indicator, assertion));
             count += 1;
-            if batch.len() >= CHUNK {
-                self.db.write(std::mem::take(&mut batch)).map_err(failed)?;
+            if chunk.len() >= CHUNK {
+                added += self.write_chunk(&mut chunk, feed, before, generation, &bloom)?;
             }
         }
-        self.db.write(batch).map_err(failed)?;
+        added += self.write_chunk(&mut chunk, feed, before, generation, &bloom)?;
         // Networks of the new generation are probed from now; a length no
         // feed uses any longer costs a lookup that finds nothing.
         *self.lengths.write().unwrap_or_else(PoisonError::into_inner) = lengths;
@@ -365,7 +365,57 @@ impl Store for RocksStore {
         if bloom.is_full() {
             self.build_filter(0)?;
         }
-        Ok(count)
+        Ok(Replaced {
+            indicators: count,
+            added,
+        })
+    }
+}
+
+impl RocksStore {
+    /// Writes the indicators of `chunk` as entries of `generation`, emptying
+    /// it, and returns how many the feed did not assert in the generation
+    /// `before`. One it did keeps when it was added.
+    fn write_chunk(
+        &self,
+        chunk: &mut Vec<(Vec<u8>, Assertion)>,
+        feed: &str,
+        before: Option<u64>,
+        generation: u64,
+        bloom: &Bloom,
+    ) -> Result<usize, IntelError> {
+        let column = self.indicators()?;
+        let mut added = chunk.len();
+        if let Some(before) = before {
+            // An indicator the filter does not hold was in no generation:
+            // only the others are read. Read before any is added to it.
+            let held: Vec<usize> = (0..chunk.len())
+                .filter(|&index| bloom.may_contain(&chunk[index].0))
+                .collect();
+            let earlier = self.db.multi_get_cf(
+                held.iter()
+                    .map(|&index| (column, entry_key(&chunk[index].0, feed, before))),
+            );
+            for (index, earlier) in held.into_iter().zip(earlier) {
+                if let Some(value) = earlier.map_err(failed)? {
+                    let earlier =
+                        decode(&value).ok_or_else(|| failed("an assertion cannot be read"))?;
+                    chunk[index].1.added = earlier.added;
+                    added -= 1;
+                }
+            }
+        }
+        let mut batch = WriteBatch::default();
+        for (indicator, assertion) in chunk.drain(..) {
+            bloom.add(&indicator);
+            batch.put_cf(
+                column,
+                entry_key(&indicator, feed, generation),
+                encode(&assertion),
+            );
+        }
+        self.db.write(batch).map_err(failed)?;
+        Ok(added)
     }
 }
 
@@ -420,12 +470,14 @@ fn current_of(record: &[u8]) -> Option<Current> {
 
 /// An assertion as stored: the confidence, which times are present, and
 /// those times. The feed and its version are not repeated in every entry.
+/// An entry written before `added` was kept has none, and reads so.
 fn encode(assertion: &Assertion) -> Vec<u8> {
     let times = [
         assertion.valid_from,
         assertion.valid_until,
         assertion.first_seen,
         assertion.last_seen,
+        assertion.added,
     ];
     let mut present = 0u8;
     let mut value = vec![assertion.confidence, 0];
@@ -441,7 +493,7 @@ fn encode(assertion: &Assertion) -> Vec<u8> {
 
 fn decode(value: &[u8]) -> Option<Assertion> {
     let (&[confidence, present], mut rest) = value.split_first_chunk::<2>()?;
-    let mut times = [None; 4];
+    let mut times = [None; 5];
     for (index, time) in times.iter_mut().enumerate() {
         if present & (1 << index) != 0 {
             let (bytes, after) = rest.split_first_chunk::<8>()?;
@@ -449,11 +501,11 @@ fn decode(value: &[u8]) -> Option<Assertion> {
             rest = after;
         }
     }
-    Some(
-        Assertion::new(confidence)
-            .valid(times[0], times[1])
-            .seen(times[2], times[3]),
-    )
+    let mut assertion = Assertion::new(confidence)
+        .valid(times[0], times[1])
+        .seen(times[2], times[3]);
+    assertion.added = times[4];
+    Some(assertion)
 }
 
 #[cfg(test)]
@@ -485,10 +537,16 @@ mod tests {
                 .valid(Some(1), Some(2))
                 .seen(Some(i64::MIN), Some(i64::MAX)),
             Assertion::new(1).seen(None, Some(9)),
+            Assertion::new(1).seen(None, Some(9)).added_at(7),
         ] {
             assert_eq!(decode(&encode(&assertion)), Some(assertion));
         }
         assert_eq!(encode(&Assertion::new(70)).len(), 2);
+        // An entry written before `added` was kept reads as having none.
+        assert_eq!(
+            decode(&[70, 0b1000, 0, 0, 0, 0, 0, 0, 0, 9]),
+            Some(Assertion::new(70).seen(None, Some(9)))
+        );
         assert_eq!(decode(&[70, 1, 0]), None);
     }
 
