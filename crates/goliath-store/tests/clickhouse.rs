@@ -167,6 +167,51 @@ async fn events_are_queryable_by_their_ocsf_paths() {
 }
 
 #[tokio::test]
+async fn events_are_read_back_by_when_they_were_received() {
+    let Some(scratch) = Scratch::new("reread") else {
+        return;
+    };
+    scratch.store.migrate().await.unwrap();
+    let (first, second) = (1_790_000_000_000, 1_790_000_060_000);
+    let batch = batch(KINDS, first);
+    scratch.store.write(&batch).await.unwrap();
+    scratch
+        .store
+        .write(&self::batch(KINDS, second))
+        .await
+        .unwrap();
+
+    // The first minute alone: every event of the first batch, whole.
+    let mut reading = scratch.store.received_between(first, second).unwrap();
+    let mut read = Vec::new();
+    while let Some(kept) = reading.next().await.unwrap() {
+        read.push(kept);
+    }
+    assert_eq!(read.len(), batch.events());
+    let mut ids: Vec<_> = read.iter().map(|kept| kept.id).collect();
+    ids.sort_unstable();
+    ids.dedup();
+    assert_eq!(ids.len(), read.len());
+    for kept in &read {
+        assert_eq!((kept.received, kept.source.as_str()), (first, "sysmon"));
+        let event: serde_json::Value = serde_json::from_str(&kept.event).unwrap();
+        // Numbers come back as numbers, the time among them.
+        assert!(event["time"].is_i64(), "{}", kept.event);
+        assert!(event["class_uid"].is_u64());
+    }
+    // A range that holds nothing reads as nothing.
+    let mut reading = scratch
+        .store
+        .received_between(second + 1, second + 2)
+        .unwrap();
+    assert_eq!(reading.next().await.unwrap(), None);
+
+    assert!(scratch.store.holds_received_from(second).await.unwrap());
+    assert!(!scratch.store.holds_received_from(second + 1).await.unwrap());
+    scratch.drop().await;
+}
+
+#[tokio::test]
 async fn a_batch_written_twice_is_stored_once() {
     let Some(scratch) = Scratch::new("dedup") else {
         return;

@@ -15,6 +15,7 @@ mod error;
 mod health;
 mod migrate;
 mod overview;
+mod reread;
 mod search;
 mod store;
 mod writer;
@@ -26,6 +27,7 @@ pub use health::{
 };
 pub use migrate::{MIGRATIONS, Migration};
 pub use overview::{Arrived, Bucket, Frequent, HostBucket, Overview};
+pub use reread::{Kept, Reading};
 pub use search::{Found, Page, SearchLimits, Stored};
 pub use store::Store;
 pub use writer::{Limits, Writer};

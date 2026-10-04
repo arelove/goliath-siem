@@ -5,6 +5,7 @@
 //! It never rewrites an event, and the writer does not read what it reads
 //! through it: the two are separate groups of one topic.
 
+use std::fmt::Write as _;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -13,6 +14,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use goliath_intel::{Allowlist, Allowlists, Feed, Matcher, RocksStore, finding, observables};
 use goliath_normalize::{Envelope, EventId, Normalized, Outcome};
 use goliath_pipe::{Delivery, Receiver, Sender};
+use goliath_store::Kept;
 use serde_json::Value;
 use tokio::sync::watch;
 use tracing::{info, warn};
@@ -21,6 +23,7 @@ use crate::RunError;
 use crate::config::DetectorConfig;
 use crate::fetch::{self, Fetched, Fetcher};
 use crate::metrics::Metrics;
+use crate::rematch::{self, Shared};
 use crate::roles::{BATCH, Lag, POLL};
 
 /// The source findings are stored under.
@@ -291,12 +294,15 @@ pub(crate) async fn refresh(
 ///
 /// It reads as an observer, so it never slows the writer. If it falls
 /// further behind than the topic keeps, it is moved past the events between,
-/// which is counted and logged: they are stored, and not matched.
+/// which is counted and logged: they are stored, and not matched. The range
+/// of receipt time they lie in is noted in `unmatched`, to be matched from
+/// the store.
 pub(crate) async fn detect(
     matcher: Arc<Matcher<RocksStore>>,
     threads: NonZeroUsize,
     mut events: impl Receiver + Sync,
     findings: impl Sender + Sync,
+    unmatched: Shared,
     metrics: Metrics,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
@@ -312,22 +318,42 @@ pub(crate) async fn detect(
                 "the detector fell behind what the topic keeps, and was moved past events it did not match"
             );
             metrics.detector_skipped(skipped);
+            // Up to the first record it was moved to; with none yet, up to
+            // now, which nothing it missed can be later than.
+            let resumed = deliveries
+                .first()
+                .and_then(received)
+                .unwrap_or_else(crate::raw::now);
+            let mut unmatched = rematch::lock(&unmatched);
+            unmatched.skipped(resumed);
+            metrics.unmatched_ranges(unmatched.len());
         }
-        let Some(last) = deliveries.last().map(|delivery| delivery.offset) else {
+        let Some(last) = deliveries.last() else {
             continue;
         };
+        let (last, through) = (last.offset, received(last));
         let shared = Arc::clone(&matcher);
-        let (encoded, tally) =
-            tokio::task::spawn_blocking(move || detect_batch(&shared, &deliveries, threads))
-                .await
-                .map_err(|error| RunError::Role(format!("detecting: {error}")))??;
+        let (encoded, tally) = tokio::task::spawn_blocking(move || {
+            detect_batch(&shared, &deliveries, threads, detect_run)
+        })
+        .await
+        .map_err(|error| RunError::Role(format!("detecting: {error}")))??;
         metrics.detected(&tally);
         if !encoded.is_empty() {
             findings.send(encoded).await?;
         }
         events.acknowledge(last).await?;
+        if let Some(through) = through {
+            rematch::lock(&unmatched).matched(through);
+        }
     }
+    rematch::lock(&unmatched).save();
     Ok(())
+}
+
+/// When the platform took the record of `delivery`, if it says.
+fn received(delivery: &Delivery) -> Option<i64> {
+    Envelope::decode(&delivery.payload).ok()?.received
 }
 
 /// What a batch of events gave, counted.
@@ -352,20 +378,22 @@ impl Tally {
     }
 }
 
-type Detected = Result<(Vec<Vec<u8>>, Tally), RunError>;
+pub(crate) type Detected = Result<(Vec<Vec<u8>>, Tally), RunError>;
 
-/// Detects in `deliveries` on up to `threads` threads, each taking a run of
-/// consecutive records, and joins their findings in the records' order.
-fn detect_batch(
+/// Detects in `records` on up to `threads` threads, each taking a run of
+/// consecutive records through `run`, and joins their findings in the
+/// records' order.
+pub(crate) fn detect_batch<T: Sync>(
     matcher: &Matcher<RocksStore>,
-    deliveries: &[Delivery],
+    records: &[T],
     threads: NonZeroUsize,
+    run: fn(&Matcher<RocksStore>, &[T]) -> Detected,
 ) -> Detected {
-    let per_thread = deliveries.len().div_ceil(threads.get()).max(1);
+    let per_thread = records.len().div_ceil(threads.get()).max(1);
     let parts: Vec<Detected> = std::thread::scope(|scope| {
-        let running: Vec<_> = deliveries
+        let running: Vec<_> = records
             .chunks(per_thread)
-            .map(|chunk| scope.spawn(move || detect_run(matcher, chunk)))
+            .map(|chunk| scope.spawn(move || run(matcher, chunk)))
             .collect();
         running
             .into_iter()
@@ -397,44 +425,96 @@ fn detect_run(matcher: &Matcher<RocksStore>, deliveries: &[Delivery]) -> Detecte
         let Outcome::Event(normalized) = &envelope.outcome else {
             continue;
         };
-        tally.events += 1;
-        let event = &normalized.event;
-        // An indicator is asked whether it held when the event happened.
-        let at = event
-            .get("time")
-            .and_then(Value::as_i64)
-            .unwrap_or(created)
-            .div_euclid(1000);
-        let id = normalized.id.to_string();
-        for observed in observables(event) {
-            tally.observables += 1;
-            let hits = matcher
-                .lookup(observed.kind, &observed.value, at)
-                .map_err(|error| RunError::Io(error.to_string()))?;
-            for hit in hits {
-                tally.hits += 1;
-                tally.suppressed += u64::from(hit.suppressed.is_some());
-                let finding = finding(&id, event, &observed, &hit, created);
-                // The same event and indicator give the same identity, so a
-                // batch detected twice is stored once.
-                let uid = finding
-                    .pointer("/finding_info/uid")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                let identity = EventId::of(SOURCE, uid.as_bytes());
-                encoded.push(
-                    Envelope::new(
-                        SOURCE,
-                        VERSION,
-                        Outcome::Event(Normalized::new(identity, finding, KIND)),
-                    )
-                    .received_at(created)
-                    .encode(),
-                );
-            }
-        }
+        detect_event(
+            matcher,
+            &normalized.id.to_string(),
+            &normalized.event,
+            envelope.received.unwrap_or(created),
+            created,
+            &mut encoded,
+            &mut tally,
+        )?;
     }
     Ok((encoded, tally))
+}
+
+/// Detects in events read back from the store, as [`detect_run`] does in
+/// events from the topic: the same event gives the same findings.
+pub(crate) fn detect_kept(matcher: &Matcher<RocksStore>, kept: &[Kept]) -> Detected {
+    let created = jiff::Timestamp::now().as_millisecond();
+    let mut encoded = Vec::new();
+    let mut tally = Tally::default();
+    for kept in kept {
+        // The store holds events as JSON; one that is not was not stored
+        // by the writer, and is left alone.
+        let Ok(event) = serde_json::from_str::<Value>(&kept.event) else {
+            continue;
+        };
+        let id = kept.id.iter().fold(String::new(), |mut id, byte| {
+            let _ = write!(id, "{byte:02x}");
+            id
+        });
+        detect_event(
+            matcher,
+            &id,
+            &event,
+            kept.received,
+            created,
+            &mut encoded,
+            &mut tally,
+        )?;
+    }
+    Ok((encoded, tally))
+}
+
+/// Looks the observables of `event` up, and adds each hit to `encoded` as a
+/// finding. A finding is taken when its event was, at `received`: the two
+/// are kept as long as each other, and a finding made twice, as the event
+/// arrived and from the store, is stored once.
+fn detect_event(
+    matcher: &Matcher<RocksStore>,
+    id: &str,
+    event: &Value,
+    received: i64,
+    created: i64,
+    encoded: &mut Vec<Vec<u8>>,
+    tally: &mut Tally,
+) -> Result<(), RunError> {
+    tally.events += 1;
+    // An indicator is asked whether it held when the event happened.
+    let at = event
+        .get("time")
+        .and_then(Value::as_i64)
+        .unwrap_or(created)
+        .div_euclid(1000);
+    for observed in observables(event) {
+        tally.observables += 1;
+        let hits = matcher
+            .lookup(observed.kind, &observed.value, at)
+            .map_err(|error| RunError::Io(error.to_string()))?;
+        for hit in hits {
+            tally.hits += 1;
+            tally.suppressed += u64::from(hit.suppressed.is_some());
+            let finding = finding(id, event, &observed, &hit, created);
+            // The same event and indicator give the same identity, so an
+            // event detected twice is stored once.
+            let uid = finding
+                .pointer("/finding_info/uid")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            let identity = EventId::of(SOURCE, uid.as_bytes());
+            encoded.push(
+                Envelope::new(
+                    SOURCE,
+                    VERSION,
+                    Outcome::Event(Normalized::new(identity, finding, KIND)),
+                )
+                .received_at(received)
+                .encode(),
+            );
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -448,11 +528,13 @@ mod tests {
     use goliath_normalize::{Envelope, Normalizer, Outcome, SYSMON};
     use goliath_pipe::Delivery;
 
-    use super::{Intel, SOURCE, detect_run};
+    use super::{Intel, SOURCE, detect_kept, detect_run};
     use crate::config::Config;
     use crate::metrics::Metrics;
 
     const KINDS: &str = include_str!("../../goliath-normalize/sources/sysmon/kinds.input.json");
+    /// When the platform took the fixture, where a test says.
+    const TAKEN: i64 = 1_790_000_000_000;
 
     /// The events the Sysmon definition makes of its fixture, as the
     /// normalizer sends them.
@@ -572,6 +654,67 @@ file = "feeds/feodo.csv"
             ),
             "{text}"
         );
+    }
+
+    #[test]
+    fn an_event_read_back_from_the_store_gives_the_finding_it_gave_as_it_arrived() {
+        let directory = tempfile::tempdir().unwrap();
+        let config = config(directory.path());
+        let mut intel = Intel::open(
+            config.detector.as_ref().unwrap(),
+            &config.detector_state().unwrap(),
+        )
+        .unwrap();
+        publish(directory.path(), "192.0.2.10");
+        intel.refresh(&Metrics::new());
+
+        let sysmon = Normalizer::from_yaml(SYSMON).unwrap();
+        let (mut arriving, mut kept) = (Vec::new(), Vec::new());
+        sysmon.normalize(KINDS.as_bytes(), |outcome| {
+            if let Outcome::Event(normalized) = &outcome {
+                // As the writer stores it and the store gives it back.
+                kept.push(goliath_store::Kept {
+                    received: TAKEN,
+                    id: *normalized.id.as_bytes(),
+                    source: "sysmon".to_owned(),
+                    event: normalized.event.to_string(),
+                });
+            }
+            arriving.push(Delivery {
+                offset: arriving.len() as u64,
+                payload: Envelope::new("sysmon", 1, outcome)
+                    .received_at(TAKEN)
+                    .encode(),
+            });
+        });
+        // What is not JSON is no stored event, and is passed over.
+        kept.push(goliath_store::Kept {
+            received: TAKEN,
+            id: [0; 16],
+            source: "sysmon".to_owned(),
+            event: "not json".to_owned(),
+        });
+
+        let (arrived, counted) = detect_run(&intel.matcher(), &arriving).unwrap();
+        let (read_back, recounted) = detect_kept(&intel.matcher(), &kept).unwrap();
+        assert_eq!((arrived.len(), read_back.len()), (1, 1));
+        assert_eq!(
+            (counted.events, counted.observables),
+            (recounted.events, recounted.observables)
+        );
+        let finding = |encoded: &[u8]| {
+            let envelope = Envelope::decode(encoded).unwrap();
+            let Outcome::Event(finding) = envelope.outcome else {
+                panic!("not an event");
+            };
+            (envelope.received, finding.id, finding.event)
+        };
+        let (first, second) = (finding(&arrived[0]), finding(&read_back[0]));
+        // Taken when its event was, and the same identity: stored once.
+        assert_eq!((first.0, second.0), (Some(TAKEN), Some(TAKEN)));
+        assert_eq!(first.1, second.1);
+        assert_eq!(first.2["evidences"], second.2["evidences"]);
+        assert_eq!(first.2["osint"], second.2["osint"]);
     }
 
     /// Serves `body` on a port of this host, with a tag, and answers 304 to

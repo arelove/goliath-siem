@@ -113,9 +113,9 @@ such as a file the collector tails. Single-binary mode uses the disk log.
   ingestion rather than losing records. The writer is such a group.
 - The detector reads as an observer. One that falls behind by more than the
   bound does not slow ingestion; it is moved past events, which are stored
-  and were not matched as they arrived. The count is a metric, and matching
-  them afterwards from the store is the query of
-  [ADR-0021](0021-enrichment-placement.md) for indicators that arrive late.
+  and were not matched as they arrived. The count is a metric, and the
+  detector matches them afterwards from the store
+  ([ADR-0021](0021-enrichment-placement.md)).
 - On disk, records are kept for an observer a whole segment at a time, so a
   topic takes up to its capacity and one segment. In Kafka they are kept by
   the topic's retention, which is set well beyond the bound.

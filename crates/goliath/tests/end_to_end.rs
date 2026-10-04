@@ -339,6 +339,134 @@ max_delay_ms = 100
         .unwrap();
 }
 
+const FINDINGS: &str = "SELECT count() FROM events FINAL WHERE class_uid = 2004";
+
+/// A detector that was moved past events finds them in the store: here the
+/// events were stored before there was a detector, and it starts with their
+/// range of receipt time noted as unmatched.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn events_the_detector_was_moved_past_are_matched_from_the_store() {
+    let Some(url) = clickhouse_url() else {
+        return;
+    };
+    let user = clickhouse_user();
+    let database = format!("goliath_test_rematch_{}", std::process::id());
+    let directory = tempfile::tempdir().unwrap();
+    // The roles, and a data directory of their own for each run, so that
+    // the detector finds nothing in a topic.
+    let config = |roles: &str, data: &str| {
+        let path = directory.path().join(format!("{data}.toml"));
+        std::fs::write(
+            &path,
+            format!(
+                r#"
+roles = [{roles}]
+data = "{data}"
+
+[[sources]]
+definition = "sysmon"
+inbox = "inbox-{data}"
+
+[[detector.feeds]]
+definition = "feodo-tracker"
+file = "feodo.csv"
+
+[store]
+url = "{url}"
+database = "{database}"
+user = "{user}"
+password_env = "GOLIATH_CLICKHOUSE_PASSWORD"
+retention_days = 30
+
+[writer]
+max_rows = 1000
+max_delay_ms = 100
+"#
+            ),
+        )
+        .unwrap();
+        Config::load(&path).unwrap()
+    };
+    std::fs::write(
+        directory.path().join("feodo.csv"),
+        "\"first_seen_utc\",\"dst_ip\",\"dst_port\",\"c2_status\",\"last_online\",\"malware\"\n\
+         \"2026-01-01 00:00:00\",\"192.0.2.10\",\"443\",\"online\",\"2099-01-01\",\"Example\"\n",
+    )
+    .unwrap();
+    let client = connect(&url).with_database(&database);
+    let (events, _) = expected(KINDS);
+
+    // Stored with no detector running: nothing is found.
+    let (stop, running) = start(config(r#""collector", "normalizer", "writer""#, "before"));
+    drop_file(
+        &directory.path().join("inbox-before"),
+        "001-kinds.json",
+        KINDS,
+    );
+    eventually(&client, "SELECT count() FROM events", events).await;
+    stop.send(()).unwrap();
+    running.await.unwrap().unwrap();
+    assert_eq!(count(&client, FINDINGS).await, 0);
+    let (earliest, latest) = client
+        .query("SELECT min(toUnixTimestamp64Milli(received)), max(toUnixTimestamp64Milli(received)) FROM events")
+        .fetch_one::<(i64, i64)>()
+        .await
+        .unwrap();
+
+    // A detector that has their receipt time noted as unmatched.
+    let state = directory.path().join("after/intel");
+    std::fs::create_dir_all(&state).unwrap();
+    std::fs::write(
+        state.join("unmatched.json"),
+        format!(
+            r#"{{"matched_until":{earliest},"ranges":[{{"from":{earliest},"to":{}}}]}}"#,
+            latest + 1
+        ),
+    )
+    .unwrap();
+    let (stop, running) = start(config(
+        r#""collector", "normalizer", "detector", "writer""#,
+        "after",
+    ));
+    // The range waits for the writer to be past it: for an event taken
+    // later. This one goes to another address, which no feed names.
+    drop_file(
+        &directory.path().join("inbox-after"),
+        "002-elsewhere.json",
+        &KINDS.replace("192.0.2.10", "192.0.2.99"),
+    );
+    eventually(&client, FINDINGS, 1).await;
+    // The finding is of the event stored before, and was taken when it was.
+    let (received, finding) = client
+        .query(
+            "SELECT toUnixTimestamp64Milli(received), toJSONString(event) \
+             FROM events FINAL WHERE class_uid = 2004",
+        )
+        .fetch_one::<(i64, String)>()
+        .await
+        .unwrap();
+    assert!(
+        (earliest..=latest).contains(&received),
+        "taken at {received}"
+    );
+    assert!(finding.contains("192.0.2.10"), "{finding}");
+    stop.send(()).unwrap();
+    running.await.unwrap().unwrap();
+    // The range was given up, and is not read again.
+    let noted: Value =
+        serde_json::from_slice(&std::fs::read(state.join("unmatched.json")).unwrap()).unwrap();
+    assert_eq!(noted["ranges"], serde_json::json!([]));
+    drop_database(&url, &database).await;
+}
+
+async fn drop_database(url: &str, database: &str) {
+    connect(url)
+        .query(&format!("DROP DATABASE IF EXISTS {database}"))
+        .execute()
+        .await
+        .unwrap();
+}
+
 async fn http(port: u16, method: &str, path: &str, token: &str, body: &str) -> (u16, Value) {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
