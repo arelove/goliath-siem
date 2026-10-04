@@ -10,17 +10,18 @@ orchestration, and incident handling in one system.
 
 > **Status: pre-alpha.** Nothing here is production-ready. The architecture is
 > settled and documented. Logs can be sent over the network, are normalized
-> to OCSF, stored, and searched, and the Sigma detection path works end to
-> end on OCSF events. Detection on the stored stream and the platform around
-> it are not built yet.
+> to OCSF, stored, and searched; threat intelligence indicators are matched
+> against every event as it arrives; and the Sigma detection path works end
+> to end on OCSF events. Sigma rules on the live stream and the platform
+> around it are not built yet.
 
 Other languages: [Русский](README_ru.md)
 
 ## What works today
 
-The first milestone is the detection engine, built to be useful on its own,
-and the second has started with normalization. A raw Sysmon event and a Sigma
-rule already meet in a match:
+The detection engine came first, built to be useful on its own; ingestion,
+storage, search, and indicator matching followed. A raw Sysmon event and a
+Sigma rule meet in a match:
 
 | Step | Crate |
 | --- | --- |
@@ -70,8 +71,29 @@ other source can be described in the same YAML. Each source's health, when
 it last sent and how its last hour compares with the same hour of its week,
 is shown beside the search.
 
-Not built yet: detection on the stored stream, the entity graph, response, and
-the investigation and case views. The order is in
+Indicators from threat intelligence feeds are matched against every event
+as it arrives, in a detector that reads beside storage and never slows it
+([docs/detector.md](docs/detector.md)):
+
+- feeds are described in YAML, as CSV or STIX 2.1, and fetched over HTTPS;
+  definitions ship for abuse.ch Feodo Tracker, URLhaus, ThreatFox, and
+  SSLBL;
+- addresses, domains, URLs, file hashes, and the other values of an event
+  are found by the types of the OCSF schema, not by a list of field names;
+- each match is stored as an OCSF Detection Finding beside its event, and
+  names every feed that asserts the indicator, with its version and
+  confidence;
+- an allowlist entry wins over every feed, and what it suppressed is stored
+  too, so that it can be reviewed;
+- a detector that falls behind does not slow ingestion: it is moved
+  forward, and matches what it missed from the store afterwards.
+
+The indicators are kept in RocksDB inside the process, behind a filter in
+memory. The budgets it must meet at 100 million indicators are set in
+[ADR-0021](docs/adr/0021-enrichment-placement.md); that run is not made yet.
+
+Not built yet: Sigma rules on the live stream, the entity graph, response,
+and the investigation and case views. The order is in
 [docs/roadmap.md](docs/roadmap.md).
 
 ## Run it
@@ -209,6 +231,8 @@ significant decision has an ADR in [docs/adr/](docs/adr/).
 | [docs/roadmap.md](docs/roadmap.md) | Delivery plan and current milestone |
 | [docs/sigma-coverage.md](docs/sigma-coverage.md) | How much of SigmaHQ loads and fires on real attacks, and how fast |
 | [docs/benchmarks.md](docs/benchmarks.md) | How speed is measured, and how CI stops regressions |
+| [docs/detector.md](docs/detector.md) | Matching threat intelligence: feeds, allowlists, findings, what to watch |
+| [docs/lab.md](docs/lab.md) | A home lab: logs from a second machine over the local network |
 | [docs/adr/](docs/adr/) | Architecture decision records |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Invariants, review rules, how to add a decision |
 | [SECURITY.md](SECURITY.md) | How to report a vulnerability |
