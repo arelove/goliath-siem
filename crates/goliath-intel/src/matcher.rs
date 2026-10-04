@@ -28,6 +28,17 @@ impl Hit {
             .max()
             .unwrap_or_default()
     }
+
+    /// Since when the store has held the indicator from any of these
+    /// feeds: the earliest time one was added. `None` if a feed asserted it
+    /// before such times were kept, which is to say always.
+    pub fn known_since(&self) -> Option<i64> {
+        self.assertions
+            .iter()
+            .map(|assertion| assertion.added)
+            .min()
+            .flatten()
+    }
 }
 
 /// Indicators and allowlists, asked together.

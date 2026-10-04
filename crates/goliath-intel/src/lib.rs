@@ -50,7 +50,7 @@ pub use matcher::{Hit, Matcher};
 pub use observe::{Observed, observables};
 #[cfg(feature = "rocksdb")]
 pub use rocks::RocksStore;
-pub use store::{MemoryStore, Store};
+pub use store::{MemoryStore, Replaced, Store};
 
 /// The definition of abuse.ch Feodo Tracker shipped with this crate, ready
 /// for [`Feed::from_yaml`].
@@ -90,6 +90,12 @@ pub struct Assertion {
     pub first_seen: Option<i64>,
     /// When the feed last saw it.
     pub last_seen: Option<i64>,
+    /// When the store first held this indicator from this feed, if whoever
+    /// loaded it said. [`Store::replace_feed`] keeps the earlier time over
+    /// every replacement of the feed that still names the indicator. With
+    /// it, an indicator that arrived after an event can be told from one
+    /// the event was already matched against.
+    pub added: Option<i64>,
 }
 
 impl Assertion {
@@ -103,6 +109,7 @@ impl Assertion {
             valid_until: None,
             first_seen: None,
             last_seen: None,
+            added: None,
         }
     }
 
@@ -119,6 +126,14 @@ impl Assertion {
     pub fn seen(mut self, first: Option<i64>, last: Option<i64>) -> Self {
         self.first_seen = first;
         self.last_seen = last;
+        self
+    }
+
+    /// The same, first held by the store at `at`, unless the store held it
+    /// from this feed before.
+    #[must_use]
+    pub fn added_at(mut self, at: i64) -> Self {
+        self.added = Some(at);
         self
     }
 
