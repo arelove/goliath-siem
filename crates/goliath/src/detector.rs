@@ -114,6 +114,9 @@ pub(crate) struct Intel {
     matcher: Arc<Matcher<RocksStore>>,
     feeds: Vec<Published>,
     fetcher: Fetcher,
+    /// Where it is noted that a feed added indicators, for a look back over
+    /// the events stored before them.
+    noted: Option<Shared>,
 }
 
 fn io(error: impl std::fmt::Display) -> RunError {
@@ -188,7 +191,13 @@ impl Intel {
             matcher: Arc::new(Matcher::new(store, allowlists)),
             feeds,
             fetcher: Fetcher::new(),
+            noted: None,
         })
+    }
+
+    /// Notes in `unmatched` whenever a feed adds indicators.
+    pub(crate) fn notes(&mut self, unmatched: Shared) {
+        self.noted = Some(unmatched);
     }
 
     /// The matcher events are looked up in.
@@ -237,10 +246,16 @@ impl Intel {
                     info!(
                         feed = name,
                         indicators = loaded.indicators,
+                        added = loaded.added,
                         ignored = loaded.ignored,
                         rejected = loaded.rejected,
                         "feed loaded"
                     );
+                    // Events stored before these indicators were never
+                    // matched against them.
+                    if let Some(noted) = self.noted.as_ref().filter(|_| loaded.added > 0) {
+                        rematch::lock(noted).added(now, crate::raw::now());
+                    }
                     metrics.feed_refreshed(&name, "loaded", Some((loaded.indicators, modified)));
                     // A file put there by other means is current as of when
                     // it was written; a fetched one as of its fetch.
@@ -414,8 +429,9 @@ pub(crate) fn detect_batch<T: Sync>(
     matcher: &Matcher<RocksStore>,
     records: &[T],
     threads: NonZeroUsize,
-    run: fn(&Matcher<RocksStore>, &[T]) -> Detected,
+    run: impl Fn(&Matcher<RocksStore>, &[T]) -> Detected + Sync,
 ) -> Detected {
+    let run = &run;
     let per_thread = records.len().div_ceil(threads.get()).max(1);
     let parts: Vec<Detected> = std::thread::scope(|scope| {
         let running: Vec<_> = records
@@ -452,22 +468,27 @@ fn detect_run(matcher: &Matcher<RocksStore>, deliveries: &[Delivery]) -> Detecte
         let Outcome::Event(normalized) = &envelope.outcome else {
             continue;
         };
-        detect_event(
-            matcher,
-            &normalized.id.to_string(),
-            &normalized.event,
-            envelope.received.unwrap_or(created),
-            created,
-            &mut encoded,
-            &mut tally,
-        )?;
+        let seen = Seen {
+            id: &normalized.id.to_string(),
+            event: &normalized.event,
+            received: envelope.received.unwrap_or(created),
+        };
+        detect_event(matcher, &seen, created, None, &mut encoded, &mut tally)?;
     }
     Ok((encoded, tally))
 }
 
 /// Detects in events read back from the store, as [`detect_run`] does in
 /// events from the topic: the same event gives the same findings.
-pub(crate) fn detect_kept(matcher: &Matcher<RocksStore>, kept: &[Kept]) -> Detected {
+///
+/// With `since`, in seconds since the epoch, only indicators the store has
+/// held since then or later are reported: the ones that arrived after the
+/// events were matched.
+pub(crate) fn detect_kept(
+    matcher: &Matcher<RocksStore>,
+    kept: &[Kept],
+    since: Option<i64>,
+) -> Detected {
     let created = jiff::Timestamp::now().as_millisecond();
     let mut encoded = Vec::new();
     let mut tally = Tally::default();
@@ -481,32 +502,43 @@ pub(crate) fn detect_kept(matcher: &Matcher<RocksStore>, kept: &[Kept]) -> Detec
             let _ = write!(id, "{byte:02x}");
             id
         });
-        detect_event(
-            matcher,
-            &id,
-            &event,
-            kept.received,
-            created,
-            &mut encoded,
-            &mut tally,
-        )?;
+        let seen = Seen {
+            id: &id,
+            event: &event,
+            received: kept.received,
+        };
+        detect_event(matcher, &seen, created, since, &mut encoded, &mut tally)?;
     }
     Ok((encoded, tally))
 }
 
-/// Looks the observables of `event` up, and adds each hit to `encoded` as a
-/// finding. A finding is taken when its event was, at `received`: the two
-/// are kept as long as each other, and a finding made twice, as the event
-/// arrived and from the store, is stored once.
+/// An event to detect in.
+struct Seen<'a> {
+    /// Its identity, as text.
+    id: &'a str,
+    event: &'a Value,
+    /// When the platform took it, in milliseconds since the epoch.
+    received: i64,
+}
+
+/// Looks the observables of an event up, and adds each hit to `encoded` as
+/// a finding. A finding is taken when its event was: the two are kept as
+/// long as each other, and a finding made twice, as the event arrived and
+/// from the store, is stored once. With `since`, a hit of an indicator the
+/// store held before then is passed over.
 fn detect_event(
     matcher: &Matcher<RocksStore>,
-    id: &str,
-    event: &Value,
-    received: i64,
+    seen: &Seen<'_>,
     created: i64,
+    since: Option<i64>,
     encoded: &mut Vec<Vec<u8>>,
     tally: &mut Tally,
 ) -> Result<(), RunError> {
+    let Seen {
+        id,
+        event,
+        received,
+    } = *seen;
     tally.events += 1;
     // An indicator is asked whether it held when the event happened.
     let at = event
@@ -520,6 +552,10 @@ fn detect_event(
             .lookup(observed.kind, &observed.value, at)
             .map_err(|error| RunError::Io(error.to_string()))?;
         for hit in hits {
+            // Held before: the event was matched against it as it arrived.
+            if since.is_some_and(|since| hit.known_since().is_none_or(|added| added < since)) {
+                continue;
+            }
             tally.hits += 1;
             tally.suppressed += u64::from(hit.suppressed.is_some());
             let finding = finding(id, event, &observed, &hit, created);
@@ -756,7 +792,7 @@ file = "feeds/feodo.csv"
         });
 
         let (arrived, counted) = detect_run(&intel.matcher(), &arriving).unwrap();
-        let (read_back, recounted) = detect_kept(&intel.matcher(), &kept).unwrap();
+        let (read_back, recounted) = detect_kept(&intel.matcher(), &kept, None).unwrap();
         assert_eq!((arrived.len(), read_back.len()), (1, 1));
         assert_eq!(
             (counted.events, counted.observables),
@@ -775,6 +811,22 @@ file = "feeds/feodo.csv"
         assert_eq!(first.1, second.1);
         assert_eq!(first.2["evidences"], second.2["evidences"]);
         assert_eq!(first.2["osint"], second.2["osint"]);
+
+        // Looking back for indicators added since some time: one the store
+        // held before is passed over, one added then or later is reported.
+        let added = intel
+            .matcher()
+            .lookup(goliath_intel::Kind::Ip, "192.0.2.10", 0)
+            .unwrap()[0]
+            .known_since()
+            .unwrap();
+        let late = |since: i64| {
+            detect_kept(&intel.matcher(), &kept, Some(since))
+                .unwrap()
+                .1
+                .hits
+        };
+        assert_eq!((late(added), late(added + 1)), (1, 0));
     }
 
     /// Serves `body` on a port of this host, with a tag, and answers 304 to

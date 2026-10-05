@@ -34,6 +34,9 @@ const DISORDER: i64 = 60_000;
 /// The receipt time read from the store at once, in milliseconds. A range
 /// is given up to here after each, so a restart goes on from there.
 const WINDOW: i64 = 60_000;
+/// The receipt time read at once in a look back, which reads days and not
+/// minutes.
+const LOOK_BACK_WINDOW: i64 = 3_600_000;
 /// How often the ranges are looked at, and how soon a read that failed is
 /// tried again.
 const CHECK_EVERY: Duration = Duration::from_secs(5);
@@ -49,6 +52,33 @@ pub(crate) struct Range {
     pub(crate) to: i64,
 }
 
+/// Something to read back from the store and match.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Work {
+    pub(crate) range: Range,
+    /// For a look back: only indicators the store has held since then, in
+    /// seconds since the epoch. For events the detector was moved past,
+    /// which it matched against nothing: none, so every indicator.
+    pub(crate) since: Option<i64>,
+}
+
+/// Indicators that feeds added and no look back has covered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+struct Added {
+    /// The earliest time one was added, in seconds since the epoch.
+    since: i64,
+    /// When the last of them was in the store, in milliseconds. Events
+    /// taken after it were matched against them as they arrived.
+    until: i64,
+}
+
+/// A look back in progress.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+struct Late {
+    range: Range,
+    since: i64,
+}
+
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 struct Noted {
     /// The latest receipt time among the records the detector matched.
@@ -56,6 +86,15 @@ struct Noted {
     /// What it did not match, oldest first, none overlapping another.
     #[serde(default)]
     ranges: Vec<Range>,
+    /// What feeds added since the last look back began.
+    #[serde(default)]
+    added: Option<Added>,
+    /// When the last look back began, in milliseconds.
+    #[serde(default)]
+    looked_back: i64,
+    /// The look back in progress.
+    #[serde(default)]
+    late: Option<Late>,
 }
 
 /// The ranges of receipt time whose events were stored and not matched,
@@ -65,6 +104,10 @@ pub(crate) struct Unmatched {
     file: PathBuf,
     noted: Noted,
     saved: Instant,
+    /// How far a look back reads, in milliseconds; never, if zero.
+    look_back: i64,
+    /// The least time from one look back to the next, in milliseconds.
+    look_back_every: i64,
 }
 
 /// The ranges, shared by the detector, which notes them, and the role that
@@ -92,7 +135,7 @@ impl Unmatched {
                 .map_err(|error| RunError::Io(format!("{}: {error}", file.display())))?,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Noted {
                 matched_until: now,
-                ranges: Vec::new(),
+                ..Noted::default()
             },
             Err(error) => return Err(RunError::Io(format!("{}: {error}", file.display()))),
         };
@@ -100,6 +143,8 @@ impl Unmatched {
             file,
             noted,
             saved: Instant::now(),
+            look_back: 0,
+            look_back_every: 0,
         };
         unmatched.save();
         Ok(unmatched)
@@ -134,19 +179,90 @@ impl Unmatched {
         self.save();
     }
 
-    /// The oldest range not yet matched.
-    pub(crate) fn first(&self) -> Option<Range> {
-        self.noted.ranges.first().copied()
+    /// The same, looking back `days` over stored events when feeds add
+    /// indicators, and not more often than every `hours`. With no days, it
+    /// never looks back.
+    #[must_use]
+    pub(crate) fn looking_back(mut self, days: u16, hours: u32) -> Self {
+        self.look_back = i64::from(days) * 86_400_000;
+        self.look_back_every = i64::from(hours) * 3_600_000;
+        self
     }
 
-    /// How many ranges wait.
+    /// A feed added indicators: the earliest at `since`, in seconds since
+    /// the epoch, and all of them in the store by `now`, in milliseconds.
+    pub(crate) fn added(&mut self, since: i64, now: i64) {
+        if self.look_back == 0 {
+            return;
+        }
+        self.noted.added = Some(match self.noted.added {
+            Some(added) => Added {
+                since: added.since.min(since),
+                until: added.until.max(now),
+            },
+            None => Added { since, until: now },
+        });
+        self.save();
+    }
+
+    /// Begins a look back at `now`, in milliseconds, if feeds added
+    /// indicators, none is in progress, and the last began long enough ago.
+    /// It reads the events taken before the indicators were in the store;
+    /// the later ones were matched against them as they arrived.
+    pub(crate) fn begin_look_back(&mut self, now: i64) {
+        let due = now.saturating_sub(self.noted.looked_back) >= self.look_back_every;
+        if self.look_back == 0 || self.noted.late.is_some() || !due {
+            return;
+        }
+        let Some(added) = self.noted.added.take() else {
+            return;
+        };
+        self.noted.late = Some(Late {
+            range: Range {
+                from: added.until - self.look_back,
+                to: added.until,
+            },
+            since: added.since,
+        });
+        self.noted.looked_back = now;
+        self.save();
+    }
+
+    /// What to read next: the oldest range the detector was moved past,
+    /// and with none, the look back.
+    pub(crate) fn first(&self) -> Option<Work> {
+        match self.noted.ranges.first() {
+            Some(&range) => Some(Work { range, since: None }),
+            None => self.noted.late.map(|late| Work {
+                range: late.range,
+                since: Some(late.since),
+            }),
+        }
+    }
+
+    /// How many ranges the detector was moved past wait.
     pub(crate) fn len(&self) -> usize {
         self.noted.ranges.len()
     }
 
-    /// The oldest range was matched up to `until`.
-    pub(crate) fn matched_from_store(&mut self, until: i64) {
-        if let Some(first) = self.noted.ranges.first_mut() {
+    /// The receipt time a look back in progress has yet to read, in
+    /// seconds.
+    pub(crate) fn look_back_remaining(&self) -> i64 {
+        self.noted
+            .late
+            .map_or(0, |late| (late.range.to - late.range.from) / 1000)
+    }
+
+    /// `work` was matched up to `until`.
+    pub(crate) fn matched_from_store(&mut self, work: Work, until: i64) {
+        if work.since.is_some() {
+            if let Some(late) = &mut self.noted.late {
+                late.range.from = late.range.from.max(until);
+                if late.range.from >= late.range.to {
+                    self.noted.late = None;
+                }
+            }
+        } else if let Some(first) = self.noted.ranges.first_mut() {
             first.from = first.from.max(until);
             if first.from >= first.to {
                 self.noted.ranges.remove(0);
@@ -183,27 +299,45 @@ pub(crate) async fn rematch(
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
     while !*stop.borrow_and_update() {
-        let (first, waiting) = {
-            let unmatched = lock(&unmatched);
-            (unmatched.first(), unmatched.len())
+        let (first, waiting, remaining) = {
+            let mut unmatched = lock(&unmatched);
+            unmatched.begin_look_back(crate::raw::now());
+            (
+                unmatched.first(),
+                unmatched.len(),
+                unmatched.look_back_remaining(),
+            )
         };
         metrics.unmatched_ranges(waiting);
-        if let Some(range) = first {
+        metrics.look_back_remaining(remaining);
+        if let Some(work) = first {
+            let range = work.range;
             // An event taken after the range is stored: so is the range.
             match store.holds_received_from(range.to).await {
                 Ok(true) => {
-                    let until = range.to.min(range.from.saturating_add(WINDOW));
-                    let read = read(
-                        &store, &matcher, threads, range.from, until, &findings, &metrics, &stop,
-                    )
-                    .await;
-                    match read {
+                    let window = match work.since {
+                        Some(_) => LOOK_BACK_WINDOW,
+                        None => WINDOW,
+                    };
+                    let until = range.to.min(range.from.saturating_add(window));
+                    let part = Work {
+                        range: Range {
+                            from: range.from,
+                            to: until,
+                        },
+                        since: work.since,
+                    };
+                    let read = read(&store, &matcher, threads, part, &findings, &metrics, &stop);
+                    match read.await {
                         Ok(Some(events)) => {
                             info!(
                                 from = range.from,
-                                until, events, "matched from the store what the detector missed"
+                                until,
+                                events,
+                                late_indicators = work.since.is_some(),
+                                "matched from the store"
                             );
-                            lock(&unmatched).matched_from_store(until);
+                            lock(&unmatched).matched_from_store(work, until);
                             continue;
                         }
                         // Stopped before the end: the window is read again.
@@ -226,20 +360,19 @@ pub(crate) async fn rematch(
     Ok(())
 }
 
-/// Matches the stored events taken from `from` up to `until`, and returns
-/// how many, or `None` if stopped before the last.
-#[allow(clippy::too_many_arguments)]
+/// Matches the stored events of `work`, and returns how many, or `None` if
+/// stopped before the last.
 async fn read(
     store: &Store,
     matcher: &Arc<Matcher<RocksStore>>,
     threads: NonZeroUsize,
-    from: i64,
-    until: i64,
+    work: Work,
     findings: &(impl Sender + Sync),
     metrics: &Metrics,
     stop: &watch::Receiver<bool>,
 ) -> Result<Option<u64>, RunError> {
-    let mut reading = store.received_between(from, until)?;
+    let since = work.since;
+    let mut reading = store.received_between(work.range.from, work.range.to)?;
     let mut batch = Vec::with_capacity(BATCH);
     let mut events = 0;
     loop {
@@ -254,7 +387,9 @@ async fn read(
             let rows = std::mem::replace(&mut batch, Vec::with_capacity(BATCH));
             let shared = Arc::clone(matcher);
             let (encoded, tally) = tokio::task::spawn_blocking(move || {
-                detector::detect_batch(&shared, &rows, threads, detector::detect_kept)
+                detector::detect_batch(&shared, &rows, threads, |matcher, rows| {
+                    detector::detect_kept(matcher, rows, since)
+                })
             })
             .await
             .map_err(|error| RunError::Role(format!("matching stored events: {error}")))??;
@@ -275,7 +410,15 @@ async fn read(
 mod tests {
     #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-    use super::{DISORDER, Range, Unmatched};
+    use super::{DISORDER, Range, Unmatched, Work};
+
+    /// A range the detector was moved past, as work.
+    fn missed(from: i64, to: i64) -> Work {
+        Work {
+            range: Range { from, to },
+            since: None,
+        }
+    }
 
     const START: i64 = 1_790_000_000_000;
     const MINUTE: i64 = 60_000;
@@ -292,10 +435,10 @@ mod tests {
         unmatched.skipped(START + 30 * MINUTE);
         assert_eq!(
             unmatched.first(),
-            Some(Range {
-                from: START + 10 * MINUTE - DISORDER,
-                to: START + 30 * MINUTE + DISORDER,
-            })
+            Some(missed(
+                START + 10 * MINUTE - DISORDER,
+                START + 30 * MINUTE + DISORDER
+            ))
         );
 
         // Moved again soon after: one range, not two that overlap.
@@ -308,10 +451,10 @@ mod tests {
         assert_eq!(unmatched.len(), 2);
         assert_eq!(
             unmatched.first(),
-            Some(Range {
-                from: START + 10 * MINUTE - DISORDER,
-                to: START + 40 * MINUTE + DISORDER,
-            })
+            Some(missed(
+                START + 10 * MINUTE - DISORDER,
+                START + 40 * MINUTE + DISORDER
+            ))
         );
     }
 
@@ -322,19 +465,17 @@ mod tests {
         unmatched.skipped(START + 5 * MINUTE);
         unmatched.matched(START + 60 * MINUTE);
         unmatched.skipped(START + 90 * MINUTE);
-        let first = unmatched.first().unwrap();
+        let work = unmatched.first().unwrap();
+        let first = work.range;
 
         // Matched in part, then the process ends.
-        unmatched.matched_from_store(first.from + MINUTE);
+        unmatched.matched_from_store(work, first.from + MINUTE);
         drop(unmatched);
         let mut unmatched = Unmatched::open(directory.path(), START + 999 * MINUTE).unwrap();
         assert_eq!(unmatched.len(), 2);
         assert_eq!(
             unmatched.first(),
-            Some(Range {
-                from: first.from + MINUTE,
-                to: first.to,
-            })
+            Some(missed(first.from + MINUTE, first.to))
         );
         // A detector moved at its first receive after the restart starts
         // the range where it had matched up to, not at the restart.
@@ -342,12 +483,84 @@ mod tests {
         assert_eq!(unmatched.len(), 2);
 
         // Matched to the end: the next range is the oldest.
-        unmatched.matched_from_store(first.to);
+        unmatched.matched_from_store(work, first.to);
         assert_eq!(unmatched.len(), 1);
         assert_eq!(
-            unmatched.first().map(|range| range.from),
+            unmatched.first().map(|work| work.range.from),
             Some(START + 60 * MINUTE - DISORDER)
         );
+    }
+
+    #[test]
+    fn indicators_a_feed_adds_are_looked_back_for_and_not_too_often() {
+        const DAY: i64 = 24 * 60 * MINUTE;
+        let directory = tempfile::tempdir().unwrap();
+        let open = || {
+            Unmatched::open(directory.path(), START)
+                .unwrap()
+                .looking_back(7, 24)
+        };
+        let mut unmatched = open();
+        // Nothing added: nothing to look back for.
+        unmatched.begin_look_back(START);
+        assert_eq!(unmatched.first(), None);
+
+        // Two feeds add indicators: one look back, for the earliest of
+        // them, over the events taken before the last was in the store.
+        unmatched.added(START / 1000 + 20, START + 25_000);
+        unmatched.added(START / 1000 + 10, START + 12_000);
+        unmatched.begin_look_back(START + 30_000);
+        let work = unmatched.first().unwrap();
+        assert_eq!(
+            work,
+            Work {
+                range: Range {
+                    from: START + 25_000 - 7 * DAY,
+                    to: START + 25_000,
+                },
+                since: Some(START / 1000 + 10),
+            }
+        );
+        assert_eq!(unmatched.look_back_remaining(), 7 * DAY / 1000);
+
+        // More are added while it reads, and the process ends: neither the
+        // look back nor what was added since is forgotten.
+        unmatched.matched_from_store(work, work.range.from + DAY);
+        unmatched.added(START / 1000 + 3_600, START + 3_601_000);
+        drop(unmatched);
+        let mut unmatched = open();
+        unmatched.begin_look_back(START + 2 * DAY);
+        let work = unmatched.first().unwrap();
+        assert_eq!(work.range.from, START + 25_000 - 6 * DAY);
+        assert_eq!(work.since, Some(START / 1000 + 10));
+
+        // Events the detector was moved past come first: they were matched
+        // against nothing.
+        unmatched.skipped(START + 3 * DAY);
+        let missed = unmatched.first().unwrap();
+        assert_eq!(missed.since, None);
+        unmatched.matched_from_store(missed, missed.range.to);
+        assert_eq!(unmatched.first(), Some(work));
+
+        // Done; the next begins a day after the last began, not before.
+        unmatched.matched_from_store(work, work.range.to);
+        assert_eq!(unmatched.look_back_remaining(), 0);
+        unmatched.begin_look_back(START + 30_000 + DAY - 1);
+        assert_eq!(unmatched.first(), None);
+        unmatched.begin_look_back(START + 30_000 + DAY);
+        assert_eq!(
+            unmatched.first().map(|work| (work.range.to, work.since)),
+            Some((START + 3_601_000, Some(START / 1000 + 3_600)))
+        );
+    }
+
+    #[test]
+    fn with_no_days_to_look_back_nothing_is_noted() {
+        let directory = tempfile::tempdir().unwrap();
+        let mut unmatched = Unmatched::open(directory.path(), START).unwrap();
+        unmatched.added(START / 1000, START);
+        unmatched.begin_look_back(START);
+        assert_eq!(unmatched.first(), None);
     }
 
     #[test]

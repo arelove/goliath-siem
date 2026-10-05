@@ -183,10 +183,18 @@ async fn start_pipeline<T: Topics>(
         let (Some(settings), Some(state)) = (&config.detector, config.detector_state()) else {
             return Err(RunError::Config("no [detector]".to_owned()));
         };
-        let intel = detector::Intel::open(settings, &state)?;
-        let unmatched = rematch::Unmatched::open(&state, raw::now())?;
+        let mut intel = detector::Intel::open(settings, &state)?;
+        let unmatched = rematch::Unmatched::open(&state, raw::now())?.looking_back(
+            // With no store to read, nothing is noted to look back for.
+            config
+                .store
+                .as_ref()
+                .map_or(0, |_| settings.look_back_days()),
+            settings.look_back_every_hours(),
+        );
         metrics.unmatched_ranges(unmatched.len());
         let unmatched = std::sync::Arc::new(std::sync::Mutex::new(unmatched));
+        intel.notes(std::sync::Arc::clone(&unmatched));
         // Nothing is matched until the feeds were looked at once.
         let (looked, is_looked) = watch::channel(false);
         roles.spawn(detector::after_feeds(

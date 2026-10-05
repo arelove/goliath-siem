@@ -319,9 +319,24 @@ pub struct DetectorConfig {
     /// The block cache of the indicator store, in mebibytes; 1024 if left
     /// out.
     pub cache_mebibytes: Option<NonZeroU64>,
+    /// How many days of stored events are matched against indicators a
+    /// feed adds; 7 if left out, and never with 0.
+    pub look_back_days: Option<u16>,
+    /// The least hours from one look back to the next; 24 if left out.
+    pub look_back_every_hours: Option<NonZeroU32>,
 }
 
 impl DetectorConfig {
+    /// The days of stored events a look back reads; none means never.
+    pub fn look_back_days(&self) -> u16 {
+        self.look_back_days.unwrap_or(7)
+    }
+
+    /// The least hours from one look back to the next.
+    pub fn look_back_every_hours(&self) -> u32 {
+        self.look_back_every_hours.map_or(24, NonZeroU32::get)
+    }
+
     /// The threads to match on.
     pub fn threads(&self) -> NonZeroUsize {
         self.threads.unwrap_or_else(every_core)

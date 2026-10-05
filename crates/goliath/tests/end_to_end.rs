@@ -276,6 +276,10 @@ data = "data"
 definition = "sysmon"
 inbox = "inbox/sysmon"
 
+# What is counted here is matched as it arrives, and once.
+[detector]
+look_back_days = 0
+
 [[detector.feeds]]
 definition = "feodo-tracker"
 file = "feodo.csv"
@@ -346,12 +350,29 @@ const FINDINGS: &str = "SELECT count() FROM events FINAL WHERE class_uid = 2004"
 /// range of receipt time noted as unmatched.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn events_the_detector_was_moved_past_are_matched_from_the_store() {
+    events_stored_before_are_matched_from_the_store("rematch", true).await;
+}
+
+/// An indicator that arrives after an event finds it in the store: here the
+/// events were stored before there was a detector, and to a detector that
+/// starts with an empty indicator store every indicator is new.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn an_indicator_that_arrives_late_is_matched_against_stored_events() {
+    events_stored_before_are_matched_from_the_store("late", false).await;
+}
+
+/// Stores events with no detector running, then starts one: with their
+/// receipt time noted as `moved_past` and no look back, or with nothing
+/// noted and a look back of a day.
+#[allow(clippy::too_many_lines)]
+async fn events_stored_before_are_matched_from_the_store(test: &str, moved_past: bool) {
     let Some(url) = clickhouse_url() else {
         return;
     };
     let user = clickhouse_user();
-    let database = format!("goliath_test_rematch_{}", std::process::id());
+    let database = format!("goliath_test_{test}_{}", std::process::id());
     let directory = tempfile::tempdir().unwrap();
+    let look_back_days = u8::from(!moved_past);
     // The roles, and a data directory of their own for each run, so that
     // the detector finds nothing in a topic.
     let config = |roles: &str, data: &str| {
@@ -366,6 +387,9 @@ data = "{data}"
 [[sources]]
 definition = "sysmon"
 inbox = "inbox-{data}"
+
+[detector]
+look_back_days = {look_back_days}
 
 [[detector.feeds]]
 definition = "feodo-tracker"
@@ -413,23 +437,26 @@ max_delay_ms = 100
         .await
         .unwrap();
 
-    // A detector that has their receipt time noted as unmatched.
+    // A detector that has their receipt time noted as unmatched, or one
+    // that finds its feed new and looks back.
     let state = directory.path().join("after/intel");
-    std::fs::create_dir_all(&state).unwrap();
-    std::fs::write(
-        state.join("unmatched.json"),
-        format!(
-            r#"{{"matched_until":{earliest},"ranges":[{{"from":{earliest},"to":{}}}]}}"#,
-            latest + 1
-        ),
-    )
-    .unwrap();
+    if moved_past {
+        std::fs::create_dir_all(&state).unwrap();
+        std::fs::write(
+            state.join("unmatched.json"),
+            format!(
+                r#"{{"matched_until":{earliest},"ranges":[{{"from":{earliest},"to":{}}}]}}"#,
+                latest + 1
+            ),
+        )
+        .unwrap();
+    }
     let (stop, running) = start(config(
         r#""collector", "normalizer", "detector", "writer""#,
         "after",
     ));
-    // The range waits for the writer to be past it: for an event taken
-    // later. This one goes to another address, which no feed names.
+    // What is read back waits for the writer to be past it: for an event
+    // taken later. This one goes to another address, which no feed names.
     drop_file(
         &directory.path().join("inbox-after"),
         "002-elsewhere.json",
@@ -452,10 +479,12 @@ max_delay_ms = 100
     assert!(finding.contains("192.0.2.10"), "{finding}");
     stop.send(()).unwrap();
     running.await.unwrap().unwrap();
-    // The range was given up, and is not read again.
+    // What was read is given up, and is not read again.
     let noted: Value =
         serde_json::from_slice(&std::fs::read(state.join("unmatched.json")).unwrap()).unwrap();
     assert_eq!(noted["ranges"], serde_json::json!([]));
+    assert_eq!(noted["late"], Value::Null, "{noted}");
+    assert_eq!(noted["added"], Value::Null, "{noted}");
     drop_database(&url, &database).await;
 }
 
