@@ -36,6 +36,8 @@ file = "/var/lib/goliath/feeds/partner.json"
 | `allowlists` | YAML files of what is never reported |
 | `threads` | Threads that match a batch at once; every core if left out |
 | `cache_mebibytes` | The block cache of the indicator store; 1024 if left out |
+| `look_back_days` | The days of stored events matched against indicators a feed adds; 7 if left out, and never with 0 |
+| `look_back_every_hours` | The least time from one look back to the next; 24 if left out |
 | `feeds.definition` | The name of a shipped definition, or the path of a YAML file |
 | `feeds.url` | Where the publication is fetched from; the definition's own URL if left out |
 | `feeds.file` | The file the publication is read from. With a file and no `url`, nothing is fetched |
@@ -91,7 +93,8 @@ On the metrics endpoint:
 | `goliath_reader_lag_records{topic="normalized",reader="detector"}` | Events the detector has yet to look at |
 | `goliath_detector_skipped_records_total` | Events stored but not matched as they arrived. Above zero, the detector is too slow for the rate: give it threads or cores |
 | `goliath_detector_unmatched_ranges` | Ranges of receipt time that wait to be matched from the store. Alarm when it stays above zero |
-| `goliath_detector_rematched_events_total` | Events read back from the store and matched |
+| `goliath_detector_rematched_events_total` | Events read back from the store and matched, for either reason |
+| `goliath_detector_look_back_remaining_seconds` | Receipt time a look back has yet to read; zero when none runs |
 
 A stale feed in Prometheus, for a feed fetched every 30 minutes:
 
@@ -123,6 +126,32 @@ The detector then matches those events from the store:
 A detector that is too slow all the time never catches up this way either:
 `goliath_detector_unmatched_ranges` stays above zero. Give it threads or
 cores.
+
+## Indicators that arrive late
+
+An indicator often arrives after the event it describes: a domain reported
+today was contacted last week. When a feed adds indicators, the detector
+looks back over the stored events for them:
+
+- It reads the events taken in the last `look_back_days` and reports only
+  indicators added since the last look back. What was reported as the
+  events arrived is not reported again.
+- The finding is the one the event would have given, with the time and the
+  receipt time of the event. Search for findings by when they were made, in
+  `finding_info.created_time`, to see what a look back found.
+- A look back reads every event of those days once. That costs the store
+  one read of them and the detector the time to match them, so it begins at
+  most every `look_back_every_hours`, and covers all that feeds added in
+  between.
+- A detector started for the first time finds every indicator new, and looks
+  back for all of them.
+- Events the detector was moved past are read first.
+- It needs a `[store]` section, like the matching of what the detector
+  missed.
+
+At a rate where a look back takes longer than the time between two, lower
+`look_back_days` or raise `look_back_every_hours`:
+`goliath_detector_look_back_remaining_seconds` shows how far one has come.
 
 ## Finding the findings
 
