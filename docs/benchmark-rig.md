@@ -244,6 +244,7 @@ One run does this:
 | memory | The most resident memory seen, against 2 GiB |
 | disk | The size of the indicator store, against 8 GiB |
 | rate | With `--baseline`: events a CPU second as a share of the baseline's, against 90% |
+| refresh rate, refresh match | With `--refresh`: see below |
 
 The memory and disk budgets are those of 10^8 indicators, so a smaller run
 that passes them shows only that it is not yet over. The run exits with a
@@ -260,8 +261,44 @@ and a million events:
 
 That is one run of each, not the median of five the criterion asks for, and
 it does not reach 10^8; the exit measurement of M4 is made on other
-hardware. The harness does not yet measure a feed refresh under load, nor
-the writer's rate with the detector stopped.
+hardware. The harness does not measure the writer's rate with the detector
+stopped: that needs the store, so it belongs to the rig, which does not
+start a detector yet.
+
+### A feed replaced during the run
+
+`--refresh` adds one more feed, of that many indicators, and replaces its
+publication with another of as many new ones when a fifth of the events is
+matched. A quarter of the planted events hold an indicator of the second
+publication, each one of its own, so the report can tell when each was
+matched.
+
+```sh
+cargo run --release -p goliath-bench --features intel --bin intel --     --indicators 1000000 --refresh 10000000 --events 20000000
+```
+
+| Line of the report | What it is |
+|---|---|
+| refresh rate | The lowest rate over five seconds between the replacement and the new indicators being in the store, as a share of the median rate before, against 80% |
+| refresh match | Seconds from the new indicators being in the store to the first match of one, against 30; and every event that holds one and was matched after that has its finding |
+
+Three things to know when reading them:
+
+- The detector looks at its feeds every 30 seconds, so the time the report
+  gives for the feed holds up to 30 seconds of waiting before the load. With
+  a small feed the load is a fraction of that time, and the rate says
+  little; the budget is about 10^7 indicators, whose load takes long enough
+  to fill the window.
+- The events must last past the load. A run in which they do not fails and
+  says to use more.
+- An event that holds a new indicator and was matched before the store held
+  it has no finding in this run. That is expected here: the look back, which
+  finds such events in the store, is off, because the run has no store.
+
+A check on the same laptop, with 1,000 indicators, a feed of 200,000
+replaced, and four million events: the lowest rate was 97.6% of the rate
+before, the first new indicator matched in the second the feed was seen in
+the store, and all 2,911 later events that hold one have their findings.
 
 A million events take about a gigabyte in the run's directory, and 10^8
 indicators about four more for the feeds. Delete the directory when the

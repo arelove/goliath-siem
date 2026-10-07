@@ -12,8 +12,10 @@
 //! `goliath` with the detector role alone, so that neither generating nor
 //! normalizing takes a core from what is measured. It reads the platform's
 //! own metrics once a second, and afterwards the findings, and reports the
-//! rate, what was found against what was planted, memory, and disk. How to
-//! run it and how to read the report is in `docs/benchmark-rig.md`.
+//! rate, what was found against what was planted, memory, and disk. With
+//! `--refresh`, one more feed is replaced while the detector matches, and
+//! the report holds the rate meanwhile and when the new indicators matched.
+//! How to run it and how to read the report is in `docs/benchmark-rig.md`.
 
 #![allow(
     clippy::print_stdout,
@@ -23,7 +25,7 @@
     clippy::cast_sign_loss
 )]
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write as _};
@@ -57,6 +59,18 @@ const STALLED: Duration = Duration::from_secs(180);
 const MEMORY_BUDGET: u64 = 2 << 30;
 const DISK_BUDGET: u64 = 8 << 30;
 const RATE_BUDGET: f64 = 0.9;
+const REFRESH_RATE_BUDGET: f64 = 0.8;
+const REFRESH_MATCH_BUDGET: Duration = Duration::from_secs(30);
+
+/// The feed that `--refresh` replaces.
+const REFRESHED: &str = "refreshed";
+/// It is replaced when this share of the events is matched.
+const REFRESH_AT: f64 = 0.2;
+/// With `--refresh`, one planted event in this many holds an indicator of
+/// the publication that replaces the first.
+const LATE_EVERY: u64 = 4;
+/// The rate while a feed is replaced is the lowest over this many seconds.
+const REFRESH_WINDOW: usize = 5;
 
 struct Settings {
     indicators: u64,
@@ -64,6 +78,8 @@ struct Settings {
     planted: f64,
     threads: usize,
     feed_size: u64,
+    /// The indicators of the feed replaced during the run; none when 0.
+    refresh: u64,
     out: PathBuf,
     binary: PathBuf,
     baseline: Option<PathBuf>,
@@ -77,6 +93,7 @@ impl Settings {
             planted: 0.01,
             threads: 1,
             feed_size: 10_000_000,
+            refresh: 0,
             out: PathBuf::from(format!("bench/out/intel{}", unix_seconds())),
             binary: std::env::var_os("GOLIATH_BIN").map_or_else(
                 || {
@@ -101,6 +118,7 @@ impl Settings {
                 "--planted" => settings.planted = value.parse()?,
                 "--threads" => settings.threads = value.parse()?,
                 "--feed-size" => settings.feed_size = value.parse()?,
+                "--refresh" => settings.refresh = value.parse()?,
                 "--out" => settings.out = PathBuf::from(value),
                 "--baseline" => settings.baseline = Some(PathBuf::from(value)),
                 other => return Err(format!("unknown argument {other}").into()),
@@ -112,7 +130,22 @@ impl Settings {
         if !(0.0..=0.5).contains(&settings.planted) {
             return Err("--planted is a share of the events, at most 0.5".into());
         }
+        // Each late event holds an indicator of its own, which tells when
+        // it was matched.
+        let late = settings.events as f64 * settings.planted / LATE_EVERY as f64;
+        if settings.refresh > 0 && late > settings.refresh as f64 {
+            return Err(format!(
+                "--refresh {} is fewer indicators than the {late:.0} events that are to hold one",
+                settings.refresh
+            )
+            .into());
+        }
         Ok(settings)
+    }
+
+    /// The feeds the detector is configured with.
+    fn feeds(&self) -> u64 {
+        self.indicators.div_ceil(self.feed_size) + u64::from(self.refresh > 0)
     }
 
     /// One planted event in this many.
@@ -188,6 +221,29 @@ fn prepare(settings: &Settings) -> Result<String, Failure> {
         from = until;
         number += 1;
     }
+    if settings.refresh > 0 {
+        // One more feed, of indicators after the others; and beside it the
+        // publication that replaces it, of indicators after those. It is
+        // written now, so that replacing it is a rename.
+        let (first, next) = refreshed(&settings.out);
+        fs::write(
+            feeds.join(format!("{REFRESHED}.yaml")),
+            intel::feed_definition(REFRESHED),
+        )?;
+        let mut from = settings.indicators;
+        for file in [&first, &next] {
+            let mut publication = BufWriter::new(File::create(file)?);
+            intel::write_feed(&mut publication, from..from + settings.refresh)?;
+            publication.flush()?;
+            from += settings.refresh;
+        }
+        let _ = write!(
+            config,
+            "\n[[detector.feeds]]\ndefinition = \"{}\"\nfile = \"{}\"\n",
+            written(&feeds.join(format!("{REFRESHED}.yaml"))),
+            written(&first),
+        );
+    }
     let mut allow = String::from("name: bench\nversion: 1\nentries:\n");
     for index in (0..settings.indicators.min(ALLOWED_BELOW)).step_by(ALLOWED_STEP as usize) {
         let (_, value) = intel::indicator(index);
@@ -200,6 +256,15 @@ fn prepare(settings: &Settings) -> Result<String, Failure> {
     Ok(config)
 }
 
+/// The publication of the refreshed feed, and the one that replaces it.
+fn refreshed(out: &Path) -> (PathBuf, PathBuf) {
+    let feeds = out.join("feeds");
+    (
+        feeds.join(format!("{REFRESHED}.csv")),
+        feeds.join(format!("{REFRESHED}.next.csv")),
+    )
+}
+
 /// What was put in the topic.
 #[derive(Default)]
 struct Filled {
@@ -207,6 +272,10 @@ struct Filled {
     /// How many planted events hold each indicator, by `kind value`, and
     /// whether it is on the allowlist.
     planted: BTreeMap<String, (u64, bool)>,
+    /// The events that hold an indicator of the replacing publication, each
+    /// its own: how many events the topic holds up to and with it, and the
+    /// indicator.
+    late: Vec<(u64, String)>,
 }
 
 /// Fills the event topic with normalized events, a share of them planted,
@@ -236,19 +305,30 @@ async fn fill(settings: &Settings) -> Result<Filled, Failure> {
     let mut filled = Filled::default();
     let mut batch = Vec::with_capacity(1024);
     let mut plants = 0;
+    let mut late = 0;
     for record in 0..settings.events {
         // A hundred events a simulated second.
         let time = START + i64::try_from(record)? * 10;
         let raw = if record % period == period / 2 {
-            let index = planted_indicator(plants, settings.indicators);
             plants += 1;
-            let (kind, value) = intel::indicator(index);
-            let entry = filled
-                .planted
-                .entry(format!("{} {value}", kind.name()))
-                .or_insert((0, is_allowed(index, settings.indicators)));
-            entry.0 += 1;
-            generator.planted(time, index)
+            if settings.refresh > 0 && plants % LATE_EVERY == 2 {
+                let index = settings.indicators + settings.refresh + late;
+                late += 1;
+                let (kind, value) = intel::indicator(index);
+                filled
+                    .late
+                    .push((filled.events + 1, format!("{} {value}", kind.name())));
+                generator.planted(time, index)
+            } else {
+                let index = planted_indicator(plants - 1, settings.indicators);
+                let (kind, value) = intel::indicator(index);
+                let entry = filled
+                    .planted
+                    .entry(format!("{} {value}", kind.name()))
+                    .or_insert((0, is_allowed(index, settings.indicators)));
+                entry.0 += 1;
+                generator.planted(time, index)
+            }
         } else {
             generator.next(time)
         };
@@ -342,9 +422,27 @@ struct Observed {
     reported: u64,
     suppressed: u64,
     skipped: u64,
+    /// When the refreshed feed's publication was replaced, and when its
+    /// indicators were seen to be in the store.
+    replaced_at: Option<Duration>,
+    refreshed_at: Option<Duration>,
 }
 
-fn observe(platform: &mut Platform, feeds: u64, events: u64) -> Result<Observed, Failure> {
+/// Puts the replacing publication in the place of the feed's, as a new one:
+/// the detector tells a publication by when it was written and its length,
+/// and these two have one length.
+fn replace(out: &Path) -> Result<(), Failure> {
+    let (first, next) = refreshed(out);
+    fs::rename(&next, &first)?;
+    File::options()
+        .append(true)
+        .open(&first)?
+        .set_modified(SystemTime::now())?;
+    Ok(())
+}
+
+fn observe(platform: &mut Platform, settings: &Settings, events: u64) -> Result<Observed, Failure> {
+    let feeds = settings.feeds();
     let pid = Pid::from_u32(platform.0.id());
     let mut system = System::new();
     let start = Instant::now();
@@ -354,6 +452,8 @@ fn observe(platform: &mut Platform, feeds: u64, events: u64) -> Result<Observed,
         reported: 0,
         suppressed: 0,
         skipped: 0,
+        replaced_at: None,
+        refreshed_at: None,
     };
     let mut progress = (0, Instant::now());
     loop {
@@ -381,8 +481,27 @@ fn observe(platform: &mut Platform, feeds: u64, events: u64) -> Result<Observed,
         if observed.loaded_after.is_zero() && in_store >= feeds {
             observed.loaded_after = start.elapsed();
         }
+        let at = start.elapsed();
+        if settings.refresh > 0 {
+            let loads = count(
+                "goliath_feed_refreshes_total",
+                &["feed=\"refreshed\"", "result=\"loaded\""],
+            );
+            if observed.replaced_at.is_none()
+                && !observed.loaded_after.is_zero()
+                && detected as f64 >= events as f64 * REFRESH_AT
+            {
+                replace(&settings.out)?;
+                observed.replaced_at = Some(at);
+            } else if observed.replaced_at.is_some()
+                && observed.refreshed_at.is_none()
+                && loads >= 2
+            {
+                observed.refreshed_at = Some(at);
+            }
+        }
         observed.samples.push(Sample {
-            at: start.elapsed(),
+            at,
             detected,
             cpu_ms: process.accumulated_cpu_time(),
             memory: process.memory(),
@@ -456,6 +575,134 @@ fn directory_bytes(directory: &Path) -> u64 {
             Err(_) => 0,
         })
         .sum()
+}
+
+/// What the run says of the feed replaced during it.
+struct Refreshed {
+    detail: Vec<(&'static str, bool, String)>,
+    json: Value,
+}
+
+/// The rate while the feed was replaced against the rate before, and
+/// whether the events that hold a new indicator were matched once the
+/// store held it.
+#[allow(clippy::too_many_lines)] // Two measures, and what each is told with.
+fn refresh_report(
+    filled: &Filled,
+    observed: &Observed,
+    found: &BTreeMap<String, (u64, u64)>,
+) -> Refreshed {
+    let short = |why: &str| Refreshed {
+        detail: vec![("refresh", false, why.to_owned())],
+        json: json!({ "failed": why }),
+    };
+    let Some(replaced) = observed.replaced_at else {
+        return short("the feed was never replaced");
+    };
+    let Some(refreshed) = observed.refreshed_at else {
+        return short(
+            "every event was matched before the replaced feed was in the store; use more events",
+        );
+    };
+    let rates = |from: Duration, to: Duration| -> Vec<f64> {
+        observed
+            .samples
+            .windows(2)
+            .filter(|pair| pair[0].detected > 0 && pair[0].at >= from && pair[1].at <= to)
+            .map(|pair| {
+                (pair[1].detected - pair[0].detected) as f64
+                    / pair[1].at.saturating_sub(pair[0].at).as_secs_f64()
+            })
+            .collect()
+    };
+    let warm = median(rates(Duration::ZERO, replaced));
+    let during = rates(replaced, refreshed);
+    let lowest = during
+        .windows(REFRESH_WINDOW.min(during.len()).max(1))
+        .map(|window| window.iter().sum::<f64>() / window.len() as f64)
+        .fold(f64::INFINITY, f64::min);
+    let share = if warm > 0.0 && lowest.is_finite() {
+        lowest / warm
+    } else {
+        0.0
+    };
+
+    // When the detector had matched so many events: between the look
+    // before and this one.
+    let matched = |events: u64| {
+        let at = observed
+            .samples
+            .partition_point(|sample| sample.detected < events);
+        (
+            at.checked_sub(1)
+                .map_or(Duration::ZERO, |before| observed.samples[before].at),
+            observed.samples.get(at).map(|sample| sample.at),
+        )
+    };
+    let mut first = None;
+    let mut due = 0u64;
+    let mut missed = Vec::new();
+    for (events, indicator) in &filled.late {
+        let (after, by) = matched(*events);
+        let got = found.get(indicator).copied().unwrap_or_default();
+        if got == (1, 0) {
+            first = first.or(by);
+        }
+        // Certainly matched when the store held the new indicators: a miss
+        // is a defect, whatever the budget.
+        if after >= refreshed {
+            due += 1;
+            if got != (1, 0) && missed.len() < 10 {
+                missed.push(indicator.clone());
+            }
+        }
+    }
+    let delay = first.map(|first| first.saturating_sub(refreshed));
+    let in_time =
+        missed.is_empty() && due > 0 && delay.is_some_and(|delay| delay <= REFRESH_MATCH_BUDGET);
+    let rate = share >= REFRESH_RATE_BUDGET;
+    Refreshed {
+        detail: vec![
+            (
+                "refresh rate",
+                rate,
+                format!(
+                    "{:.1}% of the rate before, at the lowest over {REFRESH_WINDOW} s of the {:.0} s the feed took, budget 80%",
+                    share * 100.0,
+                    refreshed.saturating_sub(replaced).as_secs_f64()
+                ),
+            ),
+            (
+                "refresh match",
+                in_time,
+                match (delay, due) {
+                    (None, _) => "no event that holds a new indicator was matched; use more events"
+                        .to_owned(),
+                    (Some(_), 0) => {
+                        "no event that holds a new indicator came after the feed; use more events"
+                            .to_owned()
+                    }
+                    (Some(delay), _) if missed.is_empty() => format!(
+                        "a new indicator matched {:.0} s after the feed was in the store, and all {due} later ones, budget 30 s",
+                        delay.as_secs_f64()
+                    ),
+                    _ => format!(
+                        "not matched, though the store held them: {}",
+                        missed.join("; ")
+                    ),
+                },
+            ),
+        ],
+        json: json!({
+            "replaced_at_seconds": replaced.as_secs_f64(),
+            "in_store_at_seconds": refreshed.as_secs_f64(),
+            "events_per_second_before": warm,
+            "events_per_second_lowest": if lowest.is_finite() { lowest } else { 0.0 },
+            "first_match_after_seconds": delay.map(|delay| delay.as_secs_f64()),
+            "late_events": filled.late.len(),
+            "late_events_due": due,
+        }),
+    }
 }
 
 fn median(mut values: Vec<f64>) -> f64 {
@@ -536,8 +783,26 @@ fn report(
             ));
         }
     }
-    for indicator in found.keys() {
-        if !filled.planted.contains_key(indicator) && wrong.len() < 10 {
+    // An indicator of the replacing publication is found or not by when
+    // its event was matched, which the refresh's own lines are about; but
+    // never twice, and never suppressed.
+    let late: BTreeSet<&str> = filled
+        .late
+        .iter()
+        .map(|(_, indicator)| indicator.as_str())
+        .collect();
+    for (indicator, got) in found {
+        if wrong.len() >= 10 {
+            break;
+        }
+        if late.contains(indicator.as_str()) {
+            if *got != (1, 0) {
+                wrong.push(format!(
+                    "{indicator}: reported {} and suppressed {}, planted once",
+                    got.0, got.1
+                ));
+            }
+        } else if !filled.planted.contains_key(indicator) {
             wrong.push(format!("{indicator}: found, and never planted"));
         }
     }
@@ -571,7 +836,15 @@ fn report(
         budgets.push(json!({ "measure": "rate", "passed": share >= RATE_BUDGET,
             "detail": format!("{:.1}% of the baseline's events a CPU second, budget 90%", share * 100.0) }));
     }
+    let refresh = (settings.refresh > 0).then(|| refresh_report(filled, observed, found));
+    if let Some(refresh) = &refresh {
+        for (measure, passed, detail) in &refresh.detail {
+            budgets.push(json!({ "measure": measure, "passed": passed, "detail": detail }));
+        }
+    }
     Ok(json!({
+        "refresh": refresh.map(|refresh| refresh.json),
+        "refreshed_indicators": settings.refresh,
         "indicators": settings.indicators,
         "events": filled.events,
         "planted_events": planted,
@@ -637,8 +910,7 @@ async fn run() -> Result<bool, Failure> {
             .stderr(log)
             .spawn()?,
     );
-    let feeds = settings.indicators.div_ceil(settings.feed_size);
-    let observed = observe(&mut platform, feeds, filled.events)?;
+    let observed = observe(&mut platform, &settings, filled.events)?;
     drop(platform);
 
     let found = findings(&settings.out).await?;
@@ -671,7 +943,7 @@ async fn run() -> Result<bool, Failure> {
         let ok = budget["passed"] == json!(true);
         passed &= ok;
         println!(
-            "{:<5} {:<12} {}",
+            "{:<5} {:<14} {}",
             if ok { "pass" } else { "FAIL" },
             budget["measure"].as_str().unwrap_or_default(),
             budget["detail"].as_str().unwrap_or_default()
