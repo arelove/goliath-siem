@@ -1,0 +1,41 @@
+<main class="landing">
+<section class="hero">
+  <p class="eyebrow"><span class="pill other">pre-alpha</span> Open source, Apache-2.0, written in Rust</p>
+  <h1>An open security data platform, measured at every step<span class="mark">.</span></h1>
+  <p class="lead">Logs come in over the network, become OCSF events, and are
+  stored and searched in ClickHouse. Indicators from threat intelligence feeds
+  are matched against every event as it arrives, and Sigma rules are evaluated
+  by an engine that is checked against a reference on every event.</p>
+  <p class="actions">
+    <a class="button" href="docs/index.html">Read the documentation</a>
+    <a class="button quiet" href="#run-it">Run it in one command</a>
+    <a class="button quiet" href="{{repository}}">Source on GitHub</a>
+  </p>
+</section>
+
+<section class="tiles" aria-label="What is measured">{{tiles}}</section>
+
+<section class="flow" aria-label="The path of an event">
+  <h2>The path of an event</h2>
+  <p class="note">Each step is a role of one binary. They run in one process on
+  a laptop, or apart, with Kafka between them.</p>
+  <ol class="path">
+    <li><strong>Sources</strong><span>Sysmon, Windows Security, auditd, Falco, cloud, Zeek, Suricata</span></li>
+    <li><strong>Receiver</strong><span>HTTP, syslog over TLS, OpenTelemetry; acknowledged once it cannot be lost</span></li>
+    <li><strong>Normalizer</strong><span>To OCSF by a declarative definition, dropping nothing</span></li>
+    <li class="fork"><strong>Event topic</strong><span>Ordered, bounded, read by each role at its own pace</span></li>
+  </ol>
+  <div class="branches">
+    <ol class="path">
+      <li><strong>Writer</strong><span>Batches into ClickHouse; a record delivered twice is stored once</span></li>
+      <li><strong>Search</strong><span>By time, class, and any OCSF attribute, in the browser and over HTTP</span></li>
+    </ol>
+    <ol class="path">
+      <li><strong>Detector</strong><span>Matches indicators beside storage, and never slows it</span></li>
+      <li><strong>Findings</strong><span>Each match stored beside its event, with every feed that asserts it</span></li>
+    </ol>
+  </div>
+</section>
+
+<div class="prose">{{sections}}</div>
+</main>
