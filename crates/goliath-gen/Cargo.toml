@@ -19,6 +19,7 @@ jiff = { version = "0.2", default-features = false, features = ["std"] }
 serde_json.workspace = true
 
 [dev-dependencies]
+goliath-intel = { path = "../goliath-intel" }
 goliath-normalize = { path = "../goliath-normalize" }
 
 [lints]
