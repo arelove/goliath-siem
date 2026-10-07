@@ -216,6 +216,7 @@ let matched: Vec<usize> = engine.matches(&ocsf_event);
 | [docs/lab.md](docs/lab.md) | Домашний стенд: логи со второй машины по локальной сети |
 | [docs/adr/](docs/adr/) | Архитектурные решения |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Инварианты, правила ревью, как добавить решение |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Как участники проекта относятся друг к другу |
 | [SECURITY.md](SECURITY.md) | Как сообщить об уязвимости |
 
 ## Лицензия
