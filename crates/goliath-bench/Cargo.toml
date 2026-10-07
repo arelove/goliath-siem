@@ -17,7 +17,7 @@ callgrind = []
 # Builds the search benchmark, which stores millions of events in a
 # ClickHouse server and times searches over them.
 search = ["dep:clickhouse", "dep:goliath-search", "dep:goliath-store", "dep:tokio"]
-rig = ["dep:goliath", "dep:goliath-pipe", "goliath-pipe/kafka", "dep:sysinfo", "dep:clickhouse", "dep:tokio"]
+rig = ["dep:goliath", "dep:goliath-gen", "dep:goliath-pipe", "goliath-pipe/kafka", "dep:sysinfo", "dep:clickhouse", "dep:tokio"]
 # Builds the detector's benchmark, which fills a topic on disk and runs the
 # `goliath` binary on it. No server is needed.
 intel = ["dep:goliath-gen", "dep:goliath-pipe", "dep:sysinfo", "dep:tokio"]
