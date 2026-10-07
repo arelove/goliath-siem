@@ -42,6 +42,20 @@ orchestration, and incident handling in one system.
 | [0020](adr/0020-state-beyond-events.md) | State beyond the event store: RocksDB embedded for what events pass through, PostgreSQL from M4.5 for what people and workflows change, M4 without it | Accepted |
 | [0021](adr/0021-enrichment-placement.md) | Where indicators are matched and context is added: in a detector role beside the writer, each match a finding of its own, stored events never rewritten | Accepted |
 
+## The site
+
+These documents are published at <https://arelove.github.io/goliath-siem/>,
+built from this directory and from the sections of the README by
+`scripts/site.py`, on every change to `main`. To see it before that:
+
+```text
+pip install markdown-it-py
+python scripts/site.py
+```
+
+and open `target/site/index.html`. The build fails on a link to a file that
+is not there. Its look is in `site/`, and follows the interface in `ui/`.
+
 ## Writing an ADR
 
 Copy [adr/0000-template.md](adr/0000-template.md) to the next number. Rules are
