@@ -60,6 +60,9 @@ SSLBL: `feodo-tracker`, `urlhaus`, `threatfox`, `sslbl`.
 - At a start, no event is matched until every feed was looked at once: an
   event matched against a store still empty would not be matched again.
   Events wait in the topic meanwhile, and storage does not wait for them.
+- A restart does not load again a publication the store already holds: it
+  is known by when it was written and its length. Matching starts as soon
+  as the store is open.
 - A fetch that fails is tried again after five minutes. A publication that is
   not the feed, such as an error page or a changed format, is refused whole.
   Either way the store keeps what it had, and matching goes on.
@@ -86,7 +89,7 @@ On the metrics endpoint:
 | Metric | Meaning |
 | --- | --- |
 | `goliath_feed_checked_timestamp_seconds{feed}` | When the feed was last known to be current. Alarm when it is older than a few of the feed's intervals: the feed is stale |
-| `goliath_feed_refreshes_total{feed,result}` | Publications asked for: `loaded`, `refused` as not the feed, or `failed` to be fetched |
+| `goliath_feed_refreshes_total{feed,result}` | Publications asked for: `loaded`, `unchanged` since it was loaded before a restart, `refused` as not the feed, or `failed` to be fetched |
 | `goliath_feed_indicators{feed}` | Indicators the feed asserts. A sudden fall is a feed that changed |
 | `goliath_indicator_hits_total{status}` | Matches `reported` and `suppressed` |
 | `goliath_detected_events_total`, `goliath_detected_observables_total` | What the detector looked at |
