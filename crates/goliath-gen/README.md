@@ -30,3 +30,19 @@ The same organization, generator seed, and sequence of timestamps produce
 identical bytes. Workload proportions are synthetic assumptions, not measured
 enterprise distributions. Auditd, Falco, replay, and attack injection remain
 future work. Data sources and licenses are in [data/README.md](data/README.md).
+
+## Indicators and planted matches
+
+To measure the detector, `intel::indicator(n)` gives indicator `n`: the same
+on every run, and no two equal, so a set of any size is `0..n`. Of every
+twenty, nine are IPv4 addresses, six domains, three URLs, and two SHA-256
+hashes, the mix of the M4 exit criterion. `intel::write_feed` writes a range
+of them as a feed's publication, and `intel::feed_definition` the definition
+that reads it.
+
+None can occur in ordinary telemetry: the addresses are in 240.0.0.0/4, the
+names end in `.example`, and the hashes are of nothing. `Generator::planted`
+writes a record that holds one indicator and no other: a Sysmon connection
+for an address or a name, a Sysmon launch for a hash, and a Suricata HTTP
+request for a URL, since Sysmon records no URL. So every match a detector
+reports was planted, and one that was not is a defect.

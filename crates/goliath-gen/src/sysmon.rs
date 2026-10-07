@@ -1,6 +1,6 @@
 //! Ordinary Windows activity in the `evtx_dump` JSON envelope.
 
-use crate::{HostKind, Organization, data, random::Random, time::timestamp};
+use crate::{HostKind, Organization, data, intel::Plant, random::Random, time::timestamp};
 use serde_json::{Value, json};
 use std::net::Ipv4Addr;
 
@@ -34,10 +34,40 @@ impl Sysmon {
     /// # Panics
     /// Panics if `host` is outside the organization used to construct this formatter.
     pub fn record(&mut self, org: &Organization, host: usize, time_ms: i64) -> Value {
+        self.emit(org, host, time_ms, None)
+    }
+
+    /// Emits one event that holds `plant`: a launch for a hash, a network
+    /// connection for an address or a name. A connection of a machine that
+    /// has launched nothing yet is of a process whose launch was not seen,
+    /// as a sensor started late sees them.
+    pub(crate) fn planted(
+        &mut self,
+        org: &Organization,
+        host: usize,
+        time_ms: i64,
+        plant: &Plant,
+    ) -> Value {
+        self.emit(org, host, time_ms, Some(plant))
+    }
+
+    fn emit(
+        &mut self,
+        org: &Organization,
+        host: usize,
+        time_ms: i64,
+        plant: Option<&Plant>,
+    ) -> Value {
         let machine = &org.hosts[host];
         let office = &org.offices[machine.office];
-        let launch = self.processes[host].is_none() || self.random.chance(0.15);
-        if launch {
+        // The draws of an ordinary record are the same as before plants
+        // existed, so the streams of published runs do not change.
+        let launch = match plant {
+            None => self.processes[host].is_none() || self.random.chance(0.15),
+            Some(Plant::Hash(_)) => true,
+            Some(_) => false,
+        };
+        if launch || self.processes[host].is_none() {
             let user = match machine.kind {
                 HostKind::Workstation { owner } => owner,
                 HostKind::Server { .. } => org
@@ -73,10 +103,10 @@ impl Sysmon {
             HostKind::Workstation { .. } => &person.sam,
         };
         let user = format!("{}\\{account}", org.netbios);
-        let id = if launch {
-            1
-        } else {
-            *self.random.pick(&[3, 3, 3, 7, 7, 11, 13])
+        let id = match plant {
+            _ if launch => 1,
+            Some(_) => 3,
+            None => *self.random.pick(&[3, 3, 3, 7, 7, 11, 13]),
         };
         let mut fields = match id {
             1 => {
@@ -107,6 +137,14 @@ impl Sysmon {
                 json!({"EventType": "SetValue", "TargetObject": format!(r"HKU\{}\Software\Microsoft\Office\16.0\Common\LastRun", person.sid), "Details": "DWORD (0x00000001)"})
             }
         };
+        match plant {
+            Some(Plant::Hash(hash)) => {
+                fields["Hashes"] = json!(format!("SHA256={}", hash.to_ascii_uppercase()));
+            }
+            Some(Plant::Address(address)) => fields["DestinationIp"] = json!(address),
+            Some(Plant::Name(name)) => fields["DestinationHostname"] = json!(name),
+            Some(Plant::Request { .. }) | None => {}
+        }
         fields["RuleName"] = json!("-");
         fields["UtcTime"] = json!(timestamp(time_ms, ' '));
         fields["ProcessGuid"] = json!(process.guid);

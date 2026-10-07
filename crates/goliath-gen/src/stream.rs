@@ -2,7 +2,9 @@
 use crate::{
     HostKind, Organization,
     entra::Entra,
+    intel::{self, Plant},
     random::{Random, Weighted},
+    suricata,
     sysmon::Sysmon,
 };
 
@@ -26,6 +28,8 @@ pub struct Generator {
     hour: Option<i64>,
     hosts: Weighted,
     users: Weighted,
+    /// Planted HTTP requests so far, each a flow of its own.
+    flows: u64,
 }
 
 impl Generator {
@@ -42,29 +46,14 @@ impl Generator {
             hour: None,
             hosts: Weighted::new([]),
             users: Weighted::new([]),
+            flows: 0,
         }
     }
 
     /// Generates the next record at `time_ms`. Input times are UTC; office
     /// offsets are fixed and intentionally do not model daylight saving.
     pub fn next(&mut self, time_ms: i64) -> Record {
-        let hour = time_ms.div_euclid(3_600_000);
-        if self.hour != Some(hour) {
-            self.users = Weighted::new(
-                self.org
-                    .users
-                    .iter()
-                    .map(|u| u.activity * daily(hour + self.org.offices[u.office].utc_offset)),
-            );
-            self.hosts = Weighted::new(self.org.hosts.iter().map(|h| match h.kind {
-                HostKind::Workstation { owner } => {
-                    self.org.users[owner].activity
-                        * daily(hour + self.org.offices[h.office].utc_offset)
-                }
-                HostKind::Server { .. } => 0.02,
-            }));
-            self.hour = Some(hour);
-        }
+        self.turn(time_ms);
         let (source, value) = if self.random.chance(0.075) {
             (
                 "entra",
@@ -82,6 +71,66 @@ impl Generator {
             source,
             time: time_ms,
             bytes: value.to_string().into_bytes(),
+        }
+    }
+
+    /// Generates a record at `time_ms` that holds indicator `index` of
+    /// [`intel`](crate::intel), on a machine drawn as for any record: a
+    /// Sysmon event for an address, a name, or a hash, and a Suricata HTTP
+    /// request for a URL. It holds no other indicator.
+    pub fn planted(&mut self, time_ms: i64, index: u64) -> Record {
+        self.turn(time_ms);
+        let host = self.hosts.draw(&mut self.random);
+        let plant = intel::plant(index);
+        let (source, value) = match &plant {
+            Plant::Request { host: name, path } => {
+                let machine = &self.org.hosts[host];
+                let address = machine.address(
+                    &self.org.offices[machine.office],
+                    time_ms.div_euclid(86_400_000),
+                );
+                self.flows += 1;
+                (
+                    "suricata",
+                    suricata::http(
+                        &address,
+                        name,
+                        path,
+                        1_600_000_000_000_000 + self.flows,
+                        time_ms,
+                    ),
+                )
+            }
+            plant => (
+                "sysmon",
+                self.sysmon.planted(&self.org, host, time_ms, plant),
+            ),
+        };
+        Record {
+            source,
+            time: time_ms,
+            bytes: value.to_string().into_bytes(),
+        }
+    }
+
+    /// Weighs who is active in the hour of `time_ms`, once an hour.
+    fn turn(&mut self, time_ms: i64) {
+        let hour = time_ms.div_euclid(3_600_000);
+        if self.hour != Some(hour) {
+            self.users = Weighted::new(
+                self.org
+                    .users
+                    .iter()
+                    .map(|u| u.activity * daily(hour + self.org.offices[u.office].utc_offset)),
+            );
+            self.hosts = Weighted::new(self.org.hosts.iter().map(|h| match h.kind {
+                HostKind::Workstation { owner } => {
+                    self.org.users[owner].activity
+                        * daily(hour + self.org.offices[h.office].utc_offset)
+                }
+                HostKind::Server { .. } => 0.02,
+            }));
+            self.hour = Some(hour);
         }
     }
 }
