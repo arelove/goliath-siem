@@ -49,10 +49,18 @@ jobs:
           git fetch --depth 1 origin "${{ github.event.pull_request.base.sha }}"
           git worktree add "$RUNNER_TEMP/base" FETCH_HEAD
           cd "$RUNNER_TEMP/base"
-          if [ -f crates/goliath-bench/benches/engine.rs ]; then
-            cargo bench -p goliath-bench --features callgrind --bench engine -- --save-baseline=base
-          else
+          gungraun() {
+            grep -A1 '^name = "gungraun"$' "$1" | sed -n 's/^version = "\(.*\)"$/\1/p'
+          }
+          if [ ! -f crates/goliath-bench/benches/engine.rs ]; then
             echo "The base has no benchmark yet; this run records one and compares nothing."
+          elif [ "$(gungraun Cargo.lock)" != "$(gungraun "$GITHUB_WORKSPACE/Cargo.lock")" ]; then
+            # The runner installed is this change's, and refuses a library
+            # of another version; counts of two versions are not comparable
+            # either. The next pull request compares against this one.
+            echo "::notice::This change moves gungraun from $(gungraun Cargo.lock) to $(gungraun "$GITHUB_WORKSPACE/Cargo.lock"); this run records counts and compares nothing."
+          else
+            cargo bench -p goliath-bench --features callgrind --bench engine -- --save-baseline=base
           fi
       - name: Measure this change
         run: |
