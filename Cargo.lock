@@ -808,6 +808,7 @@ version = "0.0.0"
 dependencies = [
  "clickhouse",
  "goliath",
+ "goliath-gen",
  "goliath-match",
  "goliath-normalize",
  "goliath-pipe",

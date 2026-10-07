@@ -17,11 +17,15 @@ callgrind = []
 # Builds the search benchmark, which stores millions of events in a
 # ClickHouse server and times searches over them.
 search = ["dep:clickhouse", "dep:goliath-search", "dep:goliath-store", "dep:tokio"]
-rig = ["dep:goliath", "dep:goliath-pipe", "dep:sysinfo", "dep:clickhouse", "dep:tokio"]
+rig = ["dep:goliath", "dep:goliath-pipe", "goliath-pipe/kafka", "dep:sysinfo", "dep:clickhouse", "dep:tokio"]
+# Builds the detector's benchmark, which fills a topic on disk and runs the
+# `goliath` binary on it. No server is needed.
+intel = ["dep:goliath-gen", "dep:goliath-pipe", "dep:sysinfo", "dep:tokio"]
 
 [dependencies]
 goliath = { path = "../goliath", features = ["kafka"], optional = true }
-goliath-pipe = { path = "../goliath-pipe", features = ["kafka"], optional = true }
+goliath-gen = { path = "../goliath-gen", optional = true }
+goliath-pipe = { path = "../goliath-pipe", optional = true }
 sysinfo = { version = "0.38", default-features = false, features = ["system"], optional = true }
 clickhouse = { version = "0.15.2", default-features = false, features = ["lz4"], optional = true }
 goliath-match = { path = "../goliath-match" }
@@ -49,6 +53,10 @@ required-features = ["search"]
 [[bin]]
 name = "rig"
 required-features = ["rig"]
+
+[[bin]]
+name = "intel"
+required-features = ["intel"]
 
 [lints]
 workspace = true

@@ -197,3 +197,72 @@ bounded ClickHouse queries for what the run's database holds:
 - Compression is the source bytes sent per compressed byte stored.
 - Every metric of the benchmark method that needs a later component is listed
   with the milestone that brings it.
+
+## Measuring the detector
+
+The detector has budgets of its own, in
+[ADR-0021](adr/0021-enrichment-placement.md): a rate that does not fall as
+the indicator set grows, every planted match found and no other, and limits
+on memory and disk. A second binary measures against them, and needs neither
+ClickHouse nor Docker:
+
+```sh
+cargo build --release -p goliath
+cargo run --release -p goliath-bench --features intel --bin intel -- \
+    --indicators 1000 --events 1000000 --out bench/out/intel-1k
+cargo run --release -p goliath-bench --features intel --bin intel -- \
+    --indicators 1000000 --events 1000000 --out bench/out/intel-1m \
+    --baseline bench/out/intel-1k/report.json
+```
+
+One run does this:
+
+1. It writes feeds of generated indicators, at most `--feed-size` in each
+   (ten million unless told otherwise), and an allowlist that names some of
+   them. The indicators are those of `goliath_gen::intel`, in the mix of the
+   criterion, and ordinary telemetry never holds one.
+2. It fills the event topic on disk with `--events` normalized events. A
+   share of them, `--planted` (0.01 unless told otherwise), hold one
+   indicator each; one planted event in fifty holds an allowlisted one. The
+   topic is full before the platform starts, so generating and normalizing
+   take no core from what is measured.
+3. It starts `goliath` with the detector role alone and `--threads` matching
+   threads (1 unless told otherwise), and reads the platform's metrics, its
+   processor time, and its resident memory once a second, until every event
+   is matched.
+4. It reads the findings topic and compares what was found with what was
+   planted.
+
+| Line of the report | What it is |
+|---|---|
+| feeds in the store after | Seconds from the start of the platform until every feed was loaded, or found unchanged |
+| events a second | Events matched, over the time from the first one matched to the last |
+| events a second, median | The median of the rates of the whole seconds |
+| events a CPU second | Events matched for each second of processor time the platform used: the rate for each core, and what a baseline is compared by |
+| events a second, first min. | The rate of the first minute of matching, which the cold start budget is about |
+| correctness | Every planted indicator has its findings, as an alert or as suppressed, no other indicator has one, and the detector was moved past no event |
+| memory | The most resident memory seen, against 2 GiB |
+| disk | The size of the indicator store, against 8 GiB |
+| rate | With `--baseline`: events a CPU second as a share of the baseline's, against 90% |
+
+The memory and disk budgets are those of 10^8 indicators, so a smaller run
+that passes them shows only that it is not yet over. The run exits with a
+failure when a line fails, and writes all of it to `report.json` in its
+directory.
+
+A check of the harness on a laptop on 2026-10-08, with one matching thread
+and a million events:
+
+| Indicators | Events a second | Events a CPU second | Memory | Disk | Planted matches |
+|---|---|---|---|---|---|
+| 10^3 | 78,456 | 100,866 | 0.02 GiB | under 0.01 GiB | 10,000 of 10,000, no other |
+| 10^6 | 82,537 | 101,750 | 0.28 GiB | 0.08 GiB | 10,000 of 10,000, no other |
+
+That is one run of each, not the median of five the criterion asks for, and
+it does not reach 10^8; the exit measurement of M4 is made on other
+hardware. The harness does not yet measure a feed refresh under load, nor
+the writer's rate with the detector stopped.
+
+A million events take about a gigabyte in the run's directory, and 10^8
+indicators about four more for the feeds. Delete the directory when the
+report is read.
