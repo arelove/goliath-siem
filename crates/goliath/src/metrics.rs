@@ -94,6 +94,7 @@ struct Inner {
     detector_skipped: Counter,
     detector_rematched: Counter,
     detector_unmatched_ranges: Gauge,
+    detector_look_back_remaining_seconds: Gauge,
     indicator_hits: Family<Hit, Counter>,
     feed_refreshes: Family<FeedRefresh, Counter>,
     feed_indicators: Family<Feed, Gauge>,
@@ -154,6 +155,7 @@ impl Metrics {
         let detector_skipped = Counter::default();
         let detector_rematched = Counter::default();
         let detector_unmatched_ranges = Gauge::default();
+        let detector_look_back_remaining_seconds = Gauge::default();
         let indicator_hits = Family::default();
         let feed_refreshes = Family::default();
         let feed_indicators = Family::default();
@@ -259,6 +261,11 @@ impl Metrics {
             detector_unmatched_ranges.clone(),
         );
         registry.register(
+            "detector_look_back_remaining_seconds",
+            "Receipt time a look back for late indicators has yet to read from the store; zero when none runs",
+            detector_look_back_remaining_seconds.clone(),
+        );
+        registry.register(
             "indicator_hits",
             "Observables an indicator names, reported or suppressed by an allowlist",
             indicator_hits.clone(),
@@ -308,6 +315,7 @@ impl Metrics {
             detector_skipped,
             detector_rematched,
             detector_unmatched_ranges,
+            detector_look_back_remaining_seconds,
             indicator_hits,
             feed_refreshes,
             feed_indicators,
@@ -459,6 +467,11 @@ impl Metrics {
         self.0
             .detector_unmatched_ranges
             .set(i64::try_from(ranges).unwrap_or(i64::MAX));
+    }
+
+    /// A look back has `seconds` of receipt time yet to read.
+    pub(crate) fn look_back_remaining(&self, seconds: i64) {
+        self.0.detector_look_back_remaining_seconds.set(seconds);
     }
 
     /// `feed` is known to be current at `at`, in seconds since the epoch.

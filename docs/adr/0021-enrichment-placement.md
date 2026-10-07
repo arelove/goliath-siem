@@ -97,10 +97,21 @@ rewrite a stored event.**
 
 ### Indicators that arrive late
 
-When a feed refresh adds indicators, a scheduled query looks for the new keys
-alone in the stored events of the hot retention, and writes the same
-findings. The stream match and this query together cover events before and
-after the indicator arrived.
+When a feed refresh adds indicators, the detector looks back for the new
+keys alone in the stored events, and writes the same findings. The stream
+match and the look back together cover events before and after the
+indicator arrived.
+
+- The indicator store keeps when it first held each indicator from each
+  feed. A look back reports an indicator only if every feed that asserts it
+  added it since the last look back began.
+- It reads the events taken before the new indicators were in the store,
+  as far back as configured, through the same matcher as arriving events.
+  Canonical forms, networks, validity, and allowlists are therefore the
+  same, and so is the finding.
+- It reads every event of that time once, whatever the number of new
+  indicators. It begins at most once in a configured time, a day unless
+  set, and covers all that was added in between.
 
 ### Events the detector was moved past
 
@@ -170,11 +181,18 @@ the budget changes by a record like this one.
 
 ## When to revisit
 
-If reading a range back is measured to be slower than events arrive, the
-detector never catches up from the store: read by partition and class in
-parallel, or give the detector cores. If the interface's lookups from
-findings to events take more than 100 milliseconds at the 95th percentile,
-store the matched event's summary in the finding. If searches by context on events are asked for before M6, decide the
-ClickHouse dictionaries then. If a deployment must match in the branch,
-before events reach the centre, a detector there with a feed subset is the
-answer, not matching in the normalizer.
+- If a look back is measured to take longer than the time between two at
+  the target rate, keep the values each day's events hold in a table of
+  their own, ordered by value, and read only the days and classes a new
+  indicator was seen in.
+- If reading a range back is measured to be slower than events arrive, the
+  detector never catches up from the store: read by partition and class in
+  parallel, or give the detector cores.
+- If the interface's lookups from findings to events take more than 100
+  milliseconds at the 95th percentile, store the matched event's summary in
+  the finding.
+- If searches by context on events are asked for before M6, decide the
+  ClickHouse dictionaries then.
+- If a deployment must match in the branch, before events reach the centre,
+  a detector there with a feed subset is the answer, not matching in the
+  normalizer.
