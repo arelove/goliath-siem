@@ -235,6 +235,7 @@ significant decision has an ADR in [docs/adr/](docs/adr/).
 | [docs/lab.md](docs/lab.md) | A home lab: logs from a second machine over the local network |
 | [docs/adr/](docs/adr/) | Architecture decision records |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Invariants, review rules, how to add a decision |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | How people in the project treat each other |
 | [SECURITY.md](SECURITY.md) | How to report a vulnerability |
 
 ## License
