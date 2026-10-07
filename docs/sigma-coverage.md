@@ -105,7 +105,8 @@ does not write. They are read as the record's workload, its operation or, for
 an alert of the Security & Compliance Center, the alert's name, and its
 result, so that "Impossible travel activity" fires on the `AlertTriggered`
 record of that alert. The one rule that does not load compares `Payload`,
-which no record has.
+which the mapping has no attribute for: no other rule names it, and the
+audit log has no property of that name.
 
 ### Zeek
 
