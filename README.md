@@ -15,7 +15,8 @@ orchestration, and incident handling in one system.
 > to end on OCSF events. Sigma rules on the live stream and the platform
 > around it are not built yet.
 
-Other languages: [Русский](README_ru.md)
+Documentation: <https://arelove.github.io/goliath-siem/>. Other languages:
+[Русский](README_ru.md)
 
 ## What works today
 
