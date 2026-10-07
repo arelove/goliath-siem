@@ -15,6 +15,8 @@ event that matters among the others.
   of a browser tab.
 - On a ground that is not the interface's, it sits on a dark tile, as in
   [favicon.svg](../ui/public/favicon.svg).
+- The README shows that tile from [assets/mark.svg](assets/mark.svg), so it
+  reads on GitHub's light ground and on its dark one.
 - It is not redrawn, outlined, tilted, or given a gradient.
 
 ## The name
