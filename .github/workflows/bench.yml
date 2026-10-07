@@ -15,6 +15,11 @@ env:
   # A pull request may grow an instruction count by at most this much.
   LIMIT: ir=2%
 
+# Every job reads the repository and nothing more: none publishes, comments,
+# or writes back.
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
