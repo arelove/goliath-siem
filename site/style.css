@@ -1,36 +1,39 @@
 /* The colours and type of the platform's interface, ui/src/styles.css, at a
-   size for reading. Dark by default, light on request. */
+   size for reading: warm graphite and bronze. Dark by default, light on
+   request. */
 :root,
 :root[data-theme="dark"] {
-  --bg: #0d1117;
-  --panel: #151b23;
-  --raised: #1b222c;
-  --line: #242c38;
-  --text: #dce3ec;
-  --muted: #8b96a8;
-  --accent: #3b7ddd;
-  --link: #6ea3ee;
-  --selected: #1b2a40;
-  --warn: #d9a13b;
+  --bg: #121110;
+  --panel: #1b1917;
+  --raised: #23201d;
+  --line: #2e2a26;
+  --text: #ece6dd;
+  --muted: #9a9085;
+  --accent: #c98a4b;
+  --on-accent: #17110a;
+  --link: #d9a066;
+  --selected: #2a2118;
+  --warn: #e3c341;
   --good: #3fb950;
-  --glow: rgba(59, 125, 221, 0.16);
+  --glow: rgba(201, 138, 75, 0.13);
   --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
   color-scheme: dark;
 }
 
 :root[data-theme="light"] {
-  --bg: #eef1f6;
+  --bg: #f3efe9;
   --panel: #ffffff;
-  --raised: #f4f6fa;
-  --line: #e1e6ee;
-  --text: #1d2433;
-  --muted: #6b7587;
-  --accent: #2f6fdb;
-  --link: #2460c4;
-  --selected: #e6efff;
-  --warn: #b7791f;
+  --raised: #f7f3ee;
+  --line: #e2dbd1;
+  --text: #221d17;
+  --muted: #766c60;
+  --accent: #9c5f22;
+  --on-accent: #ffffff;
+  --link: #8a5119;
+  --selected: #f4e8da;
+  --warn: #a8860b;
   --good: #1f883d;
-  --glow: rgba(47, 111, 219, 0.1);
+  --glow: rgba(156, 95, 34, 0.1);
   color-scheme: light;
 }
 
@@ -71,7 +74,9 @@ a:hover {
 }
 
 .mark {
-  color: var(--accent);
+  width: 24px;
+  height: 24px;
+  flex: none;
 }
 
 /* The bar of the interface: the product, the section, then where to go. */
@@ -88,6 +93,9 @@ a:hover {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -137,7 +145,7 @@ button,
   border-radius: 6px;
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 button.quiet,
@@ -722,4 +730,9 @@ footer a {
   .steps {
     grid-template-columns: 1fr;
   }
+}
+
+.hero h1 em {
+  font-style: normal;
+  color: var(--accent);
 }

@@ -31,6 +31,19 @@ SOURCE = f"{REPOSITORY}/blob/main"
 MERMAID = "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"
 MERMAID_HASH = "sha384-rbtjAdnIQE/aQJGEgXrVUlMibdfTSa4PQju4HDhN3sR2PmaKFzhEafuePsl9H/9I"
 
+# The mark, as the interface draws it in ui/src/components/Mark.tsx.
+MARK = (
+    '<svg class="mark" viewBox="0 0 32 32" aria-hidden="true">'
+    '<rect x="9" y="2" width="15" height="4" rx="1.4" fill="currentColor"/>'
+    '<rect x="4" y="8" width="8" height="4" rx="1.4" fill="currentColor"/>'
+    '<rect x="4" y="14" width="8" height="4" rx="1.4" fill="currentColor"/>'
+    '<rect x="16" y="14" width="12" height="4" rx="1.4" fill="var(--accent)"/>'
+    '<rect x="4" y="20" width="8" height="4" rx="1.4" fill="currentColor"/>'
+    '<rect x="21" y="20" width="7" height="4" rx="1.4" fill="currentColor"/>'
+    '<rect x="9" y="26" width="19" height="4" rx="1.4" fill="currentColor"/>'
+    "</svg>"
+)
+
 # The pages beside the decisions, in the order the navigation lists them.
 # A document that is not named here is listed under "More".
 GROUPS = [
@@ -225,7 +238,7 @@ class Site:
 </head>
 <body class="{'front' if wide else 'document'}">
 <header class="topbar">
-  <a class="brand" href="{to('index.html')}">goliath<span class="mark">.</span></a>
+  <a class="brand" href="{to('index.html')}">{MARK}goliath</a>
   <span class="section">{'platform' if wide else 'documentation'}</span>
   <nav class="links">
     <a href="{to('docs/index.html')}">Docs</a>
@@ -240,7 +253,7 @@ class Site:
 </header>
 {main}
 <footer>
-  <span>goliath<span class="mark">.</span> is open source under Apache-2.0. Pre-alpha: nothing here is production-ready.</span>
+  <span>Goliath is open source under Apache-2.0. Pre-alpha: nothing here is production-ready.</span>
   <span class="grow"></span>
   <a href="{REPOSITORY}">Source</a>
   <a href="{REPOSITORY}/blob/main/SECURITY.md">Security</a>
