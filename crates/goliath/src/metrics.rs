@@ -272,7 +272,7 @@ impl Metrics {
         );
         registry.register(
             "feed_refreshes",
-            "Publications of a feed asked for, by result: loaded, refused as not the feed, or failed to be fetched",
+            "Publications of a feed asked for, by result: loaded, unchanged since it was loaded before a restart, refused as not the feed, or failed to be fetched",
             feed_refreshes.clone(),
         );
         registry.register(
@@ -484,9 +484,10 @@ impl Metrics {
             .set(at);
     }
 
-    /// A publication of `feed` was asked for, with `result`: `loaded`, with
-    /// so many indicators and written at that time, in seconds since the
-    /// epoch; `refused`; or `failed`.
+    /// A publication of `feed` was asked for, with `result`: `loaded`, or
+    /// `unchanged` since it was loaded before a restart, with so many
+    /// indicators and written at that time, in seconds since the epoch;
+    /// `refused`; or `failed`.
     pub(crate) fn feed_refreshed(
         &self,
         feed: &str,

@@ -233,12 +233,36 @@ impl Intel {
             published.seen = Some(changed);
             let now = seconds(SystemTime::now());
             let modified = seconds(changed.0);
+            // The publication's version: when it was written, and its
+            // length, which tells two written within one second apart.
+            let version = format!("{modified}.{}", changed.1);
+            // The store holds this very publication, from before a restart:
+            // reading it again would give what is there, and with a large
+            // feed would take minutes in which nothing is matched.
+            let held = self
+                .matcher
+                .store()
+                .feeds()
+                .into_iter()
+                .find(|(feed, held, _)| *feed == name && *held == version);
+            if let Some((_, _, indicators)) = held {
+                info!(
+                    feed = name,
+                    indicators, "feed unchanged since it was loaded"
+                );
+                let indicators = usize::try_from(indicators).unwrap_or(usize::MAX);
+                metrics.feed_refreshed(&name, "unchanged", Some((indicators, modified)));
+                if published.remote.is_none() {
+                    metrics.feed_checked(&name, modified);
+                }
+                continue;
+            }
             let loaded = std::fs::read(&published.file)
                 .map_err(|error| error.to_string())
                 .and_then(|bytes| {
                     published
                         .feed
-                        .load(self.matcher.store(), &bytes, &modified.to_string(), now)
+                        .load(self.matcher.store(), &bytes, &version, now)
                         .map_err(|error| error.to_string())
                 });
             match loaded {
@@ -928,7 +952,7 @@ file = "feeds/feodo.csv"
         assert_eq!(hits(&intel), 1);
 
         // Started again within the interval, with the publication kept: no
-        // fetch, and the feed is in the store.
+        // fetch, and the feed is in the store, where it is left as it is.
         drop(intel);
         let intel = {
             let mut intel = Intel::open(config.detector.as_ref().unwrap(), &state).unwrap();
@@ -937,6 +961,14 @@ file = "feeds/feodo.csv"
         };
         assert_eq!(requests.load(Ordering::SeqCst), 2);
         assert_eq!(hits(&intel), 1);
+        let text = metrics.encode();
+        for expected in [
+            "goliath_feed_refreshes_total{feed=\"feodo-tracker\",result=\"loaded\"} 1",
+            "goliath_feed_refreshes_total{feed=\"feodo-tracker\",result=\"unchanged\"} 1",
+            "goliath_feed_indicators{feed=\"feodo-tracker\"} 1",
+        ] {
+            assert!(text.contains(expected), "{expected} missing from\n{text}");
+        }
     }
 
     #[test]
