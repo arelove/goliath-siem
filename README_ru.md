@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/assets/mark.svg" width="96" height="96" alt="Goliath"></p>
+
 # Goliath
 
 [![CI](https://github.com/arelove/goliath-siem/actions/workflows/ci.yml/badge.svg)](https://github.com/arelove/goliath-siem/actions/workflows/ci.yml)
