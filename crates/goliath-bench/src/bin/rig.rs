@@ -34,6 +34,14 @@ const MAX_MEMORY: f64 = 0.9;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(3);
 const SEND_TIMEOUT: Duration = Duration::from_secs(30);
 const METRICS: &str = "127.0.0.1:9465";
+/// Where the detector of `--detector` serves its metrics.
+const DETECTOR_METRICS: &str = "127.0.0.1:9467";
+/// The indicators that detector matches against. No event of the workload
+/// holds one: what is measured is the writer, not what is found.
+const DETECTOR_INDICATORS: u64 = 100_000;
+/// The writer's rate after the detector is stopped, as a share of its rate
+/// before, below which the two differ.
+const WRITE_PATH_BUDGET: f64 = 0.95;
 const SEED: u64 = 42;
 /// Records per payload the driver sends.
 const PER_PAYLOAD: u64 = 1_000;
@@ -52,15 +60,21 @@ enum Profile {
 }
 
 impl Profile {
-    fn parse(args: &[String]) -> Result<Self, Failure> {
+    /// The profile, and whether a detector runs beside the platform for the
+    /// first half of the load.
+    fn parse(args: &[String]) -> Result<(Self, bool), Failure> {
+        let (args, detector) = match args {
+            [rest @ .., flag] if flag == "--detector" => (rest, true),
+            args => (args, false),
+        };
         match args {
             [flag, name] if flag == "--profile" => match name.as_str() {
-                "ci" => Ok(Self::Ci),
-                "probe" => Ok(Self::Probe),
-                "laptop" => Ok(Self::Laptop),
+                "ci" => Ok((Self::Ci, detector)),
+                "probe" => Ok((Self::Probe, detector)),
+                "laptop" => Ok((Self::Laptop, detector)),
                 _ => Err("profile must be ci, probe, or laptop".into()),
             },
-            _ => Err("usage: rig --profile ci|probe|laptop".into()),
+            _ => Err("usage: rig --profile ci|probe|laptop [--detector]".into()),
         }
     }
     fn name(self) -> &'static str {
@@ -99,6 +113,7 @@ impl Profile {
 
 struct Settings {
     profile: Profile,
+    detector: bool,
     url: String,
     user: String,
     brokers: String,
@@ -110,10 +125,11 @@ struct Settings {
 
 impl Settings {
     fn read() -> Result<Self, Failure> {
-        let profile = Profile::parse(&env::args().skip(1).collect::<Vec<_>>())?;
+        let (profile, detector) = Profile::parse(&env::args().skip(1).collect::<Vec<_>>())?;
         let epoch = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         Ok(Self {
             profile,
+            detector,
             url: env::var("GOLIATH_CLICKHOUSE_URL")
                 .unwrap_or_else(|_| "http://127.0.0.1:8123".to_owned()),
             user: env::var("GOLIATH_CLICKHOUSE_USER").unwrap_or_else(|_| "default".to_owned()),
@@ -152,6 +168,168 @@ impl Settings {
             quote(&self.user)
         )
     }
+
+    /// Writes a feed of generated indicators under `directory`, and returns
+    /// the configuration of a second process that is the detector alone, on
+    /// the platform's topics and store.
+    fn detector_config(&self, directory: &Path) -> Result<String, Failure> {
+        let quote = |s: &str| serde_json::Value::String(s.to_owned()).to_string();
+        let path = |file: &str| -> Result<String, Failure> {
+            Ok(quote(
+                &std::path::absolute(directory.join(file))?
+                    .to_string_lossy()
+                    .replace('\\', "/"),
+            ))
+        };
+        fs::create_dir_all(directory)?;
+        fs::write(
+            directory.join("generated.yaml"),
+            goliath_gen::intel::feed_definition("generated"),
+        )?;
+        let mut publication =
+            std::io::BufWriter::new(File::create(directory.join("generated.csv"))?);
+        goliath_gen::intel::write_feed(&mut publication, 0..DETECTOR_INDICATORS)?;
+        publication.flush()?;
+        Ok(format!(
+            "roles = [\"detector\"]\ndata = {}\n\
+            [kafka]\nbrokers = {}\nprefix = {}\nreplication = 1\ncapacity = {}\n\
+            [store]\nurl = {}\ndatabase = {}\nuser = {}\npassword_env = \"GOLIATH_CLICKHOUSE_PASSWORD\"\n\
+            [metrics]\nlisten = \"{DETECTOR_METRICS}\"\n\
+            [detector]\nlook_back_days = 0\n\
+            [[detector.feeds]]\ndefinition = {}\nfile = {}\n",
+            path("data")?,
+            quote(&self.brokers),
+            quote(&self.prefix),
+            self.profile.normalized_capacity(),
+            quote(&self.url),
+            quote(&self.database),
+            quote(&self.user),
+            path("generated.yaml")?,
+            path("generated.csv")?,
+        ))
+    }
+}
+
+/// The detector that runs beside the platform until half of the load.
+struct Detector {
+    platform: Option<Platform>,
+    /// When it was stopped, and how many events it had matched by then.
+    stopped: Option<(Duration, u64)>,
+}
+
+impl Detector {
+    /// Starts it, and waits until its feed is in its store: it reads the
+    /// topic from where the topic ends then.
+    async fn start(settings: &Settings) -> Result<Self, Failure> {
+        let directory = settings.out.join("detector");
+        let config = settings.out.join("goliath-detector.toml");
+        fs::write(&config, settings.detector_config(&directory)?)?;
+        goliath::Config::load(&config)?;
+        let log = File::create(settings.out.join("detector.log"))?;
+        let mut platform = Platform(
+            Command::new(&settings.binary)
+                .args(["run", "--config"])
+                .arg(&config)
+                .env(
+                    "GOLIATH_CLICKHOUSE_PASSWORD",
+                    env::var("GOLIATH_CLICKHOUSE_PASSWORD").unwrap_or_default(),
+                )
+                .stdin(Stdio::null())
+                .stdout(log.try_clone()?)
+                .stderr(log)
+                .spawn()?,
+        );
+        let deadline = Instant::now() + Duration::from_secs(120);
+        loop {
+            if let Some(status) = platform.0.try_wait()? {
+                return Err(format!("detector exited: {status}; see detector.log").into());
+            }
+            if let Ok(text) = metrics_at(DETECTOR_METRICS).await
+                && feed_loaded(&text)
+            {
+                return Ok(Self {
+                    platform: Some(platform),
+                    stopped: None,
+                });
+            }
+            if Instant::now() >= deadline {
+                return Err("detector not ready within 120 seconds; see detector.log".into());
+            }
+            sleep(Duration::from_millis(250)).await;
+        }
+    }
+
+    /// Fails if it stopped by itself: the run would measure nothing.
+    fn check(&mut self) -> Result<(), Failure> {
+        if let Some(platform) = &mut self.platform
+            && let Some(status) = platform.0.try_wait()?
+        {
+            return Err(format!("detector exited: {status}; see detector.log").into());
+        }
+        Ok(())
+    }
+
+    /// Stops it, as a crash would: no word to the platform, and its place
+    /// in the topic stays where it was.
+    async fn stop(&mut self, elapsed: Duration) -> Result<(), Failure> {
+        let Some(mut platform) = self.platform.take() else {
+            return Ok(());
+        };
+        let detected = detected(&metrics_at(DETECTOR_METRICS).await?);
+        platform.stop()?;
+        self.stopped = Some((elapsed, detected));
+        Ok(())
+    }
+}
+
+fn feed_loaded(text: &str) -> bool {
+    text.lines().any(|line| {
+        line.starts_with("goliath_feed_refreshes_total{") && line.contains("result=\"loaded\"")
+    })
+}
+
+/// Events the detector matched, by its metrics.
+fn detected(text: &str) -> u64 {
+    text.lines()
+        .find_map(|line| line.strip_prefix("goliath_detected_events_total "))
+        .and_then(|value| value.trim().parse().ok())
+        .unwrap_or(0)
+}
+
+/// The writer's rate with the detector running and after it was stopped,
+/// from the samples of the load.
+fn write_path(run: &Run, stopped: Duration, detected: u64) -> Result<serde_json::Value, Failure> {
+    // Records stored a second between the first sample at or after `from`
+    // and the last at or before `to`.
+    let rate = |from: Duration, to: Duration| -> Result<f64, Failure> {
+        let within: Vec<&Sample> = run
+            .samples
+            .iter()
+            .filter(|sample| sample.elapsed >= from && sample.elapsed <= to)
+            .collect();
+        let (Some(first), Some(last)) = (within.first(), within.last()) else {
+            return Err("no samples to compare the writer's rate over".into());
+        };
+        let seconds = last.elapsed.saturating_sub(first.elapsed).as_secs_f64();
+        if seconds <= 0.0 {
+            return Err("too few samples to compare the writer's rate over".into());
+        }
+        #[allow(clippy::cast_precision_loss)]
+        Ok(stored(&last.metrics)?.saturating_sub(stored(&first.metrics)?) as f64 / seconds)
+    };
+    // The first tenth is the platform warming up.
+    let before = rate(run.duration / 10, stopped)?;
+    // The sample that follows the stop still holds a part of the time before.
+    let after = rate(stopped + SAMPLE_EVERY, run.duration)?;
+    let share = if before > 0.0 { after / before } else { 0.0 };
+    Ok(serde_json::json!({
+        "detector_stopped_at_seconds": stopped.as_secs_f64(),
+        "detector_matched_events": detected,
+        "stored_per_second_with_detector": before,
+        "stored_per_second_after": after,
+        "share": share,
+        "passed": detected > 0 && share >= WRITE_PATH_BUDGET,
+    }))
 }
 
 /// Reaps the child on errors as well as on the normal path.
@@ -232,6 +410,16 @@ async fn run() -> Result<(), Failure> {
         result = ready(&mut platform) => result?,
         result = tokio::signal::ctrl_c() => { result?; return Err("interrupted during startup".into()); }
     }
+    // After the platform, which makes the topics; before the load, so that
+    // it reads all of it.
+    let mut detector = if settings.detector {
+        Some(tokio::select! {
+            result = Detector::start(&settings) => result?,
+            result = tokio::signal::ctrl_c() => { result?; return Err("interrupted during startup".into()); }
+        })
+    } else {
+        None
+    };
     let mut options = KafkaOptions::new(&settings.brokers);
     options
         .readers
@@ -275,7 +463,7 @@ async fn run() -> Result<(), Failure> {
         });
     }
     let measured = tokio::select! {
-        result = observe(&mut run, &mut jobs, &mut system, &mut platform, start, &counters) => result,
+        result = observe(&mut run, &mut jobs, &mut system, &mut platform, detector.as_mut(), start, &counters) => result,
         result = tokio::signal::ctrl_c() => result.map_err(Failure::from).and(Err("interrupted during load".into())),
     };
     let _ = stop.send(true);
@@ -316,6 +504,31 @@ async fn run() -> Result<(), Failure> {
         .with_password(env::var("GOLIATH_CLICKHOUSE_PASSWORD").unwrap_or_default())
         .with_database(&settings.database);
     report::write(&run, &clickhouse, &settings.out).await?;
+    if let Some((stopped, detected)) = detector.as_ref().and_then(|detector| detector.stopped)
+        && result.is_ok()
+    {
+        let measured = write_path(&run, stopped, detected)?;
+        fs::write(
+            settings.out.join("write-path.json"),
+            serde_json::to_string_pretty(&measured)? + "\n",
+        )?;
+        println!(
+            "write path: {:.0} records/s stored with the detector, {:.0} after it was stopped at {:.0} s ({:.1}%); it had matched {detected} events",
+            measured["stored_per_second_with_detector"]
+                .as_f64()
+                .unwrap_or(0.0),
+            measured["stored_per_second_after"].as_f64().unwrap_or(0.0),
+            stopped.as_secs_f64(),
+            measured["share"].as_f64().unwrap_or(0.0) * 100.0,
+        );
+        if measured["passed"] != serde_json::json!(true) {
+            result = Err(if detected == 0 {
+                "the detector matched no event before it was stopped".into()
+            } else {
+                "the writer's rate changed when the detector was stopped".into()
+            });
+        }
+    }
     result
 }
 
@@ -497,16 +710,31 @@ async fn observe(
     jobs: &mut JoinSet<Result<(), Failure>>,
     system: &mut System,
     platform: &mut Platform,
+    mut detector: Option<&mut Detector>,
     start: Instant,
     counters: &Mutex<Counts>,
 ) -> Result<(), Failure> {
     let mut ticks = interval_at(start + SAMPLE_EVERY, SAMPLE_EVERY);
     ticks.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    let half = start + run.duration / 2;
     loop {
+        let running = detector
+            .as_ref()
+            .is_some_and(|detector| detector.platform.is_some());
         tokio::select! {
             () = sleep_until(start + run.duration) => break,
+            () = sleep_until(half), if running => {
+                if let Some(detector) = detector.as_mut() {
+                    detector.stop(start.elapsed()).await?;
+                }
+            },
             Some(done) = jobs.join_next(), if !jobs.is_empty() => { done??; },
-            _ = ticks.tick() => { run.samples.push(sample(system, platform, start, counters).await?); },
+            _ = ticks.tick() => {
+                if let Some(detector) = detector.as_mut() {
+                    detector.check()?;
+                }
+                run.samples.push(sample(system, platform, start, counters).await?);
+            },
         }
     }
     run.samples
@@ -588,8 +816,13 @@ mod tests {
     fn profiles_and_global_schedule() {
         assert_eq!(
             Profile::parse(&["--profile".into(), "ci".into()]).unwrap(),
-            Profile::Ci
+            (Profile::Ci, false)
         );
+        assert_eq!(
+            Profile::parse(&["--profile".into(), "probe".into(), "--detector".into()]).unwrap(),
+            (Profile::Probe, true)
+        );
+        assert!(Profile::parse(&["--detector".into()]).is_err());
         assert!(Profile::parse(&["--profile".into(), "typo".into()]).is_err());
         assert!(Profile::parse(&[]).is_err());
         assert_eq!(scheduled(0, 5_000), Duration::ZERO);

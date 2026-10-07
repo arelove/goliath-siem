@@ -1,0 +1,68 @@
+name: Rig
+
+# The benchmark rig at its smallest, with a detector beside the platform
+# that is stopped at half of the load. It shows that the rig itself still
+# runs and that the writer's rate does not change when the detector goes;
+# it measures nothing about speed, which the shared runner cannot tell.
+
+on:
+  pull_request:
+    paths:
+      - crates/goliath-bench/**
+      - .github/workflows/rig.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  rig:
+    name: rig / ci profile with a detector
+    runs-on: ubuntu-latest
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:25.8
+        env:
+          CLICKHOUSE_USER: goliath
+          CLICKHOUSE_PASSWORD: goliath
+        ports:
+          - 8123:8123
+        options: >-
+          --ulimit nofile=262144:262144
+          --health-cmd "clickhouse-client --user goliath --password goliath --query 'SELECT 1'"
+          --health-interval 2s
+          --health-retries 30
+    env:
+      GOLIATH_KAFKA_BROKERS: localhost:9092
+      GOLIATH_CLICKHOUSE_URL: http://localhost:8123
+      GOLIATH_CLICKHOUSE_USER: goliath
+      GOLIATH_CLICKHOUSE_PASSWORD: goliath
+    steps:
+      - uses: actions/checkout@v7
+      - name: Start Redpanda
+        run: |
+          docker run -d --name redpanda -p 9092:9092 redpandadata/redpanda:latest \
+            redpanda start --mode dev-container --smp 1 --overprovisioned \
+            --kafka-addr PLAINTEXT://0.0.0.0:9092 --advertise-kafka-addr PLAINTEXT://localhost:9092
+          for attempt in $(seq 1 60); do
+            docker exec redpanda rpk cluster health --exit-when-healthy --watch=false >/dev/null 2>&1 && exit 0
+            sleep 1
+          done
+          docker logs redpanda
+          exit 1
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p goliath --features kafka
+      - run: cargo build --release -p goliath-bench --features rig --bin rig
+      - run: target/release/rig --profile ci --detector
+      - name: The report, and the logs if it failed
+        if: always()
+        run: |
+          cat bench/out/rig*/report.md bench/out/rig*/write-path.json || true
+          if [ "${{ job.status }}" != "success" ]; then
+            tail -n 40 bench/out/rig*/failure.txt bench/out/rig*/platform.log bench/out/rig*/detector.log || true
+          fi
