@@ -97,6 +97,36 @@ The driver calls `report::write(&run, &clickhouse, &output_directory).await`.
 The ClickHouse client selects the isolated database. Report code should bound
 its server requests and preserve unavailable measurements explicitly.
 
+## The write path with a detector
+
+ADR-0021 asks that the writer's rate does not change when the detector is
+stopped or stalled. `--detector` after the profile measures it:
+
+```sh
+cargo run --release -p goliath-bench --features rig --bin rig -- --profile ci --detector
+```
+
+- A second `goliath` process is started that is the detector alone, on the
+  platform's topics and store, with a feed of 100,000 generated indicators.
+  No event of the workload holds one: what is measured is the writer.
+- At half of the load that process is killed, as a crash would end it. Its
+  place in the topic stays where it was, so to the platform this is also a
+  detector that has stalled.
+- The run compares the records stored a second before and after. The first
+  tenth of the load is left out as warming up, and so is the sample that
+  follows the stop. It fails if the rate after is below 95% of the rate
+  before, or if the detector had matched no event, which would mean nothing
+  was compared.
+
+The figures are printed and written to `write-path.json` beside the report.
+The driver offers a fixed rate, so at a rate the platform holds with room to
+spare both figures are that rate and the comparison shows little; it means
+something at a rate near what the machine sustains.
+
+The `Rig` workflow runs this at the `ci` profile on every pull request that
+changes the bench crate. It shows that the rig still runs; a shared runner
+says nothing about speed.
+
 ## Replaying real datasets
 
 Stream B of ADR-0017 is real telemetry, replayed as if it were happening now.
@@ -262,8 +292,8 @@ and a million events:
 That is one run of each, not the median of five the criterion asks for, and
 it does not reach 10^8; the exit measurement of M4 is made on other
 hardware. The harness does not measure the writer's rate with the detector
-stopped: that needs the store, so it belongs to the rig, which does not
-start a detector yet.
+stopped: that needs the store, and is a run of the rig, under
+[The write path with a detector](#the-write-path-with-a-detector).
 
 ### A feed replaced during the run
 
