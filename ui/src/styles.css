@@ -1,18 +1,22 @@
-/* Themes: dark by default, light on request, set as data-theme on <html>. */
+/* Themes: dark by default, light on request, set as data-theme on <html>.
+   The colours are warm graphite and bronze. Bronze is the product's own
+   colour and never a severity: what is severe is red, what warns is yellow,
+   and neither sits beside it. */
 :root,
 :root[data-theme="dark"] {
-  --bg: #0d1117;
-  --panel: #151b23;
-  --raised: #1b222c;
-  --line: #242c38;
-  --grid: #1f2630;
-  --text: #dce3ec;
-  --muted: #8b96a8;
-  --accent: #3b7ddd;
-  --selected: #1b2a40;
+  --bg: #121110;
+  --panel: #1b1917;
+  --raised: #23201d;
+  --line: #2e2a26;
+  --grid: #26221f;
+  --text: #ece6dd;
+  --muted: #9a9085;
+  --accent: #c98a4b;
+  --on-accent: #17110a;
+  --selected: #2a2118;
   --error: #f06a5d;
-  --severe: #e0533d;
-  --warn: #d9a13b;
+  --severe: #e5484d;
+  --warn: #e3c341;
   --good: #3fb950;
   --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
   color-scheme: dark;
@@ -26,18 +30,19 @@
 }
 
 :root[data-theme="light"] {
-  --bg: #eef1f6;
+  --bg: #f3efe9;
   --panel: #ffffff;
-  --raised: #f4f6fa;
-  --line: #e1e6ee;
-  --grid: #edf0f5;
-  --text: #1d2433;
-  --muted: #6b7587;
-  --accent: #2f6fdb;
-  --selected: #e6efff;
-  --error: #d64532;
-  --severe: #d64532;
-  --warn: #b7791f;
+  --raised: #f7f3ee;
+  --line: #e2dbd1;
+  --grid: #ede7de;
+  --text: #221d17;
+  --muted: #766c60;
+  --accent: #9c5f22;
+  --on-accent: #ffffff;
+  --selected: #f4e8da;
+  --error: #c9302c;
+  --severe: #c9302c;
+  --warn: #a8860b;
   --good: #1f883d;
   color-scheme: light;
 }
@@ -66,7 +71,7 @@ button {
   cursor: pointer;
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 button.quiet {
@@ -102,13 +107,18 @@ button:disabled {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 .brand .mark {
-  color: var(--accent);
+  width: 22px;
+  height: 22px;
+  flex: none;
 }
 
 .section {

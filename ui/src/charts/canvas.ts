@@ -171,15 +171,15 @@ export const SEVERITIES: Layer[] = [
   { key: "0", name: "Unknown", color: "#9aa5b5" },
   { key: "1", name: "Informational", color: "#3b7ddd" },
   { key: "2", name: "Low", color: "#1f4fbf" },
-  { key: "3", name: "Medium", color: "#f1c232" },
-  { key: "4", name: "High", color: "#f08c3a" },
-  { key: "5", name: "Critical", color: "#e0533d" },
+  { key: "3", name: "Medium", color: "#e3c341" },
+  { key: "4", name: "High", color: "#f2643a" },
+  { key: "5", name: "Critical", color: "#dc3550" },
   { key: "6", name: "Fatal", color: "#a23b8f" },
   { key: "99", name: "Other", color: "#6cc5b0" },
 ];
 
-/** Colours for lists of values, in order: blues first, as the eye reads them. */
-export const PALETTE = ["#3b7ddd", "#1f4fbf", "#9cc0f5", "#f1c232", "#6cc5b0", "#b39ddb"];
+/** Colours for lists of values, in order: the product's bronze, then blues. */
+export const PALETTE = ["#c98a4b", "#3b7ddd", "#9cc0f5", "#6cc5b0", "#b39ddb", "#8a94a3"];
 
 /** Where a chart plots, inside its canvas. */
 export interface Plot {
