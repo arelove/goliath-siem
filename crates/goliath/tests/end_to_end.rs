@@ -455,6 +455,22 @@ max_delay_ms = 100
         r#""collector", "normalizer", "detector", "writer""#,
         "after",
     ));
+    if !moved_past {
+        // The look back reads up to when the feed was in the store. The
+        // later event must be taken after that, so wait for it to be noted.
+        let deadline = Instant::now() + Duration::from_secs(30);
+        loop {
+            let noted: Value = std::fs::read(state.join("unmatched.json"))
+                .ok()
+                .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+                .unwrap_or(Value::Null);
+            if !noted["added"].is_null() || !noted["late"].is_null() {
+                break;
+            }
+            assert!(Instant::now() < deadline, "no added indicator was noted");
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    }
     // What is read back waits for the writer to be past it: for an event
     // taken later. This one goes to another address, which no feed names.
     drop_file(
