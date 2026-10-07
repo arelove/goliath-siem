@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { Scalar, Search } from "./api";
 import { ApiError, classes, paths, search, token } from "./api";
 import { EventDetail } from "./components/EventDetail";
+import { Mark } from "./components/Mark";
 import { Results } from "./components/Results";
 import { SearchBar } from "./components/SearchBar";
 import { TokenPrompt } from "./components/TokenPrompt";
@@ -170,7 +171,8 @@ export function App() {
     <main className="app">
       <header className="topbar">
         <span className="brand">
-          goliath<span className="mark">.</span>
+          <Mark />
+          goliath
         </span>
         <span className="section">{TABS[view].section}</span>
         <button

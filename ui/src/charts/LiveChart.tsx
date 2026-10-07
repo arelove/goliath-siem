@@ -56,7 +56,7 @@ export function LiveChart({ arrivals, rate }: Props) {
 
   const canvas = useFrames(({ context, width, height }, elapsed) => {
     const colors = ink();
-    const accent = token("--accent", "#3b7ddd");
+    const accent = token("--accent", "#c98a4b");
     const plot = plotIn(width, height);
     const end = Date.now() + skew.current - BEHIND;
     const start = end - SPAN * 1000;
