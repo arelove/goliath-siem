@@ -23,9 +23,17 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY . .
+# How many compilers run at once: one for every 2 GiB of memory, and never
+# more than there are processors. A release compiler of this workspace takes
+# a gigabyte and more, and cargo's own choice is one for every processor. On
+# a machine with many processors and little memory, as Docker Desktop's
+# virtual machine often is, they fill the memory, and the machine swaps
+# until it stops answering. `--build-arg CARGO_BUILD_JOBS=4` chooses the
+# number.
+ARG CARGO_BUILD_JOBS
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
-    cargo build --release --locked -p goliath --features kafka \
+    cargo build --release --locked --jobs "$(scripts/build-jobs.sh)" -p goliath --features kafka \
     && cp target/release/goliath /goliath
 # The runtime image has no shell, so its directories are made here. A named
 # volume mounted over them starts with their owner, the unprivileged user.
@@ -36,7 +44,7 @@ RUN mkdir -p /state/var/lib/goliath/data /state/var/lib/goliath/inbox
 FROM build AS fleet-build
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
-    cargo build --release --locked -p goliath-bench --bin fleet \
+    cargo build --release --locked --jobs "$(scripts/build-jobs.sh)" -p goliath-bench --bin fleet \
     && cp target/release/fleet /fleet
 
 FROM gcr.io/distroless/cc-debian12:nonroot AS fleet
