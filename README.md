@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/assets/mark.svg" width="96" height="96" alt="Goliath"></p>
+<p align="center"><img src="docs/assets/mark.svg" width="200" height="200" alt="Goliath"></p>
 
 # Goliath
 
