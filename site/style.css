@@ -11,6 +11,8 @@
   --muted: #8b8d98;
   --accent: #0a84ff;
   --on-accent: #ffffff;
+  /* The mark's one bar, and nothing else in the interface. */
+  --brand: #c98a4b;
   --accent-fill: #0071e3;
   --link: #409cff;
   --selected: #12233a;
@@ -30,6 +32,7 @@
   --muted: #68686d;
   --accent: #0066cc;
   --on-accent: #ffffff;
+  --brand: #9c5f22;
   --accent-fill: #0066cc;
   --link: #0066cc;
   --selected: #e3effc;
