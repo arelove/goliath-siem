@@ -10,9 +10,11 @@ criterion that is measurable, so "done" is not a judgement call.
 
 ## Current milestone
 
-**M4 - Context.** Next. M3 and M3.5 are built; each waits for its exit run,
-M3's 30 minutes at 100,000 events/s and M3.5's live senders at that rate,
-which are to be made together on a separate machine rather than a laptop.
+**Two records before the interface grows**, the first on platform health;
+see the end of M4. M3, M3.5, and M4 are built; each waits for its exit run:
+M3's 30 minutes at 100,000 events/s, M3.5's live senders at that rate, and
+M4's detector at 10^8 indicators. They are to be made together on a
+separate machine rather than a laptop.
 
 Review notes added on 2026-09-27 are implementation concerns, not revised ADRs
 or claims that an exit criterion has passed.
@@ -271,6 +273,34 @@ cold start, feed refresh, and correctness budgets of
 [ADR-0021](adr/0021-enrichment-placement.md), and without changing the
 writer's rate; and an ATT&CK Navigator layer is exported that distinguishes
 covered techniques from techniques lacking a data source.
+
+**Status (2026-10-10):** built, and waiting for the exit run.
+
+- The detector role, matching what it missed from the store, the look back
+  for indicators that arrive late, and reference lists pinned to a commit.
+- Context ([ADR-0022](adr/0022-context-snapshot.md)): `goliath-enrich`
+  reads a site's own exports of networks, assets, identities, and groups,
+  and the detector writes what it finds of a matched event's values into
+  the finding. Lists that describe and do not accuse are context, and
+  raise nothing.
+- Coverage against ATT&CK and its Navigator layer were built with M1's
+  rules: 302 of 697 techniques of ATT&CK 19.2 have a rule that can fire on
+  the data the shipped sources supply.
+- The harnesses that measure the detector against ADR-0021's budgets, and
+  a check of each on a laptop: the rate as indicators grow, a feed
+  replaced during a run, and the writer's rate when the detector stops.
+  The exit run itself, to 10^8 indicators, is to be made on a separate
+  machine.
+
+Left for later, each with the condition that brings it:
+
+- The snapshot of context on disk. It is in memory until a measurement
+  shows a site's records do not fit, as ADR-0022 says.
+- A scope for events, so that two sites with one address range each get
+  their own context. The records and the lookup have it; an event gets a
+  scope when collection knows which site a source belongs to.
+- Lists of names and keywords of offensive tools. They need matching by
+  pattern, which is the rule engine's work in M5, not an indicator's.
 
 ### Two records before the interface grows
 
