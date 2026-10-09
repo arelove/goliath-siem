@@ -269,6 +269,46 @@ fn one_address_in_two_customers_gets_the_context_of_its_own() {
 }
 
 #[test]
+fn a_host_is_described_by_a_list_that_names_a_domain_above_it() {
+    let mut snapshot = Snapshot::new();
+    load(
+        &mut snapshot,
+        "name: dynamic-dns\nkind: list\nformat: csv\nidentifiers: { host: [domain] }\n\
+         fields: { label: provider }\n",
+        "2e4e649",
+        "domain,provider\nmooo.com,afraid.org\nus.to,afraid.org\n",
+    );
+    load(
+        &mut snapshot,
+        CMDB,
+        "1",
+        "hostname,ip,class,owner,unit,tier,system\ncorp.example,,server,web@corp.example,,,\n",
+    );
+    // A name registered under a dynamic DNS domain, however deep.
+    for host in ["evil.mooo.com", "a.b.MOOO.com", "mooo.com"] {
+        let found = enrichments(&snapshot, &[id(IdKind::Host, host)], None, NOW);
+        assert_eq!(found.len(), 1, "{host}");
+        assert_eq!(found[0]["type"], "list");
+        assert_eq!(found[0]["data"]["label"], "afraid.org");
+    }
+    // Not a name that only ends the same.
+    assert_eq!(
+        enrichments(&snapshot, &[id(IdKind::Host, "notmooo.com")], None, NOW),
+        Vec::<Value>::new()
+    );
+    // An asset is found by its own name alone, not by names under it.
+    assert_eq!(
+        enrichments(
+            &snapshot,
+            &[id(IdKind::Host, "www.corp.example")],
+            None,
+            NOW
+        ),
+        Vec::<Value>::new()
+    );
+}
+
+#[test]
 fn two_sources_that_disagree_are_both_reported_under_their_names() {
     let mut snapshot = Snapshot::new();
     load(

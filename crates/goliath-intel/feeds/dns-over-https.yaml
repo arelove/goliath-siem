@@ -1,0 +1,24 @@
+# Public resolvers that answer DNS over HTTPS, from the reference lists of
+# mthcht/awesome-lists. A row is the resolver's URL, its host name, an
+# address, and what kind of resolver it is.
+#
+# A machine that asks one of them hides its lookups from the site's own
+# resolver, which browsers do by design and malware does on purpose. That
+# is context: it is added to findings and never raises one.
+#
+# The list is pinned to a commit: what an entry is reported with is that
+# commit, and taking a newer list is a change of `revision`.
+
+name: dns-over-https
+description: Public DNS over HTTPS resolvers, by way of mthcht/awesome-lists
+url: https://raw.githubusercontent.com/mthcht/awesome-lists/{revision}/Lists/dns_over_https_servers_list.csv
+revision: 2e4e649b0e06c1923e85687673238a87ffbc29ee
+licence: MIT
+use: context
+confidence: 50
+refresh_minutes: 1440
+format: csv
+csv:
+  value: dest_host
+  kind: domain
+  label: metadata_type

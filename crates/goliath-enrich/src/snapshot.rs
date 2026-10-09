@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::net::IpAddr;
 
-use crate::record::{Id, Range, Record};
+use crate::record::{Id, IdKind, Kind, Range, Record};
 
 /// A record found, and the source that holds it.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -166,7 +166,43 @@ impl Snapshot {
         if let Some(address) = id.address() {
             self.ranges(address, scope, at, &mut found);
         }
+        if id.kind() == IdKind::Host {
+            self.domains(id, scope, at, &mut found);
+        }
         found
+    }
+
+    /// The rows of context lists that name a domain `host` is under: a
+    /// list of dynamic DNS domains describes every name registered in one.
+    /// Of each source the nearest domain is taken. Assets are found by
+    /// their own name alone.
+    fn domains<'a>(&'a self, host: &Id, scope: Option<&str>, at: i64, found: &mut Vec<Found<'a>>) {
+        let mut taken: BTreeSet<&str> = found
+            .iter()
+            .filter(|entry| entry.record.kind == Kind::List)
+            .map(|entry| entry.source)
+            .collect();
+        let mut name = host.value();
+        while let Some((_, parent)) = name.split_once('.') {
+            name = parent;
+            let Ok(parent) = Id::new(IdKind::Host, parent) else {
+                break;
+            };
+            for (source, place) in self.by_id.get(&parent).into_iter().flatten() {
+                let Some((source, held, record)) = self.record(source, *place) else {
+                    continue;
+                };
+                if record.kind == Kind::List && record.holds(scope, at) && taken.insert(source) {
+                    found.push(Found {
+                        source,
+                        version: &held.version,
+                        record,
+                        ended: false,
+                        range: None,
+                    });
+                }
+            }
+        }
     }
 
     /// The narrowest range of each source and kind that holds `address`.

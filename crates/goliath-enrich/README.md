@@ -23,6 +23,8 @@ account is privileged, whether it still exists.
   and an account closed before the event is found as ended.
 - **Within a scope.** Two customers, or two branches, that use one address
   range each get their own context.
+- **Lists that describe.** A row of a context list is found by an address,
+  a range that holds one, or a domain a host name is under.
 - **Sources are not merged.** Two sources that describe one thing give two
   enrichments, each under its source's name and version.
 

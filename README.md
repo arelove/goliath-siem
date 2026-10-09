@@ -84,6 +84,9 @@ as it arrives, in a detector that reads beside storage and never slows it
 - curated reference lists are feeds pinned to a commit of their repository,
   so a finding says which state of the list matched; vulnerable drivers,
   malicious bootloaders, and Tor exit nodes ship, from mthcht/awesome-lists;
+- a list that describes and does not accuse, such as dynamic DNS domains
+  and DNS over HTTPS resolvers, is marked as context: it is added to
+  findings and never raises one;
 - addresses, domains, URLs, file hashes, and the other values of an event
   are found by the types of the OCSF schema, not by a list of field names;
 - each match is stored as an OCSF Detection Finding beside its event, and
