@@ -73,7 +73,7 @@ pub async fn run(config: Config, shutdown: impl Future<Output = ()>) -> Result<(
     let (stop, stopped) = watch::channel(false);
     let mut roles = JoinSet::new();
     let metrics = Metrics::new();
-    let health = Health::default();
+    let health = metrics.health().clone();
 
     if let Some(served) = &config.metrics {
         roles.spawn(metrics::serve(

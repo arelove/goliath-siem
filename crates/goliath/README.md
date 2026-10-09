@@ -134,6 +134,10 @@ A condition is a question, an answer, and why:
 | Role | Condition | Degraded when | Failing when |
 | --- | --- | --- | --- |
 | writer | `storing`, and `storing_findings` for what the detector found | The store took longer than 10 seconds for a batch | The store refused the last batch |
+| writer, normalizer, detector | `keeping_up:<topic>`, one for each topic it reads | The backlog grew through the last ten minutes, and is 1,000 records or more | Not told yet |
+
+A report also counts what each reader has still to read, as
+`backlog:<topic>:<reader>`.
 
 `GET /api/v1/platform` judges the platform from the reports:
 
@@ -147,6 +151,8 @@ A condition is a question, an answer, and why:
   that comes back under another name is the same role.
 - The platform is as bad as its worst role, with that role's reason, such
   as `writer:store_refused`.
+- `flows` are the topics with their readers and what each has still to
+  read, the longest backlog first.
 - `changes` are the last 50 times a condition's status held, the newest
   first: what changed, and when.
 - With the store not answering, the answer says so itself, as

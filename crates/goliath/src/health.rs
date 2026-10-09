@@ -12,7 +12,7 @@
 //! of who it is and the condition of each thing it does, sent through the
 //! pipe to the `health` topic, which the writer keeps.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
@@ -33,6 +33,58 @@ use crate::config::Config;
 /// How often a process reports.
 const EVERY: Duration = Duration::from_secs(15);
 
+/// A backlog is remembered this often, for this long.
+const SAMPLE: i64 = 15_000;
+const WINDOW: i64 = 600_000;
+/// A backlog shorter than this is not said to grow, whatever it does.
+const WORTH_TELLING: u64 = 1_000;
+
+/// What one reader of one topic had still to read, over the last ten
+/// minutes.
+#[derive(Default)]
+struct Backlog {
+    /// When, in milliseconds since the epoch, and how many records.
+    samples: VecDeque<(i64, u64)>,
+    now: u64,
+}
+
+impl Backlog {
+    fn sample(&mut self, at: i64, records: u64) {
+        self.now = records;
+        if self
+            .samples
+            .back()
+            .is_none_or(|(last, _)| at - last >= SAMPLE)
+        {
+            self.samples.push_back((at, records));
+        }
+        while self
+            .samples
+            .front()
+            .is_some_and(|(first, _)| at - first > WINDOW)
+        {
+            self.samples.pop_front();
+        }
+    }
+
+    /// From how many records to how many it grew through the last ten
+    /// minutes: longer at their middle than at their start, and longer now
+    /// than at their middle. `None` while ten minutes were not yet seen, or
+    /// it did not grow, or it is short.
+    fn grew(&self, at: i64) -> Option<(u64, u64)> {
+        let (first_at, first) = *self.samples.front()?;
+        if at - first_at < WINDOW - SAMPLE || self.now < WORTH_TELLING {
+            return None;
+        }
+        let middle = self
+            .samples
+            .iter()
+            .find(|(sampled, _)| *sampled >= first_at + (at - first_at) / 2)
+            .map(|(_, records)| *records)?;
+        (first < middle && middle < self.now).then_some((first, self.now))
+    }
+}
+
 /// What the process knows of its own state, shared by its roles.
 #[derive(Clone, Default)]
 pub(crate) struct Health(Arc<Inner>);
@@ -46,7 +98,9 @@ struct Inner {
     /// What startup still waits for.
     holds: Mutex<BTreeSet<&'static str>>,
     /// The state of each thing a role does, by role and question.
-    conditions: Mutex<BTreeMap<(&'static str, &'static str), Condition>>,
+    conditions: Mutex<BTreeMap<(&'static str, String), Condition>>,
+    /// What each reader has still to read, by topic and reader.
+    backlogs: Mutex<BTreeMap<(String, &'static str), Backlog>>,
 }
 
 /// Who a process is, as its reports say.
@@ -112,7 +166,7 @@ impl Health {
     pub(crate) fn set(
         &self,
         role: &'static str,
-        kind: &'static str,
+        kind: &str,
         status: Standing,
         reason: &'static str,
         message: String,
@@ -124,7 +178,7 @@ impl Health {
         &self,
         now: i64,
         role: &'static str,
-        kind: &'static str,
+        kind: &str,
         status: Standing,
         reason: &'static str,
         message: String,
@@ -134,12 +188,13 @@ impl Health {
             .conditions
             .lock()
             .unwrap_or_else(PoisonError::into_inner);
+        let key = (role, kind.to_owned());
         let since = conditions
-            .get(&(role, kind))
+            .get(&key)
             .filter(|held| held.status == status)
             .map_or(now, |held| held.since);
         conditions.insert(
-            (role, kind),
+            key,
             Condition {
                 role: role.to_owned(),
                 kind: kind.to_owned(),
@@ -151,6 +206,49 @@ impl Health {
         );
     }
 
+    /// Notes that `reader` has `records` of `topic` still to read, and says
+    /// whether it keeps up: the condition `keeping_up:<topic>` of the
+    /// reader's role is degraded while the backlog grew through the last
+    /// ten minutes.
+    pub(crate) fn backlog(&self, topic: &str, reader: &'static str, records: u64) {
+        self.backlog_at(crate::raw::now(), topic, reader, records);
+    }
+
+    fn backlog_at(&self, now: i64, topic: &str, reader: &'static str, records: u64) {
+        let grew = {
+            let mut backlogs = self
+                .0
+                .backlogs
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
+            let backlog = backlogs.entry((topic.to_owned(), reader)).or_default();
+            backlog.sample(now, records);
+            backlog.grew(now)
+        };
+        let kind = format!("keeping_up:{topic}");
+        match grew {
+            Some((from, to)) => self.set_at(
+                now,
+                reader,
+                &kind,
+                Standing::Degraded,
+                "backlog_grows",
+                format!(
+                    "The backlog of `{topic}` grew from {from} to {to} records in the last ten \
+                     minutes: the {reader} is slower than what is sent to it."
+                ),
+            ),
+            None => self.set_at(
+                now,
+                reader,
+                &kind,
+                Standing::Ok,
+                "current",
+                format!("The backlog of `{topic}` is {records} records."),
+            ),
+        }
+    }
+
     /// What the process `identity` names says of itself at `now`.
     fn report(&self, identity: &Identity, now: i64) -> Report {
         Report {
@@ -159,7 +257,16 @@ impl Health {
             version: env!("CARGO_PKG_VERSION").to_owned(),
             started: identity.started,
             sent: now,
-            counters: BTreeMap::new(),
+            counters: self
+                .0
+                .backlogs
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .iter()
+                .map(|((topic, reader), backlog)| {
+                    (format!("backlog:{topic}:{reader}"), backlog.now)
+                })
+                .collect(),
             conditions: self
                 .0
                 .conditions
@@ -396,6 +503,78 @@ mod tests {
             ("writer-0", 1_000, 5_000)
         );
         assert_eq!(report.version, env!("CARGO_PKG_VERSION"));
+    }
+
+    #[test]
+    fn a_backlog_that_grew_through_ten_minutes_is_told_and_a_short_one_is_not() {
+        let condition = |health: &Health| {
+            let report = health.report(&identity(), 0);
+            let held = &report.conditions[0];
+            (
+                held.kind.clone(),
+                held.status,
+                held.reason.clone(),
+                held.since,
+            )
+        };
+        let health = Health::default();
+        // It grows from the start, and ten minutes were not yet seen.
+        for step in 0..39_u32 {
+            health.backlog_at(
+                i64::from(step) * 15_000,
+                "normalized",
+                "writer",
+                2_000 + 100 * u64::from(step),
+            );
+        }
+        assert_eq!(
+            condition(&health),
+            (
+                "keeping_up:normalized".to_owned(),
+                Standing::Ok,
+                "current".to_owned(),
+                0
+            )
+        );
+        // Ten minutes of it.
+        health.backlog_at(39 * 15_000, "normalized", "writer", 5_900);
+        let report = health.report(&identity(), 600_000);
+        assert_eq!(
+            condition(&health),
+            (
+                "keeping_up:normalized".to_owned(),
+                Standing::Degraded,
+                "backlog_grows".to_owned(),
+                585_000
+            )
+        );
+        assert_eq!(
+            report.conditions[0].message,
+            "The backlog of `normalized` grew from 2000 to 5900 records in the last ten \
+             minutes: the writer is slower than what is sent to it."
+        );
+        assert_eq!(report.counters["backlog:normalized:writer"], 5_900);
+        // The reader catches up.
+        health.backlog_at(40 * 15_000, "normalized", "writer", 100);
+        assert_eq!(condition(&health).1, Standing::Ok);
+
+        // One that grows and stays short is not worth telling.
+        let short = Health::default();
+        for step in 0..60_u32 {
+            short.backlog_at(
+                i64::from(step) * 15_000,
+                "findings",
+                "writer",
+                u64::from(step),
+            );
+        }
+        assert_eq!(condition(&short).1, Standing::Ok);
+        // One that is long and does not grow is the store's own pace.
+        let level = Health::default();
+        for step in 0..60_u32 {
+            level.backlog_at(i64::from(step) * 15_000, "normalized", "writer", 50_000);
+        }
+        assert_eq!(condition(&level).1, Standing::Ok);
     }
 
     #[tokio::test]
