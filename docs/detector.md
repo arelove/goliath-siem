@@ -34,6 +34,8 @@ file = "/var/lib/goliath/feeds/partner.json"
 | --- | --- |
 | `state` | The directory of the indicator store; `intel` in `data` if left out |
 | `allowlists` | YAML files of what is never reported |
+| `context.definition` | The YAML file that says how an export of the site is read |
+| `context.file` | The export: what the site knows of its networks, machines, or accounts |
 | `threads` | Threads that match a batch at once; every core if left out |
 | `cache_mebibytes` | The block cache of the indicator store; 1024 if left out |
 | `look_back_days` | The days of stored events matched against indicators a feed adds; 7 if left out, and never with 0 |
@@ -96,6 +98,70 @@ under the MIT licence:
   not the feed, such as an error page or a changed format, is refused whole.
   Either way the store keeps what it had, and matching goes on.
 
+## Context: what the site knows
+
+A finding says that an event held an indicator. What makes it worth an
+analyst's time is what no feed knows: whose machine it is, which network the
+address is in, whether the account is privileged. The detector reads that
+from files the site exports, and adds it to every finding. The decision is
+[ADR-0022](adr/0022-context-snapshot.md).
+
+```toml
+[[detector.context]]
+definition = "/etc/goliath/context/cmdb.yaml"
+file = "/var/lib/goliath/context/cmdb.csv"
+
+[[detector.context]]
+definition = "/etc/goliath/context/networks.yaml"
+file = "/var/lib/goliath/context/networks.csv"
+```
+
+A definition reads the export under its own column names, so the export is
+used as the CMDB, the directory, or the IPAM writes it:
+
+```yaml
+name: cmdb
+kind: asset
+format: csv
+identifiers:
+  host: [hostname, fqdn]
+  address: [ip_address]
+fields:
+  owner: owner_email
+  org: business_unit
+  criticality: tier
+criticality: { gold: 4, silver: 3, bronze: 2 }
+labels:
+  pci_scope: pci
+  information_system: system
+```
+
+- The kinds are `network`, `asset`, `identity`, `group`, and `list`. Each
+  has a few typed fields, named as OCSF names them; anything else the site
+  keeps is a label under the site's own name. The whole of a definition is
+  in the [crate's README](../crates/goliath-enrich/README.md).
+- The detector looks up the addresses, host names, user names, and email
+  addresses of a matched event, and writes each record found into the
+  finding's `enrichments`: the value, the kind of record, the source as
+  `provider`, and the record's fields and labels as `data`, with when the
+  export was written as `source_version`.
+- An address is also found by the narrowest network that holds it. A value
+  nothing knows gets no entry.
+- Two sources that describe one thing give two entries. Nothing is merged,
+  so the finding says who said what.
+- An export is read at start and whenever the file changes. Write it under
+  another name and rename it. An export that is not what its definition
+  describes is refused whole, and the source stays as it was.
+- A record may say from when and until when it holds. Context is looked up
+  for the time of the event, so an account closed before the event is found
+  with `ended` set, and that is often the finding.
+- Events are not changed. Context is in findings only, at most 32 entries
+  in each.
+
+Not built yet: context lists from feed definitions, a scope for sites that
+use one address range twice, and the snapshot on disk. The snapshot is in
+memory, which is enough for some hundreds of thousands of records.
+
 ## Allowlists
 
 ```yaml
@@ -120,6 +186,10 @@ On the metrics endpoint:
 | `goliath_feed_checked_timestamp_seconds{feed}` | When the feed was last known to be current. Alarm when it is older than a few of the feed's intervals: the feed is stale |
 | `goliath_feed_refreshes_total{feed,result}` | Publications asked for: `loaded`, `unchanged` since it was loaded before a restart, `refused` as not the feed, or `failed` to be fetched |
 | `goliath_feed_indicators{feed}` | Indicators the feed asserts. A sudden fall is a feed that changed |
+| `goliath_context_written_timestamp_seconds{source}` | When the export last loaded was written. Alarm when it is older than twice the export's period: an export that stopped leaves context that is quietly old |
+| `goliath_context_refreshes_total{source,result}` | Exports looked at after a change: `loaded`, or `refused` as not what the definition describes |
+| `goliath_context_records{source}` | Records the source holds. A sudden fall is an export that lost rows |
+| `goliath_finding_enrichments_total` | Entries of context added to findings |
 | `goliath_indicator_hits_total{status}` | Matches `reported` and `suppressed` |
 | `goliath_detected_events_total`, `goliath_detected_observables_total` | What the detector looked at |
 | `goliath_reader_lag_records{topic="normalized",reader="detector"}` | Events the detector has yet to look at |
