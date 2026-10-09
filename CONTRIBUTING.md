@@ -70,6 +70,28 @@ methodological error and is rejected at review.
 
 See [docs/architecture.md](docs/architecture.md).
 
+## Tests that need a server
+
+Most tests need nothing but cargo. The event store's tests need ClickHouse,
+and the Kafka tests and the benchmark rig need a Kafka API; without them
+those tests are skipped locally and run in CI. To run them on your machine,
+with Docker:
+
+```sh
+docker compose -f compose.dev.yaml up -d --wait
+. scripts/dev-env.sh
+cargo test -p goliath-store -p goliath
+cargo test -p goliath-pipe -p goliath --features kafka
+docker compose -f compose.dev.yaml down -v
+```
+
+- `compose.dev.yaml` starts ClickHouse and Redpanda on 127.0.0.1 only. It is
+  not the platform; that is `compose.yaml`. Both publish port 8123, so run
+  one of them at a time.
+- `scripts/dev-env.sh` reads the ClickHouse password from `.env` and sets the
+  variables the tests read. Make `.env` from `.env.example` first.
+- The last command deletes what the tests stored.
+
 ## Branches and pull requests
 
 Nothing lands on `main` directly. Work happens on a branch and merges through a
