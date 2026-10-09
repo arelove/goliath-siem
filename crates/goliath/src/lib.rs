@@ -14,6 +14,7 @@ mod api;
 pub mod config;
 mod detector;
 mod fetch;
+mod health;
 mod metrics;
 mod otlp;
 pub mod raw;
@@ -32,6 +33,7 @@ use tokio::sync::watch;
 use tokio::task::JoinSet;
 use tracing::{error, info};
 
+use crate::health::Health;
 use crate::metrics::Metrics;
 use crate::topics::Topics;
 
@@ -71,11 +73,13 @@ pub async fn run(config: Config, shutdown: impl Future<Output = ()>) -> Result<(
     let (stop, stopped) = watch::channel(false);
     let mut roles = JoinSet::new();
     let metrics = Metrics::new();
+    let health = Health::default();
 
     if let Some(served) = &config.metrics {
         roles.spawn(metrics::serve(
             served.listen,
             metrics.clone(),
+            health.clone(),
             stopped.clone(),
         ));
     }
@@ -98,7 +102,7 @@ pub async fn run(config: Config, shutdown: impl Future<Output = ()>) -> Result<(
             #[cfg(feature = "kafka")]
             Some(kafka) => {
                 let topics = topics::Kafka::new(kafka)?;
-                start_pipeline(&config, &topics, &metrics, &mut roles, &stopped).await?;
+                start_pipeline(&config, &topics, &metrics, &health, &mut roles, &stopped).await?;
             }
             #[cfg(not(feature = "kafka"))]
             Some(_) => {
@@ -113,10 +117,11 @@ pub async fn run(config: Config, shutdown: impl Future<Output = ()>) -> Result<(
                     .clone()
                     .ok_or_else(|| RunError::Config("no `data` directory".to_owned()))?;
                 let topics = topics::Disk::new(data);
-                start_pipeline(&config, &topics, &metrics, &mut roles, &stopped).await?;
+                start_pipeline(&config, &topics, &metrics, &health, &mut roles, &stopped).await?;
             }
         }
     }
+    health.started();
     info!(roles = ?config.roles, sources = config.sources.len(), "running");
 
     let mut outcome = Ok(());
@@ -127,6 +132,7 @@ pub async fn run(config: Config, shutdown: impl Future<Output = ()>) -> Result<(
             error!("a role stopped; shutting down the others");
         }
     }
+    health.stopping();
     let _ = stop.send(true);
     while let Some(ended) = roles.join_next().await {
         let result = settle(ended);
@@ -143,6 +149,7 @@ async fn start_pipeline<T: Topics>(
     config: &Config,
     topics: &T,
     metrics: &Metrics,
+    health: &Health,
     roles: &mut JoinSet<Result<(), RunError>>,
     stopped: &watch::Receiver<bool>,
 ) -> Result<(), RunError> {
@@ -197,6 +204,16 @@ async fn start_pipeline<T: Topics>(
         intel.notes(std::sync::Arc::clone(&unmatched));
         // Nothing is matched until the feeds were looked at once.
         let (looked, is_looked) = watch::channel(false);
+        // Startup is not finished until then either.
+        let waiting = health.hold("feeds");
+        tokio::spawn(detector::after_feeds(
+            is_looked.clone(),
+            stopped.clone(),
+            async move {
+                drop(waiting);
+                Ok(())
+            },
+        ));
         roles.spawn(detector::after_feeds(
             is_looked.clone(),
             stopped.clone(),
