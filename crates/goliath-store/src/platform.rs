@@ -6,7 +6,7 @@
 //! held for five weeks, to tell since when a thing is wrong and how often
 //! it was before. See `docs/adr/0023-platform-health.md`.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use clickhouse::Row;
 use serde::{Deserialize, Serialize};
@@ -108,7 +108,7 @@ pub struct Reported {
 }
 
 /// A time through which a condition's status held.
-#[derive(Debug, Clone, PartialEq, Eq, Row, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Row, Serialize, Deserialize)]
 pub struct Held {
     /// The process's name.
     pub instance: String,
@@ -267,6 +267,304 @@ impl Store {
     }
 }
 
+/// A process is reporting while its newest report is younger than this.
+const REPORTING: i64 = 60_000;
+/// A process gone this long leaves the view.
+const LEAVES: i64 = 3_600_000;
+/// More starts of a role than [`STARTS`] within this is a role that
+/// restarts.
+const STARTS_WITHIN: i64 = 600_000;
+const STARTS: usize = 3;
+/// The changes of conditions that are answered, the newest first.
+const CHANGES: usize = 50;
+
+/// One process, as its newest report and the conditions it last gave say.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Instance {
+    /// Its name.
+    pub instance: String,
+    /// Whether its newest report is younger than a minute.
+    pub reporting: bool,
+    /// Its version.
+    pub version: String,
+    /// When it started, in milliseconds since the epoch.
+    pub started: i64,
+    /// When its newest report was taken.
+    pub last_report: i64,
+    /// The conditions of the role, as it last gave them.
+    pub conditions: Vec<Condition>,
+}
+
+/// One role, judged from the processes that run it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RoleHealth {
+    /// The role, such as `writer`.
+    pub role: String,
+    /// How it stands.
+    pub status: Standing,
+    /// Why, in a word: `no_instance`, `restarting`, `fewer_instances`, the
+    /// reason of its worst condition, or `ok`.
+    pub reason: String,
+    /// Why, in a sentence.
+    pub message: String,
+    /// Processes that run it and report.
+    pub reporting: usize,
+    /// Processes that ran it at once within the last day.
+    pub expected: usize,
+    /// Times a process that runs it started in the last ten minutes.
+    pub starts: usize,
+    /// Its processes: those that report, those gone within the hour, and
+    /// those gone longer while the role is short of them.
+    pub instances: Vec<Instance>,
+}
+
+/// The platform, judged from what its processes reported.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Platform {
+    /// As bad as its worst role; failing with no report at all.
+    pub status: Standing,
+    /// Why, in a word: `no_reports`, or the role and its reason, such as
+    /// `writer:store_refused`; `ok` otherwise.
+    pub reason: String,
+    /// Why, in a sentence.
+    pub message: String,
+    /// When the newest report of any process was taken.
+    pub newest_report: Option<i64>,
+    /// The roles, the worst first.
+    pub roles: Vec<RoleHealth>,
+    /// The times a condition's status held, the newest first: what changed
+    /// and when.
+    pub changes: Vec<Held>,
+}
+
+/// Judges the platform at `now`, in milliseconds since the epoch, from the
+/// `reports` of the last day, as [`Store::platform_reports`] gives them,
+/// and the conditions `held`, as [`Store::platform_conditions`] does.
+///
+/// A role is judged by how many of its processes report and not by which:
+/// a process that starts again under another name is the same role. See
+/// `docs/adr/0023-platform-health.md`.
+pub fn judge_platform(now: i64, reports: &[Reported], held: &[Held]) -> Platform {
+    let newest_report = reports.iter().map(|report| report.received).max();
+    // The newest run under each name is what that process is now.
+    let mut current: BTreeMap<&str, &Reported> = BTreeMap::new();
+    for report in reports {
+        let known = current.entry(&report.instance).or_insert(report);
+        if report.received > known.received {
+            *known = report;
+        }
+    }
+    let names: BTreeSet<&str> = reports
+        .iter()
+        .flat_map(|report| report.roles.iter().map(String::as_str))
+        .collect();
+    let mut roles: Vec<RoleHealth> = names
+        .into_iter()
+        .filter_map(|role| judge_role(now, role, reports, &current, held))
+        .collect();
+    roles.sort_by(|a, b| b.status.cmp(&a.status).then_with(|| a.role.cmp(&b.role)));
+
+    let mut changes: Vec<Held> = held.to_vec();
+    changes.sort_by_key(|change| std::cmp::Reverse(change.since));
+    changes.truncate(CHANGES);
+
+    let (status, reason, message) = match roles.first() {
+        None => (
+            Standing::Failing,
+            "no_reports".to_owned(),
+            "No process has reported in the last day. With the store answering, that is the \
+             writer or the pipe."
+                .to_owned(),
+        ),
+        Some(worst) if worst.status == Standing::Ok => (
+            Standing::Ok,
+            "ok".to_owned(),
+            "Every role reports and none says anything is wrong.".to_owned(),
+        ),
+        Some(worst) => (
+            worst.status,
+            format!("{}:{}", worst.role, worst.reason),
+            worst.message.clone(),
+        ),
+    };
+    Platform {
+        status,
+        reason,
+        message,
+        newest_report,
+        roles,
+        changes,
+    }
+}
+
+/// The role `role`, or `None` if every process that ran it left the view
+/// and none runs it now.
+fn judge_role(
+    now: i64,
+    role: &str,
+    reports: &[Reported],
+    current: &BTreeMap<&str, &Reported>,
+    held: &[Held],
+) -> Option<RoleHealth> {
+    let runs: Vec<&Reported> = reports
+        .iter()
+        .filter(|report| report.roles.iter().any(|ran| ran == role))
+        .collect();
+    let expected = at_once(&runs);
+    let starts = runs
+        .iter()
+        .filter(|run| run.started >= now - STARTS_WITHIN)
+        .count();
+    // A process whose newest run no longer has the role does not run it.
+    let mut instances: Vec<Instance> = current
+        .values()
+        .filter(|report| report.roles.iter().any(|ran| ran == role))
+        .map(|report| Instance {
+            instance: report.instance.clone(),
+            reporting: now - report.received < REPORTING,
+            version: report.version.clone(),
+            started: report.started,
+            last_report: report.received,
+            conditions: conditions_of(report, role, held),
+        })
+        .collect();
+    let reporting = instances
+        .iter()
+        .filter(|instance| instance.reporting)
+        .count();
+    // Those gone longer than an hour leave, unless the role is short.
+    instances.sort_by_key(|instance| std::cmp::Reverse(instance.last_report));
+    let mut kept = 0;
+    instances.retain(|instance| {
+        let stays = instance.reporting
+            || now - instance.last_report < LEAVES
+            || (reporting < expected && kept < expected);
+        kept += usize::from(stays);
+        stays
+    });
+    if instances.is_empty() {
+        return None;
+    }
+    instances.sort_by(|a, b| a.instance.cmp(&b.instance));
+
+    let worst = instances
+        .iter()
+        .filter(|instance| instance.reporting)
+        .flat_map(|instance| &instance.conditions)
+        .max_by_key(|condition| condition.status);
+    let (status, reason, message) = if reporting == 0 {
+        let last = instances
+            .iter()
+            .map(|instance| instance.last_report)
+            .max()
+            .unwrap_or(now);
+        (
+            Standing::Failing,
+            "no_instance".to_owned(),
+            format!(
+                "No process that runs `{role}` reports; the last did {} ago.",
+                ago(now - last)
+            ),
+        )
+    } else if let Some(worst) = worst.filter(|worst| worst.status == Standing::Failing) {
+        (worst.status, worst.reason.clone(), worst.message.clone())
+    } else if starts > STARTS {
+        (
+            Standing::Degraded,
+            "restarting".to_owned(),
+            format!(
+                "A process that runs `{role}` started {starts} times in the last ten minutes. \
+                 Look at why it stops."
+            ),
+        )
+    } else if let Some(worst) = worst.filter(|worst| worst.status == Standing::Degraded) {
+        (worst.status, worst.reason.clone(), worst.message.clone())
+    } else if reporting < expected {
+        (
+            Standing::Degraded,
+            "fewer_instances".to_owned(),
+            format!(
+                "{reporting} of the {expected} processes that ran `{role}` at once within the \
+                 last day report."
+            ),
+        )
+    } else {
+        (
+            Standing::Ok,
+            "ok".to_owned(),
+            format!("{reporting} of {expected} report, and none says anything is wrong."),
+        )
+    };
+    Some(RoleHealth {
+        role: role.to_owned(),
+        status,
+        reason,
+        message,
+        reporting,
+        expected,
+        starts,
+        instances,
+    })
+}
+
+/// The most of `runs` that ran at one time, each from when it started to
+/// its newest report.
+fn at_once(runs: &[&Reported]) -> usize {
+    let mut edges: Vec<(i64, i32)> = runs
+        .iter()
+        .flat_map(|run| [(run.started, 1), (run.received.max(run.started) + 1, -1)])
+        .collect();
+    // At one moment an end comes before a beginning.
+    edges.sort_unstable();
+    let (mut running, mut most) = (0_i32, 0_i32);
+    for (_, change) in edges {
+        running += change;
+        most = most.max(running);
+    }
+    usize::try_from(most).unwrap_or(0)
+}
+
+/// The conditions of `role` that the process of `report` gave with its
+/// newest reports: of each question the status that began last, if it was
+/// still given within a minute of the newest report.
+fn conditions_of(report: &Reported, role: &str, held: &[Held]) -> Vec<Condition> {
+    let mut newest: BTreeMap<&str, &Held> = BTreeMap::new();
+    for held in held {
+        if held.instance != report.instance
+            || held.role != role
+            || held.since < report.started
+            || held.seen < report.received - REPORTING
+        {
+            continue;
+        }
+        let known = newest.entry(&held.kind).or_insert(held);
+        if held.since > known.since {
+            *known = held;
+        }
+    }
+    newest
+        .into_values()
+        .map(|held| Condition {
+            role: held.role.clone(),
+            kind: held.kind.clone(),
+            status: Standing::from_name(&held.status),
+            reason: held.reason.clone(),
+            message: held.message.clone(),
+            since: held.since,
+        })
+        .collect()
+}
+
+/// A length of time in words, such as `5 minutes`.
+fn ago(milliseconds: i64) -> String {
+    let seconds = milliseconds.max(0) / 1000;
+    match seconds {
+        0..=119 => format!("{seconds} seconds"),
+        120..=7199 => format!("{} minutes", seconds / 60),
+        _ => format!("{} hours", seconds / 3600),
+    }
+}
+
 /// A column is answered under its own name as a number, and asked about
 /// as the time it is: without this the name would mean the number.
 fn by_column(query: clickhouse::query::Query) -> clickhouse::query::Query {
@@ -295,6 +593,207 @@ mod tests {
         )
         .unwrap();
         assert_eq!((bare.counters.len(), bare.conditions.len()), (0, 0));
+    }
+
+    const NOW: i64 = 100_000_000;
+
+    fn reported(instance: &str, roles: &[&str], started: i64, received: i64) -> Reported {
+        Reported {
+            instance: instance.to_owned(),
+            roles: roles.iter().map(|&role| role.to_owned()).collect(),
+            version: "0.1.0".to_owned(),
+            started,
+            sent: received,
+            received,
+            counters: Vec::new(),
+        }
+    }
+
+    fn held(instance: &str, kind: &str, status: &str, since: i64, seen: i64) -> Held {
+        Held {
+            instance: instance.to_owned(),
+            role: "writer".to_owned(),
+            kind: kind.to_owned(),
+            status: status.to_owned(),
+            reason: format!("{kind}_{status}"),
+            message: format!("{kind} is {status}."),
+            since,
+            seen,
+        }
+    }
+
+    fn role<'a>(platform: &'a Platform, name: &str) -> &'a RoleHealth {
+        platform
+            .roles
+            .iter()
+            .find(|role| role.role == name)
+            .unwrap_or_else(|| panic!("no role {name} in {platform:?}"))
+    }
+
+    #[test]
+    fn a_platform_that_reports_and_says_nothing_is_wrong_is_ok() {
+        let started = NOW - 3_600_000;
+        let reports = [
+            reported("one", &["collector", "normalizer"], started, NOW - 5_000),
+            reported("two", &["writer", "api"], started, NOW - 9_000),
+        ];
+        let conditions = [held("two", "storing", "ok", started, NOW - 9_000)];
+        let platform = judge_platform(NOW, &reports, &conditions);
+        assert_eq!(
+            (platform.status, platform.reason.as_str()),
+            (Standing::Ok, "ok")
+        );
+        assert_eq!(platform.newest_report, Some(NOW - 5_000));
+        assert_eq!(platform.roles.len(), 4);
+        let writer = role(&platform, "writer");
+        assert_eq!(
+            (writer.reporting, writer.expected, writer.starts),
+            (1, 1, 0)
+        );
+        assert_eq!(writer.instances[0].conditions[0].kind, "storing");
+        // The condition is the writer's, not the api's, of the same process.
+        assert_eq!(role(&platform, "api").instances[0].conditions, []);
+    }
+
+    #[test]
+    fn a_role_is_as_bad_as_the_worst_condition_of_those_that_report() {
+        let started = NOW - 3_600_000;
+        let reports = [
+            reported("a", &["writer"], started, NOW - 5_000),
+            reported("b", &["writer"], started, NOW - 5_000),
+        ];
+        let conditions = [
+            held("a", "storing", "ok", started, NOW - 5_000),
+            // It stored, and then was refused: the status that began last.
+            held("b", "storing", "ok", started, NOW - 50_000),
+            held("b", "storing", "failing", NOW - 40_000, NOW - 5_000),
+            held("b", "keeping_up", "degraded", NOW - 90_000, NOW - 5_000),
+        ];
+        let platform = judge_platform(NOW, &reports, &conditions);
+        let writer = role(&platform, "writer");
+        assert_eq!(
+            (
+                writer.status,
+                writer.reason.as_str(),
+                writer.message.as_str()
+            ),
+            (Standing::Failing, "storing_failing", "storing is failing.")
+        );
+        assert_eq!(
+            (platform.status, platform.reason.as_str()),
+            (Standing::Failing, "writer:storing_failing")
+        );
+        // What changed, the newest first.
+        let changes: Vec<(&str, &str)> = platform
+            .changes
+            .iter()
+            .map(|change| (change.kind.as_str(), change.status.as_str()))
+            .collect();
+        assert_eq!(
+            changes[..2],
+            [("storing", "failing"), ("keeping_up", "degraded")]
+        );
+    }
+
+    #[test]
+    fn a_role_none_of_whose_processes_reports_is_failing() {
+        let reports = [
+            reported("a", &["collector"], NOW - 3_600_000, NOW - 5_000),
+            reported("w", &["writer"], NOW - 3_600_000, NOW - 300_000),
+        ];
+        // What it last said does not count: it does not say it now.
+        let conditions = [held("w", "storing", "ok", NOW - 3_600_000, NOW - 300_000)];
+        let platform = judge_platform(NOW, &reports, &conditions);
+        let writer = role(&platform, "writer");
+        assert_eq!(
+            (writer.status, writer.reason.as_str(), writer.reporting),
+            (Standing::Failing, "no_instance", 0)
+        );
+        assert_eq!(
+            writer.message,
+            "No process that runs `writer` reports; the last did 5 minutes ago."
+        );
+        assert!(!writer.instances[0].reporting);
+        assert_eq!(platform.roles[0].role, "writer");
+        assert_eq!(role(&platform, "collector").status, Standing::Ok);
+    }
+
+    #[test]
+    fn a_process_under_a_new_name_is_the_same_role_and_fewer_of_them_is_told() {
+        let day = NOW - 80_000_000;
+        // A pod was replaced by another: one after the other, never two.
+        let replaced = [
+            reported("writer-abc", &["writer"], day, NOW - 7_200_000),
+            reported("writer-xyz", &["writer"], NOW - 7_190_000, NOW - 5_000),
+        ];
+        let platform = judge_platform(NOW, &replaced, &[]);
+        let writer = role(&platform, "writer");
+        assert_eq!((writer.status, writer.expected), (Standing::Ok, 1));
+        // The one gone two hours ago has left the view.
+        assert_eq!(writer.instances.len(), 1);
+
+        // Two ran at once, and one stopped ten minutes ago.
+        let fewer = [
+            reported("writer-0", &["writer"], day, NOW - 5_000),
+            reported("writer-1", &["writer"], day, NOW - 600_000),
+        ];
+        let platform = judge_platform(NOW, &fewer, &[]);
+        let writer = role(&platform, "writer");
+        assert_eq!(
+            (
+                writer.status,
+                writer.reason.as_str(),
+                writer.reporting,
+                writer.expected
+            ),
+            (Standing::Degraded, "fewer_instances", 1, 2)
+        );
+        assert_eq!(writer.instances.len(), 2);
+
+        // Gone longer than an hour, it stays while the role is short.
+        let long = [
+            reported("writer-0", &["writer"], day, NOW - 5_000),
+            reported("writer-1", &["writer"], day, NOW - 7_200_000),
+        ];
+        let writer_long = judge_platform(NOW, &long, &[]);
+        assert_eq!(role(&writer_long, "writer").instances.len(), 2);
+    }
+
+    #[test]
+    fn a_role_that_starts_again_and_again_is_restarting() {
+        let reports: Vec<Reported> = (0..5)
+            .map(|run| {
+                let started = NOW - 500_000 + run * 100_000;
+                reported(
+                    &format!("writer-{run}"),
+                    &["writer"],
+                    started,
+                    started + 60_000,
+                )
+            })
+            .collect();
+        let platform = judge_platform(NOW, &reports, &[]);
+        let writer = role(&platform, "writer");
+        assert_eq!(
+            (writer.status, writer.reason.as_str(), writer.starts),
+            (Standing::Degraded, "restarting", 5)
+        );
+        // One run after another: one was expected, and one reports.
+        assert_eq!((writer.expected, writer.reporting), (1, 1));
+    }
+
+    #[test]
+    fn with_no_report_the_platform_says_that_reports_do_not_arrive() {
+        let platform = judge_platform(NOW, &[], &[]);
+        assert_eq!(
+            (
+                platform.status,
+                platform.reason.as_str(),
+                platform.newest_report
+            ),
+            (Standing::Failing, "no_reports", None)
+        );
+        assert_eq!((platform.roles.len(), platform.changes.len()), (0, 0));
     }
 
     #[test]
