@@ -272,6 +272,17 @@ cold start, feed refresh, and correctness budgets of
 writer's rate; and an ATT&CK Navigator layer is exported that distinguishes
 covered techniques from techniques lacking a data source.
 
+### Two records before the interface grows
+
+After M4 and before any more of the interface is built, two decisions are
+written down, each as ADR-0022 was: from how the systems in use do it, what
+their users say of them, and cases the answer must serve.
+
+| Record | What it decides |
+| --- | --- |
+| Platform health | How someone who runs the platform sees what is wrong with it: which roles run and where, which collector is silent, where a topic's backlog grows, which feed or export of context is old, and why. For one machine and for roles spread over hosts or a Kubernetes cluster, where a process that restarts is the normal case. [ADR-0019](adr/0019-source-health.md) decides the health of sources; this is the health of the platform that reads them. It comes first: whoever starts the platform needs it on the first day |
+| The interface | What an analyst sees first, and the way from a finding to its event, its entities, and a decision. Which views exist and what each is for, before the list of M7 is built as written |
+
 ## M4.5 - Entity graph
 
 An alert about a process is a row; an alert about a person, on a host, talking
@@ -363,6 +374,9 @@ that boundary. Hash chaining detects edits only against a trusted anchor;
 define external checkpoints to detect truncation and whole-log replacement.
 
 ## M7 - Interface
+
+The views below are what is planned; the two records after M4 decide how
+they fit together, and may change this list.
 
 | Deliverable | Detail |
 | --- | --- |
