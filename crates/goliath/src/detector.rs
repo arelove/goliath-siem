@@ -526,6 +526,12 @@ impl Intel {
                 }
             }
         }
+        // Each feed says whether it is held and how old it is.
+        for published in &self.feeds {
+            metrics
+                .health()
+                .feed_watched(&published.feed.name, published.feed.refresh_minutes);
+        }
     }
 }
 

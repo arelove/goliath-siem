@@ -433,6 +433,7 @@ impl Metrics {
     }
 
     pub(crate) fn events(&self, source: &str, count: u64) {
+        self.0.health.outcomes(source, count, 0);
         self.0
             .outcomes
             .get_or_create(&Outcome {
@@ -443,6 +444,7 @@ impl Metrics {
     }
 
     pub(crate) fn dead_letters(&self, source: &str, stage: &'static str, count: u64) {
+        self.0.health.outcomes(source, 0, count);
         self.0
             .outcomes
             .get_or_create(&Outcome {
@@ -529,6 +531,7 @@ impl Metrics {
 
     /// `feed` is known to be current at `at`, in seconds since the epoch.
     pub(crate) fn feed_checked(&self, feed: &str, at: i64) {
+        self.0.health.feed_checked(feed, at);
         self.0
             .feed_checked_timestamp_seconds
             .get_or_create(&Feed {
@@ -578,6 +581,9 @@ impl Metrics {
         result: &'static str,
         now: Option<(usize, i64)>,
     ) {
+        if now.is_some() {
+            self.0.health.feed_held(feed);
+        }
         self.0
             .feed_refreshes
             .get_or_create(&FeedRefresh {
