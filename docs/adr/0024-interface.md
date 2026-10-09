@@ -212,7 +212,9 @@ It is replaced.
   milliseconds, and none when the system asks for reduced motion.
 - **Dense.** A row of a table is 28 pixels. An analyst reads rows, and
   space between them is rows not seen.
-- The mark keeps its shape; its one coloured bar becomes the accent.
+- The mark keeps its shape and its bronze bar. A mark is not read as a
+  severity, and bronze is what tells it from every other product's. The
+  token `--brand` holds it and is used by the mark alone.
 - The project's site takes the same tokens.
 
 ### Charts
