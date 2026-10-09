@@ -295,6 +295,18 @@ pub struct Instance {
     pub conditions: Vec<Condition>,
 }
 
+/// What one reader of one topic has still to read.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Flow {
+    /// The topic.
+    pub topic: String,
+    /// The role that reads it.
+    pub reader: String,
+    /// Records sent and not yet handled by the reader, as the process that
+    /// reports most says.
+    pub backlog: u64,
+}
+
 /// One role, judged from the processes that run it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct RoleHealth {
@@ -332,6 +344,8 @@ pub struct Platform {
     pub newest_report: Option<i64>,
     /// The roles, the worst first.
     pub roles: Vec<RoleHealth>,
+    /// Each topic and its reader, the longest backlog first.
+    pub flows: Vec<Flow>,
     /// The times a condition's status held, the newest first: what changed
     /// and when.
     pub changes: Vec<Held>,
@@ -364,6 +378,8 @@ pub fn judge_platform(now: i64, reports: &[Reported], held: &[Held]) -> Platform
         .collect();
     roles.sort_by(|a, b| b.status.cmp(&a.status).then_with(|| a.role.cmp(&b.role)));
 
+    let flows = flows(now, current.values().copied());
+
     let mut changes: Vec<Held> = held.to_vec();
     changes.sort_by_key(|change| std::cmp::Reverse(change.since));
     changes.truncate(CHANGES);
@@ -393,8 +409,39 @@ pub fn judge_platform(now: i64, reports: &[Reported], held: &[Held]) -> Platform
         message,
         newest_report,
         roles,
+        flows,
         changes,
     }
+}
+
+/// The backlog of each topic and reader, from the counters named
+/// `backlog:<topic>:<reader>` of the processes that report. Processes of
+/// one group in Kafka each report the group's backlog, so the most is
+/// taken and they are not added.
+fn flows<'a>(now: i64, current: impl Iterator<Item = &'a Reported>) -> Vec<Flow> {
+    let mut backlogs: BTreeMap<(&str, &str), u64> = BTreeMap::new();
+    for report in current.filter(|report| now - report.received < REPORTING) {
+        for (name, count) in &report.counters {
+            let Some((topic, reader)) = name
+                .strip_prefix("backlog:")
+                .and_then(|rest| rest.rsplit_once(':'))
+            else {
+                continue;
+            };
+            let known = backlogs.entry((topic, reader)).or_default();
+            *known = (*known).max(*count);
+        }
+    }
+    let mut flows: Vec<Flow> = backlogs
+        .into_iter()
+        .map(|((topic, reader), backlog)| Flow {
+            topic: topic.to_owned(),
+            reader: reader.to_owned(),
+            backlog,
+        })
+        .collect();
+    flows.sort_by_key(|flow| std::cmp::Reverse(flow.backlog));
+    flows
 }
 
 /// The role `role`, or `None` if every process that ran it left the view
@@ -653,6 +700,40 @@ mod tests {
         assert_eq!(writer.instances[0].conditions[0].kind, "storing");
         // The condition is the writer's, not the api's, of the same process.
         assert_eq!(role(&platform, "api").instances[0].conditions, []);
+    }
+
+    #[test]
+    fn flows_are_the_backlogs_the_reporting_processes_count() {
+        let started = NOW - 3_600_000;
+        let mut one = reported("writer-0", &["writer"], started, NOW - 5_000);
+        one.counters = vec![
+            ("backlog:normalized:writer".to_owned(), 40),
+            ("backlog:findings:writer".to_owned(), 0),
+            ("stored".to_owned(), 9),
+        ];
+        // Another of the same group says the same backlog, a little later.
+        let mut two = reported("writer-1", &["writer"], started, NOW - 2_000);
+        two.counters = vec![("backlog:normalized:writer".to_owned(), 55)];
+        // A source's name may hold what divides the parts.
+        let mut three = reported("n-0", &["normalizer"], started, NOW - 2_000);
+        three.counters = vec![("backlog:raw-a:b:normalizer".to_owned(), 7)];
+        // One that is gone says nothing of now.
+        let mut gone = reported("writer-2", &["writer"], started, NOW - 900_000);
+        gone.counters = vec![("backlog:normalized:writer".to_owned(), 99_999)];
+        let platform = judge_platform(NOW, &[one, two, three, gone], &[]);
+        let flows: Vec<(&str, &str, u64)> = platform
+            .flows
+            .iter()
+            .map(|flow| (flow.topic.as_str(), flow.reader.as_str(), flow.backlog))
+            .collect();
+        assert_eq!(
+            flows,
+            [
+                ("normalized", "writer", 55),
+                ("raw-a:b", "normalizer", 7),
+                ("findings", "writer", 0),
+            ]
+        );
     }
 
     #[test]
