@@ -6,6 +6,7 @@ import {
   clock,
   drawGrid,
   drawTooltip,
+  faded,
   ink,
   niceCeiling,
   plotIn,
@@ -129,7 +130,15 @@ export function SeriesChart({ steps, layers, kind, from, to, step, live }: Props
           const lower = y(base);
           context.globalAlpha = hoverAt === null || hovered ? 1 : 0.55;
           context.fillStyle = layer.color;
-          context.fillRect(center - barWidth / 2, upper, barWidth, Math.max(lower - upper, 0.5));
+          context.beginPath();
+          context.roundRect(
+            center - barWidth / 2,
+            upper,
+            barWidth,
+            Math.max(lower - upper - 1, 0.5),
+            Math.min(2, barWidth / 2),
+          );
+          context.fill();
           base += value;
         }
       }
@@ -160,8 +169,21 @@ export function SeriesChart({ steps, layers, kind, from, to, step, live }: Props
         traceMonotone(context, points);
         context.lineTo(last[0], y(0));
         context.closePath();
-        context.fillStyle = layer.color;
+        // Over what the layers above drew, a fill that fades to the
+        // ground, and the layer's own line along its top.
+        context.fillStyle = colors.panel;
         context.fill();
+        const fade = context.createLinearGradient(0, plot.top, 0, plot.top + plot.height);
+        fade.addColorStop(0, faded(layer.color, 0.5));
+        fade.addColorStop(1, faded(layer.color, 0.04));
+        context.fillStyle = fade;
+        context.fill();
+        context.beginPath();
+        context.moveTo(first[0], first[1]);
+        traceMonotone(context, points);
+        context.strokeStyle = layer.color;
+        context.lineWidth = 1.5;
+        context.stroke();
       }
     }
     context.restore();

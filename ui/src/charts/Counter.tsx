@@ -16,7 +16,8 @@ export function Counter({ value, ms = 900 }: Props) {
     const started = performance.now();
     let frame = 0;
     const tick = (now: number) => {
-      const progress = Math.min((now - started) / ms, 1);
+      // A frame may be stamped before the effect ran.
+      const progress = Math.min(Math.max((now - started) / ms, 0), 1);
       const eased = 1 - (1 - progress) ** 3;
       shown.current = from + (value - from) * eased;
       if (element.current) {

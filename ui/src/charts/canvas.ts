@@ -169,8 +169,8 @@ export interface Layer {
 /** OCSF `severity_id`s, lowest first, with their names and colours. */
 export const SEVERITIES: Layer[] = [
   { key: "0", name: "Unknown", color: "#48484a" },
-  { key: "1", name: "Informational", color: "#787a85" },
-  { key: "2", name: "Low", color: "#7d8fa9" },
+  { key: "1", name: "Informational", color: "#7c83ff" },
+  { key: "2", name: "Low", color: "#38bdf8" },
   { key: "3", name: "Medium", color: "#ffd60a" },
   { key: "4", name: "High", color: "#ff9f0a" },
   { key: "5", name: "Critical", color: "#ff453a" },
@@ -180,15 +180,24 @@ export const SEVERITIES: Layer[] = [
 
 /** Colours for lists of values, in order: the product's bronze, then blues. */
 export const PALETTE = [
-  "#0a84ff",
-  "#5e5ce6",
-  "#40c8e0",
-  "#bf5af2",
-  "#66d4cf",
-  "#7d8fa9",
-  "#ac8e68",
-  "#98989d",
+  "#a78bfa",
+  "#e879f9",
+  "#38bdf8",
+  "#34d399",
+  "#818cf8",
+  "#f0abfc",
+  "#7dd3fc",
+  "#94a3b8",
 ];
+
+/** `color`, a hex colour of six digits, at `alpha` from 0 to 1. */
+export function faded(color: string, alpha: number): string {
+  const value = Number.parseInt(color.slice(1), 16);
+  if (color.length !== 7 || Number.isNaN(value)) {
+    return color;
+  }
+  return `rgba(${value >> 16}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
+}
 
 /** Where a chart plots, inside its canvas. */
 export interface Plot {
@@ -214,10 +223,10 @@ export interface Ink {
 
 export function ink(): Ink {
   return {
-    line: token("--grid", "#1e2024"),
-    muted: token("--muted", "#8b8d98"),
-    text: token("--text", "#f2f3f5"),
-    panel: token("--panel", "#141518"),
+    line: token("--grid", "#1c1c26"),
+    muted: token("--muted", "#8f8fa3"),
+    text: token("--text", "#f2f2f7"),
+    panel: token("--panel", "#121218"),
   };
 }
 

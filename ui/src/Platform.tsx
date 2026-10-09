@@ -114,7 +114,7 @@ export function Platform({ onError }: Props) {
                     <td className="count">{role.starts}</td>
                   </tr>
                   {role.instances.flatMap((instance) =>
-                    instance.conditions.length === 0
+                    !instance.reporting || instance.conditions.length === 0
                       ? [
                           <tr key={instance.instance} className="condition">
                             <td className="mono instance">{instance.instance}</td>
@@ -125,7 +125,9 @@ export function Platform({ onError }: Props) {
                                   Reporting
                                 </span>
                               ) : (
-                                <span className="status bad">
+                                <span
+                                  className={`status ${role.reporting < role.expected ? "bad" : "quiet"}`}
+                                >
                                   <span className="dot" />
                                   Gone
                                 </span>
