@@ -51,7 +51,7 @@ scripts/dev-run.sh deploy/phone.toml
 In PowerShell `bash` is the one of WSL, which has no `cargo`. Name Git's:
 
 ```powershell
-& "C:\Program Files\Gitinash.exe" scripts/dev-run.sh deploy/phone.toml
+& "C:\Program Files\Git\bin\bash.exe" scripts/dev-run.sh deploy/phone.toml
 ```
 
 The two containers are the store and nothing else: the interface is served

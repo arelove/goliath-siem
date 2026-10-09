@@ -104,7 +104,7 @@ scripts/dev-run.sh
 In PowerShell `bash` is the one of WSL, which has no `cargo`. Name Git's:
 
 ```powershell
-& "C:\Program Files\Gitinash.exe" scripts/dev-run.sh
+& "C:\Program Files\Git\bin\bash.exe" scripts/dev-run.sh
 ```
 
 It builds the interface if its sources changed, and runs every role from
