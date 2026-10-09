@@ -92,6 +92,8 @@ pub(crate) struct Metrics(Arc<Inner>);
 
 struct Inner {
     registry: Registry,
+    /// What the process says of itself, which some measures are part of.
+    health: Health,
     collected_files: Family<Source, Counter>,
     collected_bytes: Family<Source, Counter>,
     rejected_files: Family<Source, Counter>,
@@ -341,6 +343,7 @@ impl Metrics {
         );
         Self(Arc::new(Inner {
             registry,
+            health: Health::default(),
             collected_files,
             collected_bytes,
             rejected_files,
@@ -467,8 +470,14 @@ impl Metrics {
         }
     }
 
+    /// What the process says of itself.
+    pub(crate) fn health(&self) -> &Health {
+        &self.0.health
+    }
+
     /// How many records of `topic` its reader `reader` has not acknowledged.
     pub(crate) fn lag(&self, topic: &str, reader: &'static str, records: u64) {
+        self.0.health.backlog(topic, reader, records);
         self.0
             .lag
             .get_or_create(&Reader {
