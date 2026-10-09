@@ -1,0 +1,44 @@
+# What the tests and the benchmark rig need from outside the workspace, on
+# this machine: ClickHouse and a Kafka API, both on 127.0.0.1 only.
+#
+#   docker compose -f compose.dev.yaml up -d --wait
+#   . scripts/dev-env.sh          # points cargo at them, from .env
+#   cargo test -p goliath-store -p goliath
+#   cargo test -p goliath-pipe -p goliath --features kafka
+#
+# It is not the platform: for that, with the interface, see compose.yaml.
+# Both publish ClickHouse on port 8123, so run one of them at a time.
+#
+#   docker compose -f compose.dev.yaml down -v     # stop, and delete the data
+
+name: goliath-dev
+
+services:
+  clickhouse:
+    extends:
+      file: compose.yaml
+      service: clickhouse
+    restart: "no"
+
+  redpanda:
+    image: redpandadata/redpanda:v26.2.3
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      # Redpanda takes what it is allowed, and the rig fills it quickly.
+      - --memory=2G
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://127.0.0.1:9092
+    ports:
+      - "127.0.0.1:9092:9092"
+    mem_limit: 3g
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health", "--exit-when-healthy", "--watch=false"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  clickhouse:
