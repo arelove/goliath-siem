@@ -113,6 +113,7 @@ async fn a_dropped_file_reaches_clickhouse_once() {
         format!(
             r#"
 roles = ["collector", "normalizer", "writer"]
+instance = "e2e"
 data = "data"
 
 [[sources]]
@@ -150,6 +151,13 @@ max_delay_ms = 100
     .await;
     assert!(inbox.join("done/001-kinds.json").exists());
     assert!(!inbox.join("001-kinds.json").exists());
+    // The process said who it is, through the pipe, and the writer kept it.
+    eventually(
+        &client,
+        "SELECT uniqExact(started) FROM platform_reports          WHERE instance = 'e2e' AND roles = ['collector', 'normalizer', 'writer']",
+        1,
+    )
+    .await;
     stop.send(()).unwrap();
     running.await.unwrap().unwrap();
 
@@ -166,6 +174,13 @@ max_delay_ms = 100
         &client,
         "SELECT count() FROM events FINAL",
         events + more_events,
+    )
+    .await;
+    // A process that started again is a second run under the same name.
+    eventually(
+        &client,
+        "SELECT uniqExact(started) FROM platform_reports WHERE instance = 'e2e'",
+        2,
     )
     .await;
     stop.send(()).unwrap();

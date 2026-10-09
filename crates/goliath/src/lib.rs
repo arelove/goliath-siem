@@ -156,6 +156,8 @@ async fn start_pipeline<T: Topics>(
     let outcomes = topics.open("normalized", "writer").await?;
     // What the detector finds, for the writer to store beside the events.
     let findings = topics.open("findings", "writer").await?;
+    // What every process says of itself, for the writer to keep.
+    let reports = topics.open("health", "writer").await?;
 
     // Readers subscribe before anything is sent, so that no record is sent
     // before the group that needs it exists.
@@ -181,84 +183,117 @@ async fn start_pipeline<T: Topics>(
                 config.writer.threads(),
                 name,
                 topics.subscribe(topic, "writer").await?,
-                metrics.clone(),
+                (metrics.clone(), health.clone()),
                 stopped.clone(),
             ));
         }
-    }
-    if config.roles.contains(&Role::Detector) {
-        let (Some(settings), Some(state)) = (&config.detector, config.detector_state()) else {
-            return Err(RunError::Config("no [detector]".to_owned()));
-        };
-        let mut intel = detector::Intel::open(settings, &state)?;
-        let unmatched = rematch::Unmatched::open(&state, raw::now())?.looking_back(
-            // With no store to read, nothing is noted to look back for.
-            config
-                .store
-                .as_ref()
-                .map_or(0, |_| settings.look_back_days()),
-            settings.look_back_every_hours(),
-        );
-        metrics.unmatched_ranges(unmatched.len());
-        let unmatched = std::sync::Arc::new(std::sync::Mutex::new(unmatched));
-        intel.notes(std::sync::Arc::clone(&unmatched));
-        // Nothing is matched until the feeds were looked at once.
-        let (looked, is_looked) = watch::channel(false);
-        // Startup is not finished until then either.
-        let waiting = health.hold("feeds");
-        tokio::spawn(detector::after_feeds(
-            is_looked.clone(),
+        roles.spawn(roles::keep_reports(
+            store,
+            topics.subscribe(&reports, "writer").await?,
             stopped.clone(),
-            async move {
-                drop(waiting);
-                Ok(())
-            },
         ));
-        roles.spawn(detector::after_feeds(
-            is_looked.clone(),
+    }
+    roles.spawn(health::report(
+        health.clone(),
+        health::Identity::of(config),
+        T::sender(&reports),
+        stopped.clone(),
+    ));
+    if config.roles.contains(&Role::Detector) {
+        start_detector(
+            config,
+            topics,
+            (&outcomes, &findings),
+            (metrics, health),
+            roles,
+            stopped,
+        )
+        .await?;
+    }
+    start_sources(config, topics, &outcomes, metrics, roles, stopped).await
+}
+
+/// Starts the detector: it matches what the writer's topic holds and what
+/// it was moved past, and keeps its feeds current.
+async fn start_detector<T: Topics>(
+    config: &Config,
+    topics: &T,
+    (outcomes, findings): (&T::Topic, &T::Topic),
+    (metrics, health): (&Metrics, &Health),
+    roles: &mut JoinSet<Result<(), RunError>>,
+    stopped: &watch::Receiver<bool>,
+) -> Result<(), RunError> {
+    let (Some(settings), Some(state)) = (&config.detector, config.detector_state()) else {
+        return Err(RunError::Config("no [detector]".to_owned()));
+    };
+    let mut intel = detector::Intel::open(settings, &state)?;
+    let unmatched = rematch::Unmatched::open(&state, raw::now())?.looking_back(
+        // With no store to read, nothing is noted to look back for.
+        config
+            .store
+            .as_ref()
+            .map_or(0, |_| settings.look_back_days()),
+        settings.look_back_every_hours(),
+    );
+    metrics.unmatched_ranges(unmatched.len());
+    let unmatched = std::sync::Arc::new(std::sync::Mutex::new(unmatched));
+    intel.notes(std::sync::Arc::clone(&unmatched));
+    // Nothing is matched until the feeds were looked at once.
+    let (looked, is_looked) = watch::channel(false);
+    // Startup is not finished until then either.
+    let waiting = health.hold("feeds");
+    tokio::spawn(detector::after_feeds(
+        is_looked.clone(),
+        stopped.clone(),
+        async move {
+            drop(waiting);
+            Ok(())
+        },
+    ));
+    roles.spawn(detector::after_feeds(
+        is_looked.clone(),
+        stopped.clone(),
+        detector::detect(
+            intel.matcher(),
+            settings.threads(),
+            // As an observer: the writer's topic never waits for it.
+            topics.observe(outcomes, "detector").await?,
+            T::sender(findings),
+            std::sync::Arc::clone(&unmatched),
+            metrics.clone(),
             stopped.clone(),
-            detector::detect(
+        ),
+    ));
+    // What it is moved past is matched from the store, where there is
+    // one to read; without, it is counted and noted, and waits.
+    if let Some(store) = &config.store {
+        // A range matched before the feeds are in the store would be
+        // given up with nothing found.
+        roles.spawn(detector::after_feeds(
+            is_looked,
+            stopped.clone(),
+            rematch::rematch(
+                connect(store)?,
                 intel.matcher(),
                 settings.threads(),
-                // As an observer: the writer's topic never waits for it.
-                topics.observe(&outcomes, "detector").await?,
-                T::sender(&findings),
-                std::sync::Arc::clone(&unmatched),
+                unmatched,
+                T::sender(findings),
                 metrics.clone(),
                 stopped.clone(),
             ),
         ));
-        // What it is moved past is matched from the store, where there is
-        // one to read; without, it is counted and noted, and waits.
-        if let Some(store) = &config.store {
-            // A range matched before the feeds are in the store would be
-            // given up with nothing found.
-            roles.spawn(detector::after_feeds(
-                is_looked,
-                stopped.clone(),
-                rematch::rematch(
-                    connect(store)?,
-                    intel.matcher(),
-                    settings.threads(),
-                    unmatched,
-                    T::sender(&findings),
-                    metrics.clone(),
-                    stopped.clone(),
-                ),
-            ));
-        } else {
-            info!(
-                "no [store]: events the detector is moved past are noted, and not matched from the store"
-            );
-        }
-        roles.spawn(detector::refresh(
-            intel,
-            looked,
-            metrics.clone(),
-            stopped.clone(),
-        ));
+    } else {
+        info!(
+            "no [store]: events the detector is moved past are noted, and not matched from the store"
+        );
     }
-    start_sources(config, topics, &outcomes, metrics, roles, stopped).await
+    roles.spawn(detector::refresh(
+        intel,
+        looked,
+        metrics.clone(),
+        stopped.clone(),
+    ));
+    Ok(())
 }
 
 /// Starts, for each source, the roles that take and normalize its records.
