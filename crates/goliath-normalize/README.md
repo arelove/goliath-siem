@@ -32,6 +32,7 @@ produce.
 | `sources/okta.yaml` | The Okta System Log, as its API answers, `[...]`, or one event after another: sign-ins, account, password, and factor changes, group membership, and admin privileges as their OCSF classes, and every other event type as API Activity |
 | `sources/zeek.yaml` | Zeek conn, dns, http, ssl, x509, smb_files, dce_rpc, kerberos, rdp, and ssh logs, as the json-streaming-logs package writes them, as OCSF Network, DNS, HTTP, SMB, RDP, and SSH Activity, and Kerberos requests as Authentication |
 | `sources/suricata.yaml` | Suricata EVE JSON: alerts as OCSF Detection Findings, with the rule as the analytic and the flow as evidence, and DNS, HTTP, TLS, flow, file, SMB, SSH, anomaly, and drop records as the network classes |
+| `sources/pcapdroid.yaml` | The connections of an Android phone, as PCAPdroid exports its table as CSV, each with the app that made it and the name it was made to, as OCSF Network, HTTP, and DNS Activity |
 | `sources/sysmon.yaml` | Sysmon process creation, network connections, image loads, file creation, and registry value sets, as `evtx_dump` writes them |
 | `sources/auditd.yaml` | Linux audit program executions on x86_64 and arm64, and logins, with the lines of each event gathered, as OCSF Process Activity and Authentication |
 | `sources/entra.yaml` | Microsoft Entra ID interactive, non-interactive, and service principal sign-ins, as Azure Monitor diagnostic settings write them, as OCSF Authentication |
@@ -44,6 +45,11 @@ reads messages framed by length or by line as RFC 6587 describes, and
 `decoding: syslog`, which gives the RFC 5424 or RFC 3164 header as fields such
 as `hostname` and `app_name` and the rest as `message`; `syslog-json` decodes
 that rest as JSON.
+
+A definition for a table exported as comma-separated values uses
+`decoding: csv` and names the values of a row under `columns`, in the row's
+order. Each value is text under its column's name, an empty one is left
+out, and the line that holds the names themselves is not a record.
 
 The Sysmon definition feeds the SigmaHQ regression run in `goliath-match`, so
 every one of its 357 cases also tests this crate on real recorded attacks.

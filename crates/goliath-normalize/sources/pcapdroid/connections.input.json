@@ -1,0 +1,9 @@
+IPProto,SrcIP,SrcPort,DstIp,DstPort,UID,App,PackageName,Proto,Status,Info,BytesSent,BytesRcvd,PktsSent,PktsRcvd,FirstSeen,LastSeen,Malicious
+17,10.215.173.1,41822,10.215.173.2,53,10143,Chrome,com.android.chrome,DNS,Closed,www.example.com,62,94,1,1,2026-10-10T18:04:11.120+03:00,2026-10-10T18:04:11.161+03:00,
+6,10.215.173.1,51344,192.0.2.10,443,10143,Chrome,com.android.chrome,TLS,Closed,www.example.com,2114,18842,19,24,2026-10-10T18:04:11.170+03:00,2026-10-10T18:04:42.903+03:00,
+6,10.215.173.1,51350,192.0.2.44,443,10201,"Notes, Lists and Tasks",org.example.notes,HTTPS,Active,sync.example.org,881,4120,9,11,2026-10-10T18:05:02.004+03:00,2026-10-10T18:05:03.377+03:00,
+17,10.215.173.1,38112,192.0.2.80,443,10143,Chrome,com.android.chrome,QUIC,Closed,media.example.net,3320,90211,22,81,2026-10-10T18:05:09.500+03:00,2026-10-10T18:05:31.018+03:00,
+6,10.215.173.1,40018,198.51.100.7,80,10266,Flashlight,net.example.flashlight,HTTP,Closed,update.example.net,412,1290,5,6,2026-10-10T18:06:40.731+03:00,2026-10-10T18:06:41.002+03:00,yes
+6,10.215.173.1,40020,203.0.113.25,4444,10266,Flashlight,net.example.flashlight,TCP,Unreachable,,180,0,3,0,2026-10-10T18:06:44.100+03:00,2026-10-10T18:06:59.100+03:00,
+17,fd00:1:fd00:1:fd00:1:fd00:1,51820,2001:db8::123,123,1000,Android,android,NTP,Closed,,76,76,1,1,2026-10-10T18:07:00.000+03:00,2026-10-10T18:07:00.048+03:00
+1,10.215.173.1,0,192.0.2.1,0,0,Root,root,ICMP,Closed,,84,84,1,1,2026-10-10T18:07:05.000+03:00,2026-10-10T18:07:05.020+03:00,

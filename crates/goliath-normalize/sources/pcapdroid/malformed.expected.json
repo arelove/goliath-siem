@@ -1,0 +1,90 @@
+[
+  {
+    "dead_letter": {
+      "error": "the row has 19 values and the definition names 18 columns",
+      "raw": "6,10.215.173.1,51344,192.0.2.10,443,10143,Chrome,com.android.chrome,TLS,Closed,www.example.com,2114,18842,19,24,2026-10-10T18:04:11.170+03:00,2026-10-10T18:04:42.903+03:00,,extra",
+      "stage": "decoding"
+    }
+  },
+  {
+    "dead_letter": {
+      "error": "a quoted value does not end",
+      "raw": "6,10.215.173.1,51344,192.0.2.10,443,10143,\"Chrome,com.android.chrome,TLS,Closed",
+      "stage": "decoding"
+    }
+  },
+  {
+    "dead_letter": {
+      "error": "no kind of source `pcapdroid` accepts the record",
+      "raw": "47,10.215.173.1,0,192.0.2.10,0,10143,Chrome,com.android.chrome,GRE,Closed,,10,10,1,1,2026-10-10T18:04:11.170+03:00,2026-10-10T18:04:42.903+03:00,",
+      "stage": "mapping"
+    }
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "actor": {
+        "app_name": "Chrome",
+        "app_uid": "com.android.chrome"
+      },
+      "app_name": "TLS",
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "protocol_num": 6
+      },
+      "dst_endpoint": {
+        "hostname": "www.example.com",
+        "ip": "192.0.2.10",
+        "port": 443
+      },
+      "end_time": 1791644682903,
+      "metadata": {
+        "product": {
+          "name": "PCAPdroid",
+          "vendor_name": "Emanuele Faranda"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "traffic": {
+        "bytes_in": 1,
+        "bytes_out": 1,
+        "packets_in": 1,
+        "packets_out": 1
+      },
+      "type_uid": 400106,
+      "unmapped": {
+        "FirstSeen": "yesterday",
+        "SrcIP": "not an address",
+        "SrcPort": "x",
+        "Status": "Closed",
+        "UID": "10143"
+      }
+    },
+    "id": "186523e1d4c492937a76cf86157191a6",
+    "issues": [
+      {
+        "reason": "`not an address` is not an IP address",
+        "source": "SrcIP",
+        "target": "src_endpoint.ip"
+      },
+      {
+        "reason": "`x` is not a whole number",
+        "source": "SrcPort",
+        "target": "src_endpoint.port"
+      },
+      {
+        "reason": "`yesterday` is not an RFC 3339 time: failed to parse four digit integer as year: invalid digit, expected 0-9 but got y",
+        "source": "FirstSeen",
+        "target": "start_time"
+      },
+      {
+        "reason": "`yesterday` is not an RFC 3339 time: failed to parse four digit integer as year: invalid digit, expected 0-9 but got y",
+        "source": "FirstSeen",
+        "target": "time"
+      }
+    ],
+    "kind": "tls"
+  }
+]

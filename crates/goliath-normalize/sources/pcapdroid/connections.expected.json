@@ -1,0 +1,398 @@
+[
+  {
+    "event": {
+      "activity_id": 6,
+      "actor": {
+        "app_name": "Chrome",
+        "app_uid": "com.android.chrome"
+      },
+      "app_name": "DNS",
+      "category_uid": 4,
+      "class_uid": 4003,
+      "connection_info": {
+        "protocol_num": 17
+      },
+      "dst_endpoint": {
+        "ip": "10.215.173.2",
+        "port": 53
+      },
+      "end_time": 1791644651161,
+      "metadata": {
+        "product": {
+          "name": "PCAPdroid",
+          "vendor_name": "Emanuele Faranda"
+        },
+        "version": "1.5.0"
+      },
+      "query": {
+        "hostname": "www.example.com"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.215.173.1",
+        "port": 41822
+      },
+      "start_time": 1791644651120,
+      "time": 1791644651120,
+      "traffic": {
+        "bytes_in": 94,
+        "bytes_out": 62,
+        "packets_in": 1,
+        "packets_out": 1
+      },
+      "type_uid": 400306,
+      "unmapped": {
+        "Status": "Closed",
+        "UID": "10143"
+      }
+    },
+    "id": "be085f42aced0ea6630efaed0df25a82",
+    "issues": [],
+    "kind": "dns"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "actor": {
+        "app_name": "Chrome",
+        "app_uid": "com.android.chrome"
+      },
+      "app_name": "TLS",
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "protocol_num": 6
+      },
+      "dst_endpoint": {
+        "hostname": "www.example.com",
+        "ip": "192.0.2.10",
+        "port": 443
+      },
+      "end_time": 1791644682903,
+      "metadata": {
+        "product": {
+          "name": "PCAPdroid",
+          "vendor_name": "Emanuele Faranda"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.215.173.1",
+        "port": 51344
+      },
+      "start_time": 1791644651170,
+      "time": 1791644651170,
+      "traffic": {
+        "bytes_in": 18842,
+        "bytes_out": 2114,
+        "packets_in": 24,
+        "packets_out": 19
+      },
+      "type_uid": 400106,
+      "unmapped": {
+        "Status": "Closed",
+        "UID": "10143"
+      }
+    },
+    "id": "9cc095b7c12186c20c545fb805e80578",
+    "issues": [],
+    "kind": "tls"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "actor": {
+        "app_name": "Notes, Lists and Tasks",
+        "app_uid": "org.example.notes"
+      },
+      "app_name": "HTTPS",
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "protocol_num": 6
+      },
+      "dst_endpoint": {
+        "hostname": "sync.example.org",
+        "ip": "192.0.2.44",
+        "port": 443
+      },
+      "end_time": 1791644703377,
+      "metadata": {
+        "product": {
+          "name": "PCAPdroid",
+          "vendor_name": "Emanuele Faranda"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.215.173.1",
+        "port": 51350
+      },
+      "start_time": 1791644702004,
+      "time": 1791644702004,
+      "traffic": {
+        "bytes_in": 4120,
+        "bytes_out": 881,
+        "packets_in": 11,
+        "packets_out": 9
+      },
+      "type_uid": 400106,
+      "unmapped": {
+        "Status": "Active",
+        "UID": "10201"
+      }
+    },
+    "id": "28e9a8e41e5e9b0f42f2f95b761a42ce",
+    "issues": [],
+    "kind": "https"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "actor": {
+        "app_name": "Chrome",
+        "app_uid": "com.android.chrome"
+      },
+      "app_name": "QUIC",
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "protocol_num": 17
+      },
+      "dst_endpoint": {
+        "hostname": "media.example.net",
+        "ip": "192.0.2.80",
+        "port": 443
+      },
+      "end_time": 1791644731018,
+      "metadata": {
+        "product": {
+          "name": "PCAPdroid",
+          "vendor_name": "Emanuele Faranda"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.215.173.1",
+        "port": 38112
+      },
+      "start_time": 1791644709500,
+      "time": 1791644709500,
+      "traffic": {
+        "bytes_in": 90211,
+        "bytes_out": 3320,
+        "packets_in": 81,
+        "packets_out": 22
+      },
+      "type_uid": 400106,
+      "unmapped": {
+        "Status": "Closed",
+        "UID": "10143"
+      }
+    },
+    "id": "61500db06e69547933db4a5ddb042f36",
+    "issues": [],
+    "kind": "quic"
+  },
+  {
+    "event": {
+      "activity_id": 99,
+      "actor": {
+        "app_name": "Flashlight",
+        "app_uid": "net.example.flashlight"
+      },
+      "app_name": "HTTP",
+      "category_uid": 4,
+      "class_uid": 4002,
+      "connection_info": {
+        "protocol_num": 6
+      },
+      "dst_endpoint": {
+        "ip": "198.51.100.7",
+        "port": 80
+      },
+      "end_time": 1791644801002,
+      "http_request": {
+        "url": {
+          "hostname": "update.example.net"
+        }
+      },
+      "metadata": {
+        "product": {
+          "name": "PCAPdroid",
+          "vendor_name": "Emanuele Faranda"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.215.173.1",
+        "port": 40018
+      },
+      "start_time": 1791644800731,
+      "time": 1791644800731,
+      "traffic": {
+        "bytes_in": 1290,
+        "bytes_out": 412,
+        "packets_in": 6,
+        "packets_out": 5
+      },
+      "type_uid": 400299,
+      "unmapped": {
+        "Malicious": "yes",
+        "Status": "Closed",
+        "UID": "10266"
+      }
+    },
+    "id": "c3c536b0cc8bf1337f78559ee32005e4",
+    "issues": [],
+    "kind": "http"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "actor": {
+        "app_name": "Flashlight",
+        "app_uid": "net.example.flashlight"
+      },
+      "app_name": "TCP",
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "protocol_num": 6
+      },
+      "dst_endpoint": {
+        "ip": "203.0.113.25",
+        "port": 4444
+      },
+      "end_time": 1791644819100,
+      "metadata": {
+        "product": {
+          "name": "PCAPdroid",
+          "vendor_name": "Emanuele Faranda"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.215.173.1",
+        "port": 40020
+      },
+      "start_time": 1791644804100,
+      "time": 1791644804100,
+      "traffic": {
+        "bytes_in": 0,
+        "bytes_out": 180,
+        "packets_in": 0,
+        "packets_out": 3
+      },
+      "type_uid": 400106,
+      "unmapped": {
+        "Status": "Unreachable",
+        "UID": "10266"
+      }
+    },
+    "id": "793c71c42ef47e9c08bdb277433871ae",
+    "issues": [],
+    "kind": "tcp"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "actor": {
+        "app_name": "Android",
+        "app_uid": "android"
+      },
+      "app_name": "NTP",
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "protocol_num": 17
+      },
+      "dst_endpoint": {
+        "ip": "2001:db8::123",
+        "port": 123
+      },
+      "end_time": 1791644820048,
+      "metadata": {
+        "product": {
+          "name": "PCAPdroid",
+          "vendor_name": "Emanuele Faranda"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "fd00:1:fd00:1:fd00:1:fd00:1",
+        "port": 51820
+      },
+      "start_time": 1791644820000,
+      "time": 1791644820000,
+      "traffic": {
+        "bytes_in": 76,
+        "bytes_out": 76,
+        "packets_in": 1,
+        "packets_out": 1
+      },
+      "type_uid": 400106,
+      "unmapped": {
+        "Status": "Closed",
+        "UID": "1000"
+      }
+    },
+    "id": "932786803f1c95b9418e7944928b9810",
+    "issues": [],
+    "kind": "udp"
+  },
+  {
+    "event": {
+      "activity_id": 6,
+      "actor": {
+        "app_name": "Root",
+        "app_uid": "root"
+      },
+      "app_name": "ICMP",
+      "category_uid": 4,
+      "class_uid": 4001,
+      "connection_info": {
+        "protocol_num": 1
+      },
+      "dst_endpoint": {
+        "ip": "192.0.2.1",
+        "port": 0
+      },
+      "end_time": 1791644825020,
+      "metadata": {
+        "product": {
+          "name": "PCAPdroid",
+          "vendor_name": "Emanuele Faranda"
+        },
+        "version": "1.5.0"
+      },
+      "severity_id": 1,
+      "src_endpoint": {
+        "ip": "10.215.173.1",
+        "port": 0
+      },
+      "start_time": 1791644825000,
+      "time": 1791644825000,
+      "traffic": {
+        "bytes_in": 84,
+        "bytes_out": 84,
+        "packets_in": 1,
+        "packets_out": 1
+      },
+      "type_uid": 400106,
+      "unmapped": {
+        "Status": "Closed",
+        "UID": "0"
+      }
+    },
+    "id": "9665e1178b52739e267068ff6e351f71",
+    "issues": [],
+    "kind": "icmp"
+  }
+]

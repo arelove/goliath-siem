@@ -1,0 +1,129 @@
+# Connections of an Android phone, as PCAPdroid exports them: the table of
+# its Connections view, saved as CSV. PCAPdroid captures on the phone
+# through Android's VPN interface, with no root, and names the app that
+# made each connection.
+#
+# A row is one connection: its ends, the app, the protocol PCAPdroid
+# recognised, and under `Info` the name it was made to: the server name of
+# a TLS or QUIC handshake, the host of an HTTP request, the name a DNS
+# query asked for. The name is what a feed of domains is matched against,
+# and the address what a feed of addresses is.
+#
+# Connections become OCSF Network, HTTP, and DNS Activity. Every column is
+# kept under `unmapped` by its own name, among them `UID`, `Status` as the
+# phone's language writes it, and `Malicious`, which PCAPdroid fills from
+# its own blocklist when that is turned on.
+#
+# The file's first line, the names of the columns, is not a record. A file
+# exported with malware detection off has no last column, and is read the
+# same.
+
+name: pcapdroid
+version: 1
+framing: lines
+decoding: csv
+columns:
+  - IPProto
+  - SrcIP
+  - SrcPort
+  - DstIp
+  - DstPort
+  - UID
+  - App
+  - PackageName
+  - Proto
+  - Status
+  - Info
+  - BytesSent
+  - BytesRcvd
+  - PktsSent
+  - PktsRcvd
+  - FirstSeen
+  - LastSeen
+  - Malicious
+
+data_components:
+  - Network Connection Creation
+  - Network Traffic Flow
+
+common:
+  time: { from: FirstSeen, as: timestamp }
+  start_time: { from: FirstSeen, as: timestamp }
+  end_time: { from: LastSeen, as: timestamp }
+  metadata.version: { value: "1.5.0" }
+  metadata.product.name: { value: PCAPdroid }
+  metadata.product.vendor_name: { value: Emanuele Faranda }
+  severity_id: { value: 1 }
+  src_endpoint.ip: { from: SrcIP, as: ip }
+  src_endpoint.port: { from: SrcPort, as: integer }
+  dst_endpoint.ip: { from: DstIp, as: ip }
+  dst_endpoint.port: { from: DstPort, as: integer }
+  connection_info.protocol_num: { from: IPProto, as: integer }
+  # The protocol PCAPdroid recognised, such as `TLS`.
+  app_name: Proto
+  # The app that made the connection, and its package.
+  actor.app_name: App
+  actor.app_uid: PackageName
+  traffic.bytes_out: { from: BytesSent, as: integer }
+  traffic.bytes_in: { from: BytesRcvd, as: integer }
+  traffic.packets_out: { from: PktsSent, as: integer }
+  traffic.packets_in: { from: PktsRcvd, as: integer }
+
+kinds:
+  - name: dns
+    when: { Proto: DNS }
+    # DNS Activity: Traffic, a query and what answered it as one connection.
+    class: { class_uid: 4003, activity_id: 6 }
+    fields:
+      query.hostname: Info
+    unmapped: ["."]
+
+  - name: http
+    when: { Proto: HTTP }
+    # HTTP Activity: Other; the method is not in the table.
+    class: { class_uid: 4002, activity_id: 99 }
+    fields:
+      http_request.url.hostname: Info
+    unmapped: ["."]
+
+  - name: https
+    when: { Proto: HTTPS }
+    # Network Activity: Traffic, to the server the handshake named.
+    class: { class_uid: 4001, activity_id: 6 }
+    fields: &named
+      dst_endpoint.hostname: Info
+    unmapped: ["."]
+
+  - name: tls
+    when: { Proto: TLS }
+    class: { class_uid: 4001, activity_id: 6 }
+    fields: *named
+    unmapped: ["."]
+
+  - name: quic
+    when: { Proto: QUIC }
+    class: { class_uid: 4001, activity_id: 6 }
+    fields: *named
+    unmapped: ["."]
+
+  # Any other protocol, by what carried it. `Info` stays under `unmapped`:
+  # what it holds is not known to be a name.
+  - name: tcp
+    when: { IPProto: "6" }
+    class: { class_uid: 4001, activity_id: 6 }
+    unmapped: ["."]
+
+  - name: udp
+    when: { IPProto: "17" }
+    class: { class_uid: 4001, activity_id: 6 }
+    unmapped: ["."]
+
+  - name: icmp
+    when: { IPProto: "1" }
+    class: { class_uid: 4001, activity_id: 6 }
+    unmapped: ["."]
+
+  - name: icmp6
+    when: { IPProto: "58" }
+    class: { class_uid: 4001, activity_id: 6 }
+    unmapped: ["."]

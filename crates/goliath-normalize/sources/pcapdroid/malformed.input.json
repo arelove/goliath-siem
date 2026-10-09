@@ -1,0 +1,4 @@
+6,10.215.173.1,51344,192.0.2.10,443,10143,Chrome,com.android.chrome,TLS,Closed,www.example.com,2114,18842,19,24,2026-10-10T18:04:11.170+03:00,2026-10-10T18:04:42.903+03:00,,extra
+6,10.215.173.1,51344,192.0.2.10,443,10143,"Chrome,com.android.chrome,TLS,Closed
+47,10.215.173.1,0,192.0.2.10,0,10143,Chrome,com.android.chrome,GRE,Closed,,10,10,1,1,2026-10-10T18:04:11.170+03:00,2026-10-10T18:04:42.903+03:00,
+6,not an address,x,192.0.2.10,443,10143,Chrome,com.android.chrome,TLS,Closed,www.example.com,1,1,1,1,yesterday,2026-10-10T18:04:42.903+03:00,
