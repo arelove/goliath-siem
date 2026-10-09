@@ -6,7 +6,7 @@
 #   docker compose -f compose.dev.yaml up -d --wait
 #   scripts/dev-run.sh
 #
-# Then open http://127.0.0.1:8080; on the loopback address the interface
+# Then open http://127.0.0.1:8081; on the loopback address the interface
 # asks for no token. Drop Sysmon events into inbox/sysmon/. Stop with Ctrl-C.
 #
 # Another configuration can be named, such as deploy/phone.toml.

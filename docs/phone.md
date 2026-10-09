@@ -61,7 +61,7 @@ by the second command, and answers once it says where the interface is.
   URLhaus, and Feodo Tracker, some tens of megabytes.
 - Put each exported file into `inbox/pcapdroid/`. It is read within
   seconds, and may be deleted after.
-- Open <http://127.0.0.1:8080>.
+- Open <http://127.0.0.1:8081>.
 
 ## What to look at
 

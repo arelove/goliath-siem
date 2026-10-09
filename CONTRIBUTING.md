@@ -87,8 +87,7 @@ docker compose -f compose.dev.yaml down -v
 
 - `compose.dev.yaml` starts ClickHouse and Redpanda on 127.0.0.1 only. It is
   not the platform; that is `compose.yaml`. Its ClickHouse is on port 18123
-  and the platform's on 8123, so both can run. `scripts/dev-run.sh` and the
-  platform's container both serve port 8080: run one of those at a time.
+  and the platform's on 8123, so both can run.
 - `scripts/dev-env.sh` reads the ClickHouse password from `.env` and sets the
   variables the tests read. Make `.env` from `.env.example` first.
 - The last command deletes what the tests stored.
@@ -110,7 +109,7 @@ In PowerShell `bash` is the one of WSL, which has no `cargo`. Name Git's:
 
 It builds the interface if its sources changed, and runs every role from
 `cargo` against the ClickHouse of `compose.dev.yaml`, with
-[deploy/dev.toml](deploy/dev.toml). Open <http://127.0.0.1:8080>; on the
+[deploy/dev.toml](deploy/dev.toml). Open <http://127.0.0.1:8081>; on the
 loopback address it asks for no token. Drop Sysmon events into
 `inbox/sysmon/`. Nothing is downloaded beyond the two images the compose
 file names.

@@ -5,7 +5,7 @@
 #   docker compose -f compose.dev.yaml up -d --wait
 #   scripts/dev-run.sh deploy/phone.toml
 #
-# Then open http://127.0.0.1:8080. Paths are from this file's directory.
+# Then open http://127.0.0.1:8081. Paths are from this file's directory.
 
 roles = ["collector", "normalizer", "detector", "writer", "api"]
 data = "../data/phone"
@@ -38,7 +38,9 @@ retention_days = 90
 # On the loopback address alone, so it asks for no token.
 [api]
 ui = "../ui/dist"
-url = "http://127.0.0.1:8080"
+# Not 8080, which the platform's container serves, so both can run.
+listen = "127.0.0.1:8081"
+url = "http://127.0.0.1:8081"
 
 [metrics]
-listen = "127.0.0.1:9464"
+listen = "127.0.0.1:9465"
