@@ -92,9 +92,13 @@ Seven requirements follow:
 
 ### The shell
 
-- A rail of views on the left, which can be reduced to icons.
-- A bar on top with the time range and a field that finds a view, an
-  entity, or a saved search, opened with `Ctrl+K`.
+- One bar on top: the product at its start, the views in a capsule at its
+  middle, each with a sign and its name, and at its end what applies to
+  every view, the time range first. A rail on the left was the first
+  choice; with fewer than ten views a bar gives a table its whole width,
+  and the views are read in one glance.
+- A field that finds a view, an entity, or a saved search, opened with
+  `Ctrl+K`.
 - One time range for every view. Changing view keeps it.
 - Detail opens in a panel on the right, over the list it came from. A
   panel opened from a panel replaces it, and a line at its top leads back.
@@ -168,29 +172,34 @@ It is replaced.
 
 - **Dark first.** A security operations room is dark and the screen is
   read for hours. A light theme stays, with the same tokens.
-- **Neutral, cool, and layered.** The ground is near black with a small
-  share of blue. Surfaces above it are told apart by lightness, in three
-  steps, not by lines and not by shadow.
-- **One accent, blue.** It marks what can be acted on and what is
-  selected, and nothing else. It is never a severity and never a state.
+- **Near black, and layered.** The ground is near black with a small
+  share of violet, and a glow of the accent behind the top of a page, the
+  one thing drawn for its own sake. Surfaces above it are told apart by
+  lightness, in three steps, not by shadow.
+- **One accent, violet.** It marks what can be acted on and what is
+  selected, and nothing else. It is never a severity and never a state,
+  and no system in use gives violet to either. It was blue first; blue
+  is now free for the two lowest severities, which were greys and made a
+  chart of ordinary events a grey block. Where the accent fills a bar it
+  runs to a magenta, `--accent-2`.
 - **Colour that means something is kept for meaning.** Severity and state
   are the only other colours in the interface.
 
 | Token | Dark | Light | Used for |
 | --- | --- | --- | --- |
-| `--bg` | `#0b0c0e` | `#f5f5f7` | The ground |
-| `--panel` | `#141518` | `#ffffff` | A surface |
-| `--raised` | `#1c1d21` | `#f0f0f3` | A surface above a surface |
-| `--line` | `#26282d` | `#dedee3` | Where a line is needed |
-| `--text` | `#f2f3f5` | `#1d1d1f` | Text |
-| `--muted` | `#8b8d98` | `#68686d` | Text that is secondary |
-| `--accent` | `#0a84ff` | `#0066cc` | What can be acted on, what is selected |
-| `--accent-fill` | `#0071e3` | `#0066cc` | The ground of a button, under white text |
+| `--bg` | `#09090d` | `#f5f5f8` | The ground |
+| `--panel` | `#121218` | `#ffffff` | A surface |
+| `--raised` | `#1a1a23` | `#f0f0f5` | A surface above a surface |
+| `--line` | `#24242f` | `#dedee6` | Where a line is needed |
+| `--text` | `#f2f2f7` | `#1c1c22` | Text |
+| `--muted` | `#8f8fa3` | `#676774` | Text that is secondary |
+| `--accent` | `#a78bfa` | `#6d28d9` | What can be acted on, what is selected |
+| `--accent-fill` | `#7c3aed` | `#6d28d9` | The ground of a button, under white text |
 | `--critical` | `#ff453a` | `#d70015` | Severity: critical; state: failing |
 | `--high` | `#ff9f0a` | `#c93400` | Severity: high |
 | `--medium` | `#ffd60a` | `#a05a00` | Severity: medium; state: degraded |
-| `--low` | `#7d8fa9` | `#5b6b82` | Severity: low |
-| `--info` | `#787a85` | `#86868b` | Severity: informational |
+| `--low` | `#38bdf8` | `#0369a1` | Severity: low |
+| `--info` | `#7c83ff` | `#4f46e5` | Severity: informational |
 | `--good` | `#30d158` | `#1d7a33` | State: ok |
 
 - The values were checked when they were built: text, the accent, and
@@ -205,13 +214,18 @@ It is replaced.
   on Windows, whatever the system has elsewhere. A monospaced face for
   values that are copied. Numbers in columns have one width. No font is
   fetched or shipped.
-- **Shape.** Corners of 10 pixels on a surface and 6 on a control. A
-  panel and the field that finds anything are the only things that lie
-  over others, and the only ones with a shadow and a blurred ground.
+- **Shape.** Corners of 14 pixels on a surface and 8 on a control; the
+  capsule of views, a status, and a choice in the bar are round. A panel
+  and the field that finds anything are the only things that lie over
+  others, and the only ones with a shadow and a blurred ground.
 - **Movement.** A panel and a change of chart take at most 200
   milliseconds, and none when the system asks for reduced motion.
-- **Dense.** A row of a table is 28 pixels. An analyst reads rows, and
-  space between them is rows not seen.
+- **Dense.** A row of a table is 28 pixels, a surface has 10 to 12 pixels
+  of room inside it, and surfaces are 10 apart. An analyst reads rows,
+  and space between them is rows not seen.
+- **Charts.** An area is filled from its colour at the top to nothing at
+  the ground, with its line along its top; a bar has round corners; a
+  figure is a tile of its own with the number first.
 - The mark keeps its shape and its bronze bar. A mark is not read as a
   severity, and bronze is what tells it from every other product's. The
   token `--brand` holds it and is used by the mark alone.
@@ -256,7 +270,7 @@ Grafana, which reads the same store.
 
 ### Order of building
 
-1. The tokens, the shell with its rail and bar, and the palette, with the
+1. The tokens, the shell with its bar, and the palette, with the
    three views that exist moved into it.
 2. Platform, as ADR-0023 is built.
 3. Findings: the queue, the panel, the menu of a value.
