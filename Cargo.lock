@@ -824,6 +824,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "goliath-enrich"
+version = "0.1.0"
+dependencies = [
+ "goliath-intel",
+ "goliath-sigma",
+ "jiff",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "goliath-gen"
 version = "0.1.0"
 dependencies = [
