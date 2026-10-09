@@ -528,9 +528,20 @@ impl Intel {
         }
         // Each feed says whether it is held and how old it is.
         for published in &self.feeds {
-            metrics
-                .health()
-                .feed_watched(&published.feed.name, published.feed.refresh_minutes);
+            let health = metrics.health();
+            // When it was last fetched or found unchanged, which after a
+            // restart is known from its file; a file put there by other
+            // means is as current as it is new.
+            let current = published
+                .remote
+                .as_ref()
+                .map_or(published.seen.map(|(modified, _)| modified), |remote| {
+                    remote.checked
+                });
+            if let Some(current) = current {
+                health.feed_checked(&published.feed.name, seconds(current));
+            }
+            health.feed_watched(&published.feed.name, published.feed.refresh_minutes);
         }
     }
 }
@@ -1349,6 +1360,15 @@ file = "context/hosting.csv"
         // Within the feed's interval nothing is asked.
         intel.refresh(&metrics);
         assert_eq!(requests.load(Ordering::SeqCst), 1);
+        let current = |metrics: &Metrics| {
+            metrics
+                .health()
+                .standing("detector", "feeds_current:feodo-tracker")
+        };
+        assert_eq!(
+            current(&metrics),
+            Some((goliath_store::Standing::Ok, "current".to_owned()))
+        );
 
         // Due again: the server is asked with the tag, says it is unchanged,
         // and nothing is loaded a second time.
@@ -1399,6 +1419,18 @@ file = "context/hosting.csv"
         ] {
             assert!(text.contains(expected), "{expected} missing from\n{text}");
         }
+        // A process that knows nothing from before says the same of the
+        // feed: it is held, and as current as its publication's file.
+        drop(intel);
+        let fresh = Metrics::new();
+        Intel::open(config.detector.as_ref().unwrap(), &state)
+            .unwrap()
+            .refresh(&fresh);
+        assert_eq!(requests.load(Ordering::SeqCst), 2);
+        assert_eq!(
+            current(&fresh),
+            Some((goliath_store::Standing::Ok, "current".to_owned()))
+        );
     }
 
     #[test]

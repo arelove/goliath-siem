@@ -418,6 +418,17 @@ impl Health {
         );
     }
 
+    /// The status and the reason of the condition `kind` of `role`.
+    #[cfg(test)]
+    pub(crate) fn standing(&self, role: &'static str, kind: &str) -> Option<(Standing, String)> {
+        self.0
+            .conditions
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(&(role, kind.to_owned()))
+            .map(|held| (held.status, held.reason.clone()))
+    }
+
     fn feeds(&self) -> std::sync::MutexGuard<'_, BTreeMap<String, FeedState>> {
         self.0.feeds.lock().unwrap_or_else(PoisonError::into_inner)
     }
