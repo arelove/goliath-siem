@@ -310,7 +310,7 @@ their users say of them, and cases the answer must serve.
 
 | Record | What it decides |
 | --- | --- |
-| Platform health | How someone who runs the platform sees what is wrong with it: which roles run and where, which collector is silent, where a topic's backlog grows, which feed or export of context is old, and why. For one machine and for roles spread over hosts or a Kubernetes cluster, where a process that restarts is the normal case. [ADR-0019](adr/0019-source-health.md) decides the health of sources; this is the health of the platform that reads them. It comes first: whoever starts the platform needs it on the first day |
+| Platform health, [ADR-0023](adr/0023-platform-health.md) | How someone who runs the platform sees what is wrong with it: which roles run and where, which collector is silent, where a topic's backlog grows, which feed or export of context is old, and why. For one machine and for roles spread over hosts or a Kubernetes cluster, where a process that restarts is the normal case. [ADR-0019](adr/0019-source-health.md) decides the health of sources; this is the health of the platform that reads them. It comes first: whoever starts the platform needs it on the first day |
 | The interface | What an analyst sees first, and the way from a finding to its event, its entities, and a decision. Which views exist and what each is for, before the list of M7 is built as written |
 
 ## M4.5 - Entity graph
