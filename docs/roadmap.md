@@ -317,9 +317,11 @@ Left for later, each with the condition that brings it:
 
 Built of ADR-0023 so far: the three probes on every process, the report
 each sends through the pipe every 15 seconds, the writer keeping them, and
-the first condition, of storing, and `GET /api/v1/platform`, which judges
-each role by the processes that report. The other conditions, flows and
-the account of records, and the view of the platform follow.
+the conditions of storing and of keeping up with a topic, and
+`GET /api/v1/platform`, which judges each role by the processes that
+report and gives each topic's backlog. The other conditions, the time
+until a topic is full, the account of records, and the view of the
+platform follow.
 
 After M4 and before any more of the interface is built, two decisions are
 written down, each as ADR-0022 was: from how the systems in use do it, what
