@@ -92,6 +92,22 @@ docker compose -f compose.dev.yaml down -v
   variables the tests read. Make `.env` from `.env.example` first.
 - The last command deletes what the tests stored.
 
+## Running the platform from the working tree
+
+To see a change in the interface without building the image:
+
+```sh
+docker compose -f compose.dev.yaml up -d --wait
+scripts/dev-run.sh
+```
+
+It builds the interface if its sources changed, and runs every role from
+`cargo` against the ClickHouse of `compose.dev.yaml`, with
+[deploy/dev.toml](deploy/dev.toml). Open <http://127.0.0.1:8080>; on the
+loopback address it asks for no token. Drop Sysmon events into
+`inbox/sysmon/`. Nothing is downloaded beyond the two images the compose
+file names.
+
 ## Branches and pull requests
 
 Nothing lands on `main` directly. Work happens on a branch and merges through a
