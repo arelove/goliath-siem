@@ -43,7 +43,36 @@ file = "/var/lib/goliath/feeds/partner.json"
 | `feeds.file` | The file the publication is read from. With a file and no `url`, nothing is fetched |
 
 The shipped definitions are abuse.ch Feodo Tracker, URLhaus, ThreatFox, and
-SSLBL: `feodo-tracker`, `urlhaus`, `threatfox`, `sslbl`.
+SSLBL: `feodo-tracker`, `urlhaus`, `threatfox`, `sslbl`; and three reference
+lists, below.
+
+## Reference lists
+
+Some lists worth matching are not feeds of a provider but files in a
+repository that people curate. Three ship as definitions, all from
+[mthcht/awesome-lists](https://github.com/mthcht/awesome-lists), which is
+under the MIT licence:
+
+| Definition | What it holds | Confidence |
+|---|---|---|
+| `loldrivers` | Hashes of drivers that are vulnerable or malicious, from the LOLDrivers project | 80 |
+| `malicious-bootloaders` | Hashes of bootloaders that are malicious or let Secure Boot be passed | 80 |
+| `tor-exit-nodes` | The addresses Tor's traffic leaves the network from | 40 |
+
+- Each is pinned to a commit of the repository: its definition names the
+  commit as `revision`, and fetches the file as it was then. A finding names
+  that commit as the feed's version, so it says which list matched and
+  which state of it.
+- A pinned list does not change by itself. To take a newer one, copy the
+  definition from `crates/goliath-intel/feeds`, set `revision` to the newer
+  commit, and name the copy's path as `definition`. A release of Goliath
+  moves the shipped pins.
+- A match with a Tor exit node is not an attack: it says that the other end
+  hides where it is. Leave the definition out where people have a use for
+  Tor, or keep it and read its findings by their confidence.
+- Other lists of that repository, such as ranges of VPN providers and
+  dynamic DNS domains, describe an address and do not accuse it. They are
+  context, not indicators, and wait for the context the detector adds.
 
 ## How a feed is kept current
 
