@@ -314,6 +314,10 @@ pub struct DetectorConfig {
     /// feed says.
     #[serde(default)]
     pub allowlists: Vec<PathBuf>,
+    /// What the site knows of its own networks, machines, and accounts,
+    /// added to findings. See docs/adr/0022-context-snapshot.md.
+    #[serde(default)]
+    pub context: Vec<ContextConfig>,
     /// Threads that match a batch at once; every core by default.
     pub threads: Option<NonZeroUsize>,
     /// The block cache of the indicator store, in mebibytes; 1024 if left
@@ -341,6 +345,19 @@ impl DetectorConfig {
     pub fn threads(&self) -> NonZeroUsize {
         self.threads.unwrap_or_else(every_core)
     }
+}
+
+/// One source of context: an export of the site, and how it is read.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContextConfig {
+    /// The YAML file that says how the export is read: which of its
+    /// columns are identifiers, typed fields, and labels.
+    pub definition: PathBuf,
+    /// The export, read at start and again whenever it changes. Whatever
+    /// puts it there writes it under another name and renames it, so that
+    /// it is never read half written.
+    pub file: PathBuf,
 }
 
 /// One feed: how it is read, and where its publication is.
@@ -525,6 +542,10 @@ impl Config {
             }
             for list in &mut detector.allowlists {
                 *list = base.join(&*list);
+            }
+            for source in &mut detector.context {
+                source.definition = base.join(&source.definition);
+                source.file = base.join(&source.file);
             }
             for feed in &mut detector.feeds {
                 if let Some(file) = &mut feed.file {

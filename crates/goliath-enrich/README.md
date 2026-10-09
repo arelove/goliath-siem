@@ -89,6 +89,7 @@ lists, and no more than 32 entries in all. The groups a found record names
 are looked up too, so a group said once to be privileged is said so in every
 finding of a member.
 
-The snapshot is held in memory. The store on disk, and the detector that
-reads the exports and adds the entries to findings, come next. The design is
+The snapshot is held in memory; the store on disk comes next. The detector
+reads the exports named in its configuration and adds the entries to
+findings. The design is
 [ADR-0022](https://github.com/arelove/goliath-siem/blob/main/docs/adr/0022-context-snapshot.md).

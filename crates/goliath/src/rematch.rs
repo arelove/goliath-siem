@@ -13,7 +13,6 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
-use goliath_intel::{Matcher, RocksStore};
 use goliath_pipe::Sender;
 use goliath_store::Store;
 use serde::{Deserialize, Serialize};
@@ -21,7 +20,7 @@ use tokio::sync::watch;
 use tracing::{info, warn};
 
 use crate::RunError;
-use crate::detector::{self, SOURCE};
+use crate::detector::{self, Detection, SOURCE};
 use crate::metrics::Metrics;
 use crate::roles::BATCH;
 
@@ -291,7 +290,7 @@ impl Unmatched {
 /// tries again, and the ranges wait.
 pub(crate) async fn rematch(
     store: Store,
-    matcher: Arc<Matcher<RocksStore>>,
+    matcher: Arc<Detection>,
     threads: NonZeroUsize,
     unmatched: Shared,
     findings: impl Sender + Sync,
@@ -364,7 +363,7 @@ pub(crate) async fn rematch(
 /// stopped before the last.
 async fn read(
     store: &Store,
-    matcher: &Arc<Matcher<RocksStore>>,
+    matcher: &Arc<Detection>,
     threads: NonZeroUsize,
     work: Work,
     findings: &(impl Sender + Sync),

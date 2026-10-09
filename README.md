@@ -89,6 +89,10 @@ as it arrives, in a detector that reads beside storage and never slows it
 - each match is stored as an OCSF Detection Finding beside its event, and
   names every feed that asserts the indicator, with its version and
   confidence;
+- a finding is given what the site itself knows of the event's values:
+  the network, the machine and its owner and criticality, the account and
+  its groups, read from the site's own CMDB, directory, or IPAM exports
+  under their own column names, each entry with its source and its age;
 - an allowlist entry wins over every feed, and what it suppressed is stored
   too, so that it can be reviewed;
 - a detector that falls behind does not slow ingestion: it is moved
