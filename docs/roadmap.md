@@ -315,8 +315,10 @@ Left for later, each with the condition that brings it:
 
 ### Two records before the interface grows
 
-Built of ADR-0023 so far: the three probes on every process. Reports,
-conditions, and the view of the platform follow.
+Built of ADR-0023 so far: the three probes on every process, the report
+each sends through the pipe every 15 seconds, the writer keeping them, and
+the first condition, of storing. The other conditions, the judging, and
+the view of the platform follow.
 
 After M4 and before any more of the interface is built, two decisions are
 written down, each as ADR-0022 was: from how the systems in use do it, what
