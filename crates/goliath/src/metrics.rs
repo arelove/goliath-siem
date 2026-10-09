@@ -9,7 +9,6 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use axum::Router;
 use axum::http::header;
 use axum::response::IntoResponse;
 use axum::routing::get;
@@ -24,6 +23,7 @@ use tokio::sync::watch;
 use tracing::info;
 
 use crate::RunError;
+use crate::health::Health;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, EncodeLabelSet)]
 struct Source {
@@ -614,17 +614,19 @@ impl Metrics {
     }
 }
 
-/// Serves `/metrics` on `listen` until `stop` turns true.
+/// Serves `/metrics` and the probes of `health` on `listen` until `stop`
+/// turns true.
 pub(crate) async fn serve(
     listen: SocketAddr,
     metrics: Metrics,
+    health: Health,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
     let listener = TcpListener::bind(listen)
         .await
         .map_err(|error| RunError::Io(format!("metrics on {listen}: {error}")))?;
     info!(address = %listen, "metrics listening");
-    let app = Router::new().route(
+    let app = health.probes().route(
         "/metrics",
         get(move || {
             let text = metrics.encode();

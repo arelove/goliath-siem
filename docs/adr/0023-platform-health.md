@@ -1,6 +1,6 @@
 # 0023. Platform health
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-10
 
 ## Context

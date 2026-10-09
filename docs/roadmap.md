@@ -304,6 +304,9 @@ Left for later, each with the condition that brings it:
 
 ### Two records before the interface grows
 
+Built of ADR-0023 so far: the three probes on every process. Reports,
+conditions, and the view of the platform follow.
+
 After M4 and before any more of the interface is built, two decisions are
 written down, each as ADR-0022 was: from how the systems in use do it, what
 their users say of them, and cases the answer must serve.
