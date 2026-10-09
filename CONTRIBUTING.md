@@ -101,6 +101,12 @@ docker compose -f compose.dev.yaml up -d --wait
 scripts/dev-run.sh
 ```
 
+In PowerShell `bash` is the one of WSL, which has no `cargo`. Name Git's:
+
+```powershell
+& "C:\Program Files\Gitinash.exe" scripts/dev-run.sh
+```
+
 It builds the interface if its sources changed, and runs every role from
 `cargo` against the ClickHouse of `compose.dev.yaml`, with
 [deploy/dev.toml](deploy/dev.toml). Open <http://127.0.0.1:8080>; on the

@@ -25,7 +25,9 @@ looked up locally; no name or address the phone used is sent to anyone.
 
 [PCAPdroid](https://github.com/emanuele-f/PCAPdroid) is free software that
 captures the phone's own traffic through Android's VPN interface. It needs
-no root, and reads no content of encrypted connections.
+no root, and reads no content of encrypted connections. The file it saves
+as its traffic dump is a PCAP of packets, which is not what is read here:
+the table of connections is.
 
 1. Install PCAPdroid from F-Droid or Google Play.
 2. Start a capture and use the phone as usual: an hour, or a day. Android
@@ -45,6 +47,15 @@ from the working tree.
 docker compose -f compose.dev.yaml up -d --wait
 scripts/dev-run.sh deploy/phone.toml
 ```
+
+In PowerShell `bash` is the one of WSL, which has no `cargo`. Name Git's:
+
+```powershell
+& "C:\Program Files\Gitinash.exe" scripts/dev-run.sh deploy/phone.toml
+```
+
+The two containers are the store and nothing else: the interface is served
+by the second command, and answers once it says where the interface is.
 
 - At its start the detector downloads three feeds of abuse.ch: ThreatFox,
   URLhaus, and Feodo Tracker, some tens of megabytes.
