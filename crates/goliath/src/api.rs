@@ -68,6 +68,9 @@ struct Shared {
 pub(crate) struct Server {
     listener: TcpListener,
     app: Router,
+    /// The address people open the interface at, if the configuration
+    /// says it.
+    url: Option<String>,
 }
 
 impl Server {
@@ -100,6 +103,7 @@ impl Server {
         Ok(Self {
             listener,
             app: app(shared, config.ui.clone()),
+            url: config.url.clone(),
         })
     }
 
@@ -114,6 +118,10 @@ impl Server {
             .local_addr()
             .map_err(|error| RunError::Io(error.to_string()))?;
         info!(%address, "api listening");
+        if let Some(url) = &self.url {
+            // In the text, so that a log viewer makes it a link.
+            info!("the interface is at {url} and asks for the API token");
+        }
         axum::serve(self.listener, self.app)
             .with_graceful_shutdown(async move {
                 while !*stop.borrow_and_update() {

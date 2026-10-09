@@ -154,6 +154,11 @@ pub struct ApiConfig {
     pub token_file: Option<PathBuf>,
     /// A directory holding the built interface, served at `/`.
     pub ui: Option<PathBuf>,
+    /// The address people open the interface at, such as
+    /// `http://127.0.0.1:8080`, written to the log when the API starts. In
+    /// a container the API cannot tell which address of the host its port
+    /// is published on, and this says it.
+    pub url: Option<String>,
     /// The longest time range a search may cover, in days.
     #[serde(default = "default_max_span_days")]
     pub max_span_days: NonZeroU16,
@@ -165,6 +170,7 @@ impl Default for ApiConfig {
             listen: default_listen(),
             token_file: None,
             ui: None,
+            url: None,
             max_span_days: default_max_span_days(),
         }
     }

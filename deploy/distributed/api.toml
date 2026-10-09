@@ -13,6 +13,9 @@ password_file = "/run/secrets/clickhouse_password"
 listen = "0.0.0.0:8080"
 token_file = "/run/secrets/api_token"
 ui = "/usr/share/goliath/ui"
+# Written to the log at start, so that the address is one click away in
+# Docker Desktop; compose publishes the port on 127.0.0.1.
+url = "http://127.0.0.1:8080"
 
 # Reachable on the compose network, for a Prometheus beside the roles.
 [metrics]

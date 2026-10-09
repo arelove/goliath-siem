@@ -128,6 +128,10 @@ cp .env.example .env          # set CLICKHOUSE_PASSWORD and API_TOKEN
 docker compose up -d --build
 ```
 
+After that first start the stack is in Docker Desktop under the name
+`goliath`, and is started and stopped there. Its log says where the
+interface is, as a link.
+
 Drop Sysmon events, as `evtx_dump -o json` writes them, into `inbox/sysmon/`,
 and search them at <http://127.0.0.1:8080> with the token: by time, class,
 and any OCSF attribute, with every event open in full. The same searches are
