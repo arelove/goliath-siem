@@ -259,7 +259,7 @@ Enrichment that makes an alert actionable rather than a row.
 | --- | --- |
 | `goliath-intel` | STIX 2.1 model, feed connectors, bloom-prefiltered RocksDB lookup, allowlists, provenance ([ADR-0008](adr/0008-threat-intelligence-model.md)) |
 | `goliath-attack` | Versioned framework loader, technique mapping, coverage versus capability ([ADR-0009](adr/0009-attack-knowledge-model.md)) |
-| `goliath-enrich` | Entity and asset snapshot into local RocksDB, refresh scheduling |
+| `goliath-enrich` | Entity and asset snapshot into local RocksDB, refresh scheduling: networks, assets, users, and context lists, added to findings as enrichments ([ADR-0022](adr/0022-context-snapshot.md)) |
 | Detector role | Reads the event topic beside the writer, matches indicators, and writes each match as a Detection Finding with its provenance; suppressed matches are stored too ([ADR-0021](adr/0021-enrichment-placement.md)) |
 | Matching what the detector missed | The detector reads the event topic as an observer ([ADR-0015](adr/0015-pipe-semantics.md)), so it never slows the writer; one that falls behind the topic's bound is moved past events and counts them. Those events are stored: the detector notes their range of receipt time, reads it back from the store, and matches it, with the same findings |
 | Indicators that arrive late | When a feed adds indicators, the detector looks back over the stored events of a configured number of days for the new ones alone, and writes the same findings ([ADR-0021](adr/0021-enrichment-placement.md)). It reads those events once a look back; a table of observed values, to read less, waits for a measurement that asks for it |
