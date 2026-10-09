@@ -1,0 +1,30 @@
+# The platform on the developer's own machine, built by cargo and not in a
+# container, with the ClickHouse of compose.dev.yaml as its store:
+#
+#   docker compose -f compose.dev.yaml up -d --wait
+#   scripts/dev-run.sh
+#
+# Then open http://127.0.0.1:8080. Paths are from this file's directory.
+
+roles = ["collector", "normalizer", "writer", "api"]
+data = "../data/dev"
+
+[[sources]]
+definition = "sysmon"
+inbox = "../inbox/sysmon"
+
+[store]
+url = "http://127.0.0.1:8123"
+database = "goliath_dev"
+user = "goliath"
+# Set by scripts/dev-env.sh from the CLICKHOUSE_PASSWORD in .env.
+password_env = "GOLIATH_CLICKHOUSE_PASSWORD"
+retention_days = 30
+
+# On the loopback address alone, so it asks for no token.
+[api]
+ui = "../ui/dist"
+url = "http://127.0.0.1:8080"
+
+[metrics]
+listen = "127.0.0.1:9464"
