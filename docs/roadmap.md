@@ -239,6 +239,14 @@ Follow-ups found while building it, none in the exit criterion:
 - Built since: a decoding for rows of comma-separated values, and with it
   a definition for the connections of an Android phone
   ([phone.md](phone.md)).
+- A receiver of packets: a stream of PCAP over TCP, as PCAPdroid's TCP
+  exporter and `tcpdump` send it, put together into connections with the
+  name each was made to, from the DNS query, the TLS handshake, or the HTTP
+  host. It makes the phone's export of [phone.md](phone.md) arrive as it
+  happens, with the app from the trailer PCAPdroid adds to a packet, and
+  reads a router or any machine the same way. The stream has no token and
+  no encryption of its own, so its listener is for a network that is
+  trusted.
 - Decodings for CEF and LEEF, and for text by regular expression or
   `key=value` pairs, so that appliances writing neither JSON nor syslog
   structured data can be read without a definition per format.
