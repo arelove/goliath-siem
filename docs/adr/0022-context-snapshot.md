@@ -1,6 +1,6 @@
 # 0022. What the context snapshot holds, and where it comes from
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-10
 
 ## Context
@@ -192,10 +192,15 @@ source's version.**
 
 ### What it is built on
 
-- The snapshot is behind a trait with two stores, in memory and in RocksDB,
-  as the indicator store is. The store in memory comes first and is what
-  tests use; RocksDB follows before the milestone ends, as ADR-0020
-  decides.
+- The snapshot is held in memory. ADR-0020 places it in RocksDB, for two
+  reasons that hold for indicators: a set too large for memory, and a
+  restart that must not load it again. Neither holds here yet. A site's
+  records are some hundreds of thousands, and every export is read again
+  at a start, since the file is the record and the snapshot only its
+  index.
+- It moves to RocksDB when a measurement asks, under the first condition
+  of "When to revisit". Until then a second store would be code with no
+  case that needs it.
 
 ## Options considered
 
@@ -233,8 +238,9 @@ source's version.**
 ## When to revisit
 
 - If a snapshot of 10^6 assets and identities takes more than 1 GiB in
-  memory or more than 30 seconds to replace, move the bulk load to sorted
-  files written beside the store, as for indicators.
+  memory or more than 30 seconds to replace, keep it in RocksDB as
+  ADR-0020 places it, loaded from sorted files written beside the store,
+  as indicators are.
 - If more than one finding in ten reaches the limit of 32 entries on a real
   site's events, choose what to keep by the kind of event, not by order.
 - If the same label is asked for by name at three sites, make it a typed
