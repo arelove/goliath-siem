@@ -60,6 +60,71 @@ const SOURCES = {
   ],
 };
 
+const PLATFORM = {
+  now: 1790598600000,
+  store: "answers",
+  platform: {
+    status: "failing",
+    reason: "writer:store_refused",
+    message: "The store refused the last batch, which is held and tried again.",
+    newest_report: 1790598590000,
+    roles: [
+      {
+        role: "writer",
+        status: "failing",
+        reason: "store_refused",
+        message: "The store refused the last batch, which is held and tried again.",
+        reporting: 1,
+        expected: 2,
+        starts: 0,
+        instances: [
+          {
+            instance: "writer-0",
+            reporting: true,
+            version: "0.1.0",
+            started: 1790591400000,
+            last_report: 1790598590000,
+            conditions: [
+              {
+                role: "writer",
+                type: "keeping_up:normalized",
+                status: "degraded",
+                reason: "backlog_grows",
+                message: "The backlog of `normalized` grew.",
+                since: 1790598300000,
+              },
+            ],
+          },
+          {
+            instance: "writer-1",
+            reporting: false,
+            version: "0.1.0",
+            started: 1790591400000,
+            last_report: 1790598000000,
+            conditions: [],
+          },
+        ],
+      },
+    ],
+    flows: [
+      { topic: "normalized", reader: "writer", backlog: 4200 },
+      { topic: "findings", reader: "writer", backlog: 0 },
+    ],
+    changes: [
+      {
+        instance: "writer-0",
+        role: "writer",
+        kind: "storing",
+        status: "failing",
+        reason: "store_refused",
+        message: "The store refused the last batch.",
+        since: 1790598480000,
+        seen: 1790598590000,
+      },
+    ],
+  },
+};
+
 interface Call {
   path: string;
   body: Search | null;
@@ -108,6 +173,9 @@ beforeEach(() => {
       }
       if (path === "/sources") {
         return reply(200, SOURCES);
+      }
+      if (path === "/platform") {
+        return reply(200, PLATFORM);
       }
       if (path.startsWith("/events/")) {
         return reply(200, { ...LAUNCH, source_version: 1, issues: [] });
@@ -233,5 +301,33 @@ describe("source health", () => {
     expect(screen.getByText("2 h ago")).toBeInTheDocument();
     expect(screen.getByText("just now")).toBeInTheDocument();
     expect(screen.getByTitle("decoding 5")).toHaveTextContent("5");
+  });
+});
+
+describe("platform health", () => {
+  it("says what is wrong, which role, and what its processes say", async () => {
+    window.history.replaceState(null, "", "/?view=platform");
+    show();
+    // The verdict, with the reason of the worst role.
+    expect(
+      await screen.findAllByText(
+        "The store refused the last batch, which is held and tried again.",
+      ),
+    ).toHaveLength(2);
+    expect(screen.getByText(/The store answers, newest report just now/)).toBeInTheDocument();
+    // The role, by how many report.
+    expect(screen.getByText("1 of 2")).toBeInTheDocument();
+    // A condition: the question, what it is about, how long, and why.
+    const condition = screen.getByText("Keeping up with").closest("td");
+    expect(condition).toHaveTextContent(
+      "Keeping up with normalized for 5 min. The backlog of `normalized` grew.",
+    );
+    // A process that stopped reporting.
+    expect(screen.getByText("Gone")).toBeInTheDocument();
+    expect(screen.getByText("Last report 10 min ago.")).toBeInTheDocument();
+    // Where records wait, and what changed.
+    expect(screen.getByText("4,200")).toBeInTheDocument();
+    expect(screen.getByText("Storing events")).toBeInTheDocument();
+    expect(screen.getByText("2 min ago")).toBeInTheDocument();
   });
 });
