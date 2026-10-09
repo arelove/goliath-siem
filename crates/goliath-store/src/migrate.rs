@@ -82,6 +82,16 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "dead_letter_hours_view",
         sql: include_str!("../migrations/0010_dead_letter_hours_view.sql"),
     },
+    Migration {
+        version: 11,
+        name: "platform_reports",
+        sql: include_str!("../migrations/0011_platform_reports.sql"),
+    },
+    Migration {
+        version: 12,
+        name: "platform_conditions",
+        sql: include_str!("../migrations/0012_platform_conditions.sql"),
+    },
 ];
 
 /// Where applied migrations are recorded. Created before any migration runs,

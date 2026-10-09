@@ -537,3 +537,132 @@ async fn events_and_dead_letters_are_counted_by_source_and_hour() {
     );
     scratch.drop().await;
 }
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)] // One story, told in order.
+async fn reports_keep_the_newest_of_each_run_and_how_long_each_status_held() {
+    use goliath_store::{Condition, Report, SearchLimits, Standing};
+
+    let Some(scratch) = Scratch::new("platform") else {
+        return;
+    };
+    scratch.store.migrate().await.unwrap();
+    // Reports are kept a day, so they are taken now.
+    let now = now();
+    let condition = |status, reason: &str, since| Condition {
+        role: "writer".to_owned(),
+        kind: "storing".to_owned(),
+        status,
+        reason: reason.to_owned(),
+        message: format!("{reason}."),
+        since,
+    };
+    let report = |instance: &str, started, sent, conditions| Report {
+        instance: instance.to_owned(),
+        roles: vec!["writer".to_owned(), "detector".to_owned()],
+        version: "0.1.0".to_owned(),
+        started,
+        sent,
+        counters: [("stored".to_owned(), 7)].into(),
+        conditions,
+    };
+    let started = now - 60_000;
+    let ok = condition(Standing::Ok, "stored", started);
+    let failing = condition(Standing::Failing, "store_refused", now - 20_000);
+    // Two reports while it stored, two while it was refused; a collector
+    // with nothing to say; and the writer started again.
+    for (reports, received) in [
+        (
+            vec![report("writer-0", started, now - 45_000, vec![ok.clone()])],
+            now - 45_000,
+        ),
+        (
+            vec![report("writer-0", started, now - 30_000, vec![ok])],
+            now - 30_000,
+        ),
+        (
+            vec![
+                report("writer-0", started, now - 15_000, vec![failing.clone()]),
+                report("collector-0", started, now - 15_000, Vec::new()),
+            ],
+            now - 15_000,
+        ),
+        (
+            vec![report("writer-0", started, now - 10_000, vec![failing])],
+            now - 10_000,
+        ),
+        (
+            vec![report("writer-0", now - 5_000, now - 4_000, Vec::new())],
+            now - 4_000,
+        ),
+    ] {
+        scratch
+            .store
+            .write_reports(&reports, received)
+            .await
+            .unwrap();
+    }
+    scratch.store.write_reports(&[], now).await.unwrap();
+
+    let reports = scratch
+        .store
+        .platform_reports(now - 3_600_000, SearchLimits::default())
+        .await
+        .unwrap();
+    let runs: Vec<(&str, i64, i64)> = reports
+        .iter()
+        .map(|report| (report.instance.as_str(), report.started, report.received))
+        .collect();
+    assert_eq!(
+        runs,
+        [
+            ("writer-0", now - 5_000, now - 4_000),
+            ("writer-0", started, now - 10_000),
+            ("collector-0", started, now - 15_000),
+        ]
+    );
+    assert_eq!(reports[1].roles, ["writer", "detector"]);
+    assert_eq!(reports[1].counters, [("stored".to_owned(), 7)]);
+    assert_eq!(reports[1].sent, now - 10_000);
+    // Nothing older than what is asked for.
+    let recent = scratch
+        .store
+        .platform_reports(now - 12_000, SearchLimits::default())
+        .await
+        .unwrap();
+    assert_eq!(recent.len(), 2, "{recent:?} at {now}");
+
+    let held = scratch
+        .store
+        .platform_conditions(now - 3_600_000, SearchLimits::default())
+        .await
+        .unwrap();
+    let periods: Vec<(&str, &str, i64, i64)> = held
+        .iter()
+        .map(|held| {
+            (
+                held.status.as_str(),
+                held.reason.as_str(),
+                held.since,
+                held.seen,
+            )
+        })
+        .collect();
+    assert_eq!(
+        periods,
+        [
+            ("ok", "stored", started, now - 30_000),
+            ("failing", "store_refused", now - 20_000, now - 10_000),
+        ]
+    );
+    assert_eq!(
+        (
+            held[1].instance.as_str(),
+            held[1].role.as_str(),
+            held[1].kind.as_str()
+        ),
+        ("writer-0", "writer", "storing")
+    );
+    assert_eq!(held[1].message, "store_refused.");
+    scratch.drop().await;
+}
