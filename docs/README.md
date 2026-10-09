@@ -15,7 +15,7 @@ orchestration, and incident handling in one system.
 | [detector.md](detector.md) | The detector: feeds of indicators and how they are kept current, allowlists, findings, and what to watch |
 | [phone.md](phone.md) | An Android phone: its connections, exported with PCAPdroid, searched by app and matched against public feeds on your own machine |
 | [lab.md](lab.md) | A lab on a home network: one machine runs the platform, and others send it their Sysmon and Security logs over HTTPS |
-| [identity.md](identity.md) | The mark, the name, the colours, and why bronze is never a severity |
+| [identity.md](identity.md) | The mark, the name, the colours, and why the accent is never a severity |
 | [adr/](adr/) | Architecture decision records, one file per decision |
 
 ## Decisions

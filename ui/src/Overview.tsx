@@ -64,7 +64,7 @@ export function Overview({ span, className, onError, onOpen }: Props) {
   const hosts = (data?.hosts ?? []).map((entry, index) => ({
     key: entry.key,
     name: entry.key,
-    color: PALETTE[index % PALETTE.length] ?? "#9aa5b5",
+    color: PALETTE[index % PALETTE.length] ?? "#98989d",
     count: entry.count,
   }));
   const range = {

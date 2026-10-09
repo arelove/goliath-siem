@@ -1,6 +1,6 @@
 # 0024. The interface
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-10
 
 ## Context
@@ -183,18 +183,22 @@ It is replaced.
 | `--raised` | `#1c1d21` | `#f0f0f3` | A surface above a surface |
 | `--line` | `#26282d` | `#dedee3` | Where a line is needed |
 | `--text` | `#f2f3f5` | `#1d1d1f` | Text |
-| `--muted` | `#8b8d98` | `#6e6e73` | Text that is secondary |
-| `--accent` | `#0a84ff` | `#0071e3` | What can be acted on, what is selected |
+| `--muted` | `#8b8d98` | `#68686d` | Text that is secondary |
+| `--accent` | `#0a84ff` | `#0066cc` | What can be acted on, what is selected |
+| `--accent-fill` | `#0071e3` | `#0066cc` | The ground of a button, under white text |
 | `--critical` | `#ff453a` | `#d70015` | Severity: critical; state: failing |
 | `--high` | `#ff9f0a` | `#c93400` | Severity: high |
 | `--medium` | `#ffd60a` | `#a05a00` | Severity: medium; state: degraded |
 | `--low` | `#7d8fa9` | `#5b6b82` | Severity: low |
-| `--info` | `#5c5e69` | `#a1a1a6` | Severity: informational |
-| `--good` | `#30d158` | `#248a3d` | State: ok |
+| `--info` | `#787a85` | `#86868b` | Severity: informational |
+| `--good` | `#30d158` | `#1d7a33` | State: ok |
 
-- The values are a start and are checked before they are merged: text at
-  4.5 to 1 against its surface, a mark of a chart at 3 to 1, and the
-  severities told apart by a person who does not see red from green.
+- The values were checked when they were built: text, the accent, and
+  every state at 4.5 to 1 or more against each of the three surfaces, and
+  every severity at 3 to 1 or more as a mark. Five values of the first
+  table failed and were changed to these. Not yet checked: that the
+  severities are told apart by a person who does not see red from green,
+  which is why none is shown by colour alone.
 - Severity is never colour alone. It has its word or its letter beside
   it, and its place in the order.
 - **Type.** The system's own face: San Francisco on Apple's systems, Segoe

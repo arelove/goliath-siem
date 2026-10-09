@@ -168,18 +168,27 @@ export interface Layer {
 
 /** OCSF `severity_id`s, lowest first, with their names and colours. */
 export const SEVERITIES: Layer[] = [
-  { key: "0", name: "Unknown", color: "#9aa5b5" },
-  { key: "1", name: "Informational", color: "#3b7ddd" },
-  { key: "2", name: "Low", color: "#1f4fbf" },
-  { key: "3", name: "Medium", color: "#e3c341" },
-  { key: "4", name: "High", color: "#f2643a" },
-  { key: "5", name: "Critical", color: "#dc3550" },
-  { key: "6", name: "Fatal", color: "#a23b8f" },
-  { key: "99", name: "Other", color: "#6cc5b0" },
+  { key: "0", name: "Unknown", color: "#48484a" },
+  { key: "1", name: "Informational", color: "#787a85" },
+  { key: "2", name: "Low", color: "#7d8fa9" },
+  { key: "3", name: "Medium", color: "#ffd60a" },
+  { key: "4", name: "High", color: "#ff9f0a" },
+  { key: "5", name: "Critical", color: "#ff453a" },
+  { key: "6", name: "Fatal", color: "#ff375f" },
+  { key: "99", name: "Other", color: "#98989d" },
 ];
 
 /** Colours for lists of values, in order: the product's bronze, then blues. */
-export const PALETTE = ["#c98a4b", "#3b7ddd", "#9cc0f5", "#6cc5b0", "#b39ddb", "#8a94a3"];
+export const PALETTE = [
+  "#0a84ff",
+  "#5e5ce6",
+  "#40c8e0",
+  "#bf5af2",
+  "#66d4cf",
+  "#7d8fa9",
+  "#ac8e68",
+  "#98989d",
+];
 
 /** Where a chart plots, inside its canvas. */
 export interface Plot {
@@ -205,10 +214,10 @@ export interface Ink {
 
 export function ink(): Ink {
   return {
-    line: token("--grid", "#262c35"),
-    muted: token("--muted", "#8a94a3"),
-    text: token("--text", "#d8dee6"),
-    panel: token("--panel", "#161a20"),
+    line: token("--grid", "#1e2024"),
+    muted: token("--muted", "#8b8d98"),
+    text: token("--text", "#f2f3f5"),
+    panel: token("--panel", "#141518"),
   };
 }
 

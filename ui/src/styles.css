@@ -1,49 +1,64 @@
 /* Themes: dark by default, light on request, set as data-theme on <html>.
-   The colours are warm graphite and bronze. Bronze is the product's own
-   colour and never a severity: what is severe is red, what warns is yellow,
-   and neither sits beside it. */
+   The colours are those of docs/adr/0024-interface.md: a cool, near black
+   ground, surfaces told apart by lightness, and one blue accent for what
+   can be acted on and what is selected. Blue is never a severity or a
+   state; those have the colours below and no others. */
 :root,
 :root[data-theme="dark"] {
-  --bg: #121110;
-  --panel: #1b1917;
-  --raised: #23201d;
-  --line: #2e2a26;
-  --grid: #26221f;
-  --text: #ece6dd;
-  --muted: #9a9085;
-  --accent: #c98a4b;
-  --on-accent: #17110a;
-  --selected: #2a2118;
-  --error: #f06a5d;
-  --severe: #e5484d;
-  --warn: #e3c341;
-  --good: #3fb950;
+  --bg: #0b0c0e;
+  --panel: #141518;
+  --raised: #1c1d21;
+  --line: #26282d;
+  --grid: #1e2024;
+  --text: #f2f3f5;
+  --muted: #8b8d98;
+  --accent: #0a84ff;
+  --on-accent: #ffffff;
+  /* A ground for white text: the accent itself is too light for it. */
+  --accent-fill: #0071e3;
+  --selected: #12233a;
+  --error: #ff453a;
+  --severe: #ff453a;
+  --warn: #ffd60a;
+  --good: #30d158;
+  --critical: #ff453a;
+  --high: #ff9f0a;
+  --medium: #ffd60a;
+  --low: #7d8fa9;
+  --info: #787a85;
   --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
   color-scheme: dark;
   font:
-    13px / 1.45 "Segoe UI",
+    13px / 1.45 -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
     system-ui,
-    -apple-system,
     sans-serif;
   background: var(--bg);
   color: var(--text);
 }
 
 :root[data-theme="light"] {
-  --bg: #f3efe9;
+  --bg: #f5f5f7;
   --panel: #ffffff;
-  --raised: #f7f3ee;
-  --line: #e2dbd1;
-  --grid: #ede7de;
-  --text: #221d17;
-  --muted: #766c60;
-  --accent: #9c5f22;
+  --raised: #f0f0f3;
+  --line: #dedee3;
+  --grid: #e8e8ed;
+  --text: #1d1d1f;
+  --muted: #68686d;
+  --accent: #0066cc;
   --on-accent: #ffffff;
-  --selected: #f4e8da;
-  --error: #c9302c;
-  --severe: #c9302c;
-  --warn: #a8860b;
-  --good: #1f883d;
+  --accent-fill: #0066cc;
+  --selected: #e3effc;
+  --error: #d70015;
+  --severe: #d70015;
+  --warn: #a05a00;
+  --good: #1d7a33;
+  --critical: #d70015;
+  --high: #c93400;
+  --medium: #a05a00;
+  --low: #5b6b82;
+  --info: #86868b;
   color-scheme: light;
 }
 
@@ -69,8 +84,8 @@ button {
 
 button {
   cursor: pointer;
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
   color: var(--on-accent);
 }
 

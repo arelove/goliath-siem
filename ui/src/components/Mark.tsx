@@ -1,5 +1,5 @@
 /**
- * The mark: a G of seven bars, as lines of a log are. One bar is bronze, the
+ * The mark: a G of seven bars, as lines of a log are. One bar has the accent, the
  * crossbar of the letter: the event that matters among the others.
  */
 export function Mark() {
