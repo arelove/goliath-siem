@@ -442,6 +442,29 @@ fn a_time_without_an_offset_is_utc_when_the_definition_says_so() {
 }
 
 #[test]
+fn rows_need_the_names_of_their_columns_and_nothing_else_takes_them() {
+    let rows = MINIMAL.replace("decoding: json", "decoding: csv");
+    assert_eq!(
+        error(&rows).to_string(),
+        "`columns` is needed by decoding `csv`, and by no other"
+    );
+    let named = MINIMAL.replace(
+        "decoding: json",
+        "decoding: json
+columns: [a, b]",
+    );
+    assert_eq!(error(&named), DefinitionError::Columns);
+    assert!(
+        Normalizer::from_yaml(&rows.replace(
+            "decoding: csv",
+            "decoding: csv
+columns: [a, b]"
+        ))
+        .is_ok()
+    );
+}
+
+#[test]
 fn framing_and_decoding_must_fit_together() {
     let audit_json = MINIMAL.replace("framing: lines", "framing: audit-events");
     assert_eq!(

@@ -1,0 +1,44 @@
+# The platform on one machine, reading what an Android phone exported with
+# PCAPdroid and matching it against public feeds of indicators. See
+# docs/phone.md.
+#
+#   docker compose -f compose.dev.yaml up -d --wait
+#   scripts/dev-run.sh deploy/phone.toml
+#
+# Then open http://127.0.0.1:8080. Paths are from this file's directory.
+
+roles = ["collector", "normalizer", "detector", "writer", "api"]
+data = "../data/phone"
+
+# Put each CSV file PCAPdroid exported into this directory.
+[[sources]]
+definition = "pcapdroid"
+inbox = "../inbox/pcapdroid"
+
+# Fetched from abuse.ch when the platform starts, and kept current.
+[detector]
+
+[[detector.feeds]]
+definition = "threatfox"
+
+[[detector.feeds]]
+definition = "urlhaus"
+
+[[detector.feeds]]
+definition = "feodo-tracker"
+
+[store]
+url = "http://127.0.0.1:8123"
+database = "goliath_phone"
+user = "goliath"
+# Set by scripts/dev-env.sh from the CLICKHOUSE_PASSWORD in .env.
+password_env = "GOLIATH_CLICKHOUSE_PASSWORD"
+retention_days = 90
+
+# On the loopback address alone, so it asks for no token.
+[api]
+ui = "../ui/dist"
+url = "http://127.0.0.1:8080"
+
+[metrics]
+listen = "127.0.0.1:9464"

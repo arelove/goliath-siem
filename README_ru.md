@@ -71,8 +71,9 @@ Sigma встречаются в срабатывании:
 Логи принимаются по HTTP с токеном на каждый источник, как syslog по TCP с
 TLS или как логи OpenTelemetry, и подтверждаются, только когда уже не могут
 потеряться. Готовые определения есть для Sysmon, журнала Security Windows,
-auditd, Falco, Entra ID, AWS CloudTrail, Okta, Microsoft 365, Zeek и
-Suricata, а любой другой источник описывается тем же YAML. Здоровье каждого
+auditd, Falco, Entra ID, AWS CloudTrail, Okta, Microsoft 365, Zeek,
+Suricata и соединений телефона на Android
+([docs/phone.md](docs/phone.md)), а любой другой источник описывается тем же YAML. Здоровье каждого
 источника, когда он в последний раз присылал события и как его последний час
 соотносится с тем же часом за неделю, видно рядом с поиском.
 
@@ -231,6 +232,7 @@ let matched: Vec<usize> = engine.matches(&ocsf_event);
 | [docs/sigma-coverage.md](docs/sigma-coverage.md) | Сколько правил SigmaHQ загружается и срабатывает на настоящих атаках, и как быстро |
 | [docs/benchmarks.md](docs/benchmarks.md) | Как меряется скорость и как CI не пропускает её регрессии |
 | [docs/detector.md](docs/detector.md) | Сопоставление threat intelligence: фиды, списки исключений, находки, за чем следить |
+| [docs/phone.md](docs/phone.md) | Телефон на Android: какое приложение куда ходит, со сверкой по публичным фидам |
 | [docs/lab.md](docs/lab.md) | Домашний стенд: логи со второй машины по локальной сети |
 | [docs/adr/](docs/adr/) | Архитектурные решения |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Инварианты, правила ревью, как добавить решение |

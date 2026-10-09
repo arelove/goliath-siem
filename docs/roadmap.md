@@ -236,6 +236,9 @@ rate on one machine without losing an acknowledged record.
 
 Follow-ups found while building it, none in the exit criterion:
 
+- Built since: a decoding for rows of comma-separated values, and with it
+  a definition for the connections of an Android phone
+  ([phone.md](phone.md)).
 - Decodings for CEF and LEEF, and for text by regular expression or
   `key=value` pairs, so that appliances writing neither JSON nor syslog
   structured data can be read without a definition per format.

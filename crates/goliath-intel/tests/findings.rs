@@ -547,6 +547,7 @@ fn each_shipped_source_gives_the_kinds_its_events_hold() {
         ("falco", "domain file-path user"),
         ("m365", "ip user"),
         ("okta", "ip user"),
+        ("pcapdroid", "domain ip url"),
         (
             "suricata",
             "certificate-hash domain file-name ip ja3 sha256 url",

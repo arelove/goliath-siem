@@ -8,6 +8,8 @@
 #
 # Then open http://127.0.0.1:8080; on the loopback address the interface
 # asks for no token. Drop Sysmon events into inbox/sysmon/. Stop with Ctrl-C.
+#
+# Another configuration can be named, such as deploy/phone.toml.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -18,5 +20,5 @@ if [ ! -f ui/dist/index.html ] || [ -n "$(find ui/src ui/index.html -newer ui/di
     echo "building the interface"
     (cd ui && pnpm install --frozen-lockfile && pnpm build)
 fi
-mkdir -p inbox/sysmon data/dev
-exec cargo run --release -p goliath -- run --config deploy/dev.toml
+mkdir -p inbox/sysmon inbox/pcapdroid data/dev
+exec cargo run --release -p goliath -- run --config "${1:-deploy/dev.toml}"

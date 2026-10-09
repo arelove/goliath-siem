@@ -46,6 +46,7 @@
 #![cfg_attr(test, allow(clippy::expect_used, clippy::panic, clippy::unwrap_used))]
 
 mod auditd;
+mod csv;
 pub mod definition;
 pub mod error;
 pub mod normalizer;
@@ -95,6 +96,10 @@ pub const M365: &str = include_str!("../sources/m365.yaml");
 /// and drop records.
 pub const SURICATA: &str = include_str!("../sources/suricata.yaml");
 
+/// The `PCAPdroid` definition shipped with this crate: the connections of an
+/// Android phone, each with the app that made it, as its CSV export.
+pub const PCAPDROID: &str = include_str!("../sources/pcapdroid.yaml");
+
 /// The Zeek definition shipped with this crate: connections, DNS, HTTP,
 /// TLS, certificates, SMB files, DCE/RPC, Kerberos, RDP, and SSH.
 pub const ZEEK: &str = include_str!("../sources/zeek.yaml");
@@ -107,6 +112,7 @@ pub const BUILTIN: &[(&str, &str)] = &[
     ("falco", FALCO),
     ("m365", M365),
     ("okta", OKTA),
+    ("pcapdroid", PCAPDROID),
     ("suricata", SURICATA),
     ("sysmon-flat", SYSMON_FLAT),
     ("sysmon", SYSMON),

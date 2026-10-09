@@ -22,6 +22,9 @@ pub struct SourceDefinition {
     pub framing: Framing,
     /// How a record becomes a field map.
     pub decoding: Decoding,
+    /// The names of a row's values, in the row's order, for `csv` decoding.
+    #[serde(default)]
+    pub columns: Vec<String>,
     /// Values a source writes for a field it has no value for, such as
     /// Windows' `-`. A field whose source holds one is not written, as if
     /// the source had left it out; the value is still kept under
@@ -85,6 +88,11 @@ pub enum Decoding {
     /// A syslog message whose text after the header is JSON, decoded under
     /// `message`, for applications that log JSON over syslog.
     SyslogJson,
+    /// A row of comma-separated values, as RFC 4180 writes them, as one
+    /// object with each value, as text, under the name `columns` gives it.
+    /// A row that is the names themselves, a file's header, is not a
+    /// record.
+    Csv,
 }
 
 /// One kind of record, and how it maps to an OCSF class.

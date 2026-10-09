@@ -69,7 +69,8 @@ browser and over HTTP: over 10 million events, in 38 to 806 ms on a laptop
 Logs arrive over HTTP with a token per source, as syslog over TCP with TLS,
 or as OpenTelemetry logs, and are acknowledged only once they cannot be
 lost. Definitions ship for Sysmon, the Windows Security log, auditd, Falco,
-Entra ID, AWS CloudTrail, Okta, Microsoft 365, Zeek, and Suricata, and any
+Entra ID, AWS CloudTrail, Okta, Microsoft 365, Zeek, Suricata, and the
+connections of an Android phone ([docs/phone.md](docs/phone.md)), and any
 other source can be described in the same YAML. Each source's health, when
 it last sent and how its last hour compares with the same hour of its week,
 is shown beside the search.
@@ -249,6 +250,7 @@ significant decision has an ADR in [docs/adr/](docs/adr/).
 | [docs/sigma-coverage.md](docs/sigma-coverage.md) | How much of SigmaHQ loads and fires on real attacks, and how fast |
 | [docs/benchmarks.md](docs/benchmarks.md) | How speed is measured, and how CI stops regressions |
 | [docs/detector.md](docs/detector.md) | Matching threat intelligence: feeds, allowlists, findings, what to watch |
+| [docs/phone.md](docs/phone.md) | An Android phone: which app talks to where, matched against public feeds |
 | [docs/lab.md](docs/lab.md) | A home lab: logs from a second machine over the local network |
 | [docs/adr/](docs/adr/) | Architecture decision records |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Invariants, review rules, how to add a decision |
