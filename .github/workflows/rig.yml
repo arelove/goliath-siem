@@ -26,6 +26,11 @@ jobs:
     services:
       clickhouse:
         image: clickhouse/clickhouse-server:25.8
+        # Docker Hub's limit on anonymous pulls runs out on shared runners.
+        # Without the secrets, as in a fork, the runner pulls anonymously.
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
         env:
           CLICKHOUSE_USER: goliath
           CLICKHOUSE_PASSWORD: goliath
@@ -43,6 +48,17 @@ jobs:
       GOLIATH_CLICKHOUSE_PASSWORD: goliath
     steps:
       - uses: actions/checkout@v7
+      - name: Log in to Docker Hub
+        # Its limit on anonymous pulls is shared by every project on the
+        # runner's address, and runs out. A pull request from a fork has no
+        # secret, and pulls anonymously as before.
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "$DOCKERHUB_TOKEN" ]; then
+            echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+          fi
       - name: Start Redpanda
         run: |
           docker run -d --name redpanda -p 9092:9092 redpandadata/redpanda:latest \
