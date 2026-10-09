@@ -78,3 +78,9 @@ release = false
 name = "goliath-intel"
 publish = false
 release = false
+
+[[package]]
+# Not released until the detector has used it.
+name = "goliath-enrich"
+publish = false
+release = false
