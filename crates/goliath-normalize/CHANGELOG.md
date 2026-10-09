@@ -9,6 +9,14 @@ Generated from commit history. See [RELEASING.md](../../RELEASING.md).
 
 ## [Unreleased]
 
+## [0.2.18] - 2026-10-09
+
+
+### Added
+
+- Rows of comma-separated values as records
+- The connections of an Android phone, as PCAPdroid exports them
+
 ## [0.2.17] - 2026-10-03
 
 
