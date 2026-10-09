@@ -34,6 +34,16 @@ compares for equality are taken.
 | `feeds/urlhaus.yaml` | abuse.ch URLhaus, recent | URLs distributing malware |
 | `feeds/threatfox.yaml` | abuse.ch ThreatFox, recent | Addresses, domains, URLs, and file hashes, each with its own confidence |
 | `feeds/sslbl.yaml` | abuse.ch SSLBL | SHA-1 fingerprints of certificates |
+| `feeds/loldrivers.yaml` | LOLDrivers, by way of mthcht/awesome-lists | Hashes of vulnerable and malicious drivers |
+| `feeds/malicious-bootloaders.yaml` | bootloaders.io, by way of mthcht/awesome-lists | Hashes of malicious and vulnerable bootloaders |
+| `feeds/tor-exit-nodes.yaml` | Tor exit nodes, by way of mthcht/awesome-lists | Addresses, at a low confidence |
+
+The last three are reference lists from a repository, and are pinned: the
+definition names a `revision`, the commit, and `{revision}` in its `url`
+stands for it. A hit is reported with that commit as the feed's version, and
+taking a newer list is a change of that one line. A list of file hashes of
+several algorithms says `hashes: true` in place of a `kind`, and each value
+is MD5, SHA-1, or SHA-256 by its length.
 
 A publication that is not the feed is refused whole and the store keeps what
 it had: an error page in place of the file, a format that changed, no

@@ -1,0 +1,22 @@
+# Drivers that are vulnerable or malicious, as the LOLDrivers project lists
+# them, from the reference lists of mthcht/awesome-lists. A row is the hash
+# of the driver's file and the name it is known by; most hashes are SHA-256,
+# a few SHA-1, and some rows have none.
+#
+# A driver loaded with one of these hashes is how a process with
+# administrator rights reaches the kernel, to stop security software.
+#
+# The list is pinned to a commit: what a hit is reported with is that
+# commit, and taking a newer list is a change of `revision`.
+
+name: loldrivers
+description: Hashes of vulnerable and malicious drivers, from LOLDrivers by way of mthcht/awesome-lists
+url: https://raw.githubusercontent.com/mthcht/awesome-lists/{revision}/Lists/Drivers/loldrivers_only_hashes_list.csv
+revision: 2e4e649b0e06c1923e85687673238a87ffbc29ee
+licence: MIT
+confidence: 80
+refresh_minutes: 1440
+format: csv
+csv:
+  value: file_hash
+  hashes: true

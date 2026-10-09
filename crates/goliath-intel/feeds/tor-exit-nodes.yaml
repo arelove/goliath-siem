@@ -1,0 +1,22 @@
+# The addresses Tor's traffic leaves the network from, from the reference
+# lists of mthcht/awesome-lists. One address a row, IPv4 or IPv6.
+#
+# A connection from or to one is not an attack: it says that the other end
+# hides where it is. The confidence is low for that reason, and a site whose
+# users have a use for Tor leaves this feed out.
+#
+# The list is pinned to a commit: what a hit is reported with is that
+# commit, and taking a newer list is a change of `revision`. Exit nodes
+# change by the day, so this one ages faster than the hash lists.
+
+name: tor-exit-nodes
+description: Tor exit nodes, by way of mthcht/awesome-lists
+url: https://raw.githubusercontent.com/mthcht/awesome-lists/{revision}/Lists/TOR/only_tor_exit_nodes_IP_list.csv
+revision: 2e4e649b0e06c1923e85687673238a87ffbc29ee
+licence: MIT
+confidence: 40
+refresh_minutes: 1440
+format: csv
+csv:
+  value: dest_ip
+  kind: ip
