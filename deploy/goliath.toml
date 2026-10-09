@@ -2,12 +2,32 @@
 # container: /var/lib/goliath is a volume, and the inbox is bound to ./inbox
 # on the host.
 
-roles = ["collector", "normalizer", "writer", "api"]
+roles = ["collector", "normalizer", "detector", "writer", "api"]
 data = "/var/lib/goliath/data"
 
 [[sources]]
 definition = "sysmon"
 inbox = "/var/lib/goliath/inbox/sysmon"
+
+# What an Android phone exported with PCAPdroid; see docs/phone.md.
+[[sources]]
+definition = "pcapdroid"
+inbox = "/var/lib/goliath/inbox/pcapdroid"
+
+# Feeds of abuse.ch, fetched when the platform starts and kept current: the
+# one thing here that reaches out of the machine. Nothing of an event is
+# sent: the feeds are looked up locally. Without a way out the platform
+# runs the same, and matches nothing until a feed was fetched.
+[detector]
+
+[[detector.feeds]]
+definition = "threatfox"
+
+[[detector.feeds]]
+definition = "urlhaus"
+
+[[detector.feeds]]
+definition = "feodo-tracker"
 
 [store]
 url = "http://clickhouse:8123"

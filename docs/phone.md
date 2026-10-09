@@ -39,9 +39,19 @@ the table of connections is.
 
 ## On the machine
 
-It needs Docker Desktop, Rust, and this repository, as
-[CONTRIBUTING.md](../CONTRIBUTING.md) describes for running the platform
-from the working tree.
+It needs Docker Desktop and this repository. The platform's own stack
+reads a phone's export beside everything else it takes, so its events are
+in one place with the others:
+
+```sh
+docker compose up -d
+```
+
+Put each exported file into `inbox/pcapdroid/` and open
+<http://127.0.0.1:8080>, which asks for the API token of `.env`.
+
+To run it from the working tree instead, with a store of its own, it also
+needs Rust, as [CONTRIBUTING.md](../CONTRIBUTING.md) describes:
 
 ```sh
 docker compose -f compose.dev.yaml up -d --wait
@@ -62,6 +72,8 @@ by the second command, and answers once it says where the interface is.
 - Put each exported file into `inbox/pcapdroid/`. It is read within
   seconds, and may be deleted after.
 - Open <http://127.0.0.1:8081>.
+- Run one of the two at a time: both take files from `inbox/pcapdroid/`,
+  and a file goes to whichever sees it first.
 
 ## What to look at
 
