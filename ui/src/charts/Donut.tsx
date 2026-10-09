@@ -107,14 +107,16 @@ export function Donut({ entries, label = (key) => key }: Props) {
     context.fillText(focus === null ? "events" : `${compact(focus)} events`, centerX, centerY + 12);
   });
 
-  if (entries.length === 0) {
-    return <p className="note">Nothing in this range.</p>;
-  }
+  // The canvas is there from the first render, shown or not: the frames
+  // are started once, and a canvas that came later would never be drawn.
+  const empty = entries.length === 0;
   return (
     <div className="donut">
+      {empty && <p className="note">Nothing in this range.</p>}
       <canvas
         ref={canvas}
         className="ring"
+        hidden={empty}
         onPointerMove={(event) => {
           const box = event.currentTarget.getBoundingClientRect();
           pointer.current = { x: event.clientX - box.left, y: event.clientY - box.top };
