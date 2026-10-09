@@ -8,6 +8,7 @@ import { Results } from "./components/Results";
 import { SearchBar } from "./components/SearchBar";
 import { TokenPrompt } from "./components/TokenPrompt";
 import { Overview } from "./Overview";
+import { Platform } from "./Platform";
 import type { Draft } from "./query";
 import { fromParams, toParams, toSearch } from "./query";
 import { Sources } from "./Sources";
@@ -17,7 +18,7 @@ function unauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401;
 }
 
-type View = "overview" | "search" | "sources";
+type View = "overview" | "search" | "sources" | "platform";
 
 /** Ranges the dashboard offers, each ending now. */
 const RANGES = [
@@ -76,13 +77,14 @@ function MoonIcon() {
 
 function viewOf(params: URLSearchParams): View {
   const view = params.get("view");
-  return view === "search" || view === "sources" ? view : "overview";
+  return view === "search" || view === "sources" || view === "platform" ? view : "overview";
 }
 
 const TABS: Record<View, { tab: string; section: string }> = {
   overview: { tab: "Dashboard", section: "Security overview" },
   search: { tab: "Events", section: "Event search" },
   sources: { tab: "Sources", section: "Source health" },
+  platform: { tab: "Platform", section: "Platform health" },
 };
 
 export function App() {
@@ -187,7 +189,7 @@ export function App() {
       </header>
       <nav className="subbar">
         <div className="tabs" role="tablist">
-          {(["overview", "search", "sources"] as const).map((name) => (
+          {(["overview", "search", "sources", "platform"] as const).map((name) => (
             <button
               key={name}
               type="button"
@@ -214,7 +216,9 @@ export function App() {
           </select>
         )}
       </nav>
-      {view === "sources" ? (
+      {view === "platform" ? (
+        <Platform onError={setOverviewError} />
+      ) : view === "sources" ? (
         <Sources onError={setOverviewError} />
       ) : view === "overview" ? (
         <Overview

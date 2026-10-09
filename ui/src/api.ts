@@ -265,3 +265,87 @@ export interface Sources {
 export function sources(signal?: AbortSignal): Promise<Sources> {
   return request<Sources>("/sources", signal ? { signal } : {});
 }
+
+/** How well a thing is going, as the platform judges it. */
+export type Standing = "ok" | "degraded" | "failing";
+
+/** The answer to one question about one thing a role does. */
+export interface Condition {
+  role: string;
+  /** The question, such as `storing` or `keeping_up:normalized`. */
+  type: string;
+  status: Standing;
+  /** A word for machines. */
+  reason: string;
+  /** A sentence for people. */
+  message: string;
+  /** When the status began, in milliseconds since the epoch. */
+  since: number;
+}
+
+/** One process that runs a role. */
+export interface Instance {
+  instance: string;
+  /** Whether its newest report is younger than a minute. */
+  reporting: boolean;
+  version: string;
+  started: number;
+  last_report: number;
+  conditions: Condition[];
+}
+
+/** One role, judged from the processes that run it. */
+export interface RoleHealth {
+  role: string;
+  status: Standing;
+  reason: string;
+  message: string;
+  reporting: number;
+  /** Processes that ran it at once within the last day. */
+  expected: number;
+  /** Starts of a process that runs it, in the last ten minutes. */
+  starts: number;
+  instances: Instance[];
+}
+
+/** What one reader of one topic has still to read. */
+export interface Flow {
+  topic: string;
+  reader: string;
+  backlog: number;
+}
+
+/** A time through which a condition's status held. */
+export interface Change {
+  instance: string;
+  role: string;
+  kind: string;
+  status: Standing;
+  reason: string;
+  message: string;
+  since: number;
+  seen: number;
+}
+
+export interface PlatformHealth {
+  /** The server's clock, in milliseconds since the epoch. */
+  now: number;
+  /** Whether the store answered the question. */
+  store: "answers" | "silent";
+  platform: {
+    status: Standing;
+    reason: string;
+    message: string;
+    newest_report: number | null;
+    /** The worst first. */
+    roles: RoleHealth[];
+    /** The longest backlog first. */
+    flows: Flow[];
+    /** The newest first. */
+    changes: Change[];
+  };
+}
+
+export function platform(signal?: AbortSignal): Promise<PlatformHealth> {
+  return request<PlatformHealth>("/platform", signal ? { signal } : {});
+}

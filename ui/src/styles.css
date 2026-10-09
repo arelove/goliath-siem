@@ -712,3 +712,67 @@ li:hover > .leaf .add {
   margin: 0;
   font-size: 15px;
 }
+
+/* The platform's own health: a verdict, then roles with what each process
+   says, flows, and changes. */
+.verdict {
+  border-left: 3px solid var(--good);
+}
+
+.verdict.warn {
+  border-left-color: var(--warn);
+}
+
+.verdict.bad {
+  border-left-color: var(--severe);
+}
+
+.verdict-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.verdict-body p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.platform td.why {
+  white-space: normal;
+  width: 100%;
+  color: var(--text);
+}
+
+.platform tr.role td {
+  font-weight: 600;
+  background: var(--raised);
+}
+
+.platform tr.role td.why {
+  font-weight: 400;
+}
+
+.platform tr.condition td {
+  color: var(--muted);
+}
+
+.platform tr.condition td.instance {
+  padding-left: 26px;
+}
+
+.platform .gone {
+  color: var(--severe);
+}
+
+.flows td.bar {
+  width: 45%;
+}
+
+.flows td.bar span {
+  display: block;
+  height: 8px;
+  min-width: 2px;
+  border-radius: 4px;
+  background: var(--accent);
+}
