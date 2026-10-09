@@ -71,6 +71,8 @@ pub(crate) struct Server {
     /// The address people open the interface at, if the configuration
     /// says it.
     url: Option<String>,
+    /// Whether the interface asks who opens it for a token.
+    token: bool,
 }
 
 impl Server {
@@ -104,6 +106,7 @@ impl Server {
             listener,
             app: app(shared, config.ui.clone()),
             url: config.url.clone(),
+            token: config.token_file.is_some(),
         })
     }
 
@@ -120,7 +123,12 @@ impl Server {
         info!(%address, "api listening");
         if let Some(url) = &self.url {
             // In the text, so that a log viewer makes it a link.
-            info!("the interface is at {url} and asks for the API token");
+            let asks = if self.token {
+                " and asks for the API token"
+            } else {
+                ""
+            };
+            info!("the interface is at {url}{asks}");
         }
         axum::serve(self.listener, self.app)
             .with_graceful_shutdown(async move {

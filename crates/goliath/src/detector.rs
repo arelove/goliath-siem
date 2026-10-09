@@ -832,6 +832,7 @@ file = "feeds/feodo.csv"
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)] // One story, told in order.
     fn a_finding_is_given_what_the_site_knows_of_the_events_values() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("goliath.toml");
