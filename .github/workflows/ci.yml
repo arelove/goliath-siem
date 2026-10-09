@@ -45,6 +45,11 @@ jobs:
     services:
       clickhouse:
         image: clickhouse/clickhouse-server:${{ matrix.clickhouse }}
+        # Docker Hub's limit on anonymous pulls runs out on shared runners.
+        # Without the secrets, as in a fork, the runner pulls anonymously.
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
         env:
           CLICKHOUSE_USER: goliath
           CLICKHOUSE_PASSWORD: goliath
@@ -77,6 +82,11 @@ jobs:
     services:
       clickhouse:
         image: clickhouse/clickhouse-server:25.8
+        # Docker Hub's limit on anonymous pulls runs out on shared runners.
+        # Without the secrets, as in a fork, the runner pulls anonymously.
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
         env:
           CLICKHOUSE_USER: goliath
           CLICKHOUSE_PASSWORD: goliath
