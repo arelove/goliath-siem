@@ -44,6 +44,7 @@ orchestration, and incident handling in one system.
 | [0021](adr/0021-enrichment-placement.md) | Where indicators are matched and context is added: in a detector role beside the writer, each match a finding of its own, stored events never rewritten | Accepted |
 | [0022](adr/0022-context-snapshot.md) | What the context snapshot holds and where it comes from: networks, assets, identities, groups, and context lists, with typed fields in OCSF's names and a site's own labels, found by any identifier within a scope at the event's time, read from the site's exports, and written into findings as enrichments with their source |
 | [0023](adr/0023-platform-health.md) | Platform health: every process reports conditions with a reason and a time through the pipe, the writer stores them, and the API judges each role by its instances, each flow by its backlog and trend, and the records by an account of where each went; three probes on every process |
+| [0024](adr/0024-interface.md) | The interface: seven views in one shell with one time range, detail in a panel beside its list, every value a way on and every number a link to its rows, the way from a finding to a decision, and a dark palette with one blue accent that is never a severity |
 
 ## The site
 
