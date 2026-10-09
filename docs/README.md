@@ -42,6 +42,7 @@ orchestration, and incident handling in one system.
 | [0019](adr/0019-source-health.md) | Source health: events and dead letters counted by source and hour on insert, each source judged against the same hour of its last seven days | Accepted |
 | [0020](adr/0020-state-beyond-events.md) | State beyond the event store: RocksDB embedded for what events pass through, PostgreSQL from M4.5 for what people and workflows change, M4 without it | Accepted |
 | [0021](adr/0021-enrichment-placement.md) | Where indicators are matched and context is added: in a detector role beside the writer, each match a finding of its own, stored events never rewritten | Accepted |
+| [0022](adr/0022-context-snapshot.md) | What the context snapshot holds and where it comes from: networks, assets, identities, groups, and context lists, with typed fields in OCSF's names and a site's own labels, found by any identifier within a scope at the event's time, read from the site's exports, and written into findings as enrichments with their source |
 
 ## The site
 
