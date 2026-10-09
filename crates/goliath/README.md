@@ -82,6 +82,34 @@ on its own address, for whichever roles it runs:
 The endpoint takes no token: it holds counts and durations, never an event.
 Listen only on an address the monitoring system reaches.
 
+## Probes
+
+The same address answers three questions about the process, for Kubernetes
+or a load balancer ([ADR-0023](../../docs/adr/0023-platform-health.md)):
+
+| Path | Says yes when |
+| --- | --- |
+| `/health/live` | The process answers. A store or a pipe that is down does not make it say no: a restart mends neither |
+| `/health/startup` | Every role was started, and a detector looked at each of its feeds once |
+| `/health/ready` | It started, and is not shutting down |
+
+Yes is `200` with `{"status":"ok"}`. No is `503`, with what is waited for:
+
+```json
+{"status":"starting","waiting_for":["feeds"]}
+```
+
+```yaml
+startupProbe:
+  httpGet: { path: /health/startup, port: 9464 }
+  periodSeconds: 5
+  failureThreshold: 120
+livenessProbe:
+  httpGet: { path: /health/live, port: 9464 }
+readinessProbe:
+  httpGet: { path: /health/ready, port: 9464 }
+```
+
 ## License
 
 Copyright 2026 arelove. Licensed under the
