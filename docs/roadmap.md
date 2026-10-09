@@ -311,7 +311,7 @@ their users say of them, and cases the answer must serve.
 | Record | What it decides |
 | --- | --- |
 | Platform health, [ADR-0023](adr/0023-platform-health.md) | How someone who runs the platform sees what is wrong with it: which roles run and where, which collector is silent, where a topic's backlog grows, which feed or export of context is old, and why. For one machine and for roles spread over hosts or a Kubernetes cluster, where a process that restarts is the normal case. [ADR-0019](adr/0019-source-health.md) decides the health of sources; this is the health of the platform that reads them. It comes first: whoever starts the platform needs it on the first day |
-| The interface | What an analyst sees first, and the way from a finding to its event, its entities, and a decision. Which views exist and what each is for, before the list of M7 is built as written |
+| The interface, [ADR-0024](adr/0024-interface.md) | What an analyst sees first, and the way from a finding to its event, its entities, and a decision. Which views exist and what each is for, before the list of M7 is built as written |
 
 ## M4.5 - Entity graph
 
@@ -405,14 +405,18 @@ define external checkpoints to detect truncation and whole-log replacement.
 
 ## M7 - Interface
 
-The views below are what is planned; the two records after M4 decide how
-they fit together, and may change this list.
+The views below are what [ADR-0024](adr/0024-interface.md) decides, in the
+order it gives for building them.
 
 | Deliverable | Detail |
 | --- | --- |
+| Shell and palette | One rail of views, one time range, detail in a panel beside its list, and the dark palette of [ADR-0024](adr/0024-interface.md) |
+| Overview | The landing view: what needs a decision, whether data arrives, whether the platform is well; every part of every chart leads to its rows |
+| Findings | The queue, worked by keyboard, with a panel that goes from what was found to who and what, what else, the event, and the decision |
 | Investigation view | Virtualized event tables, entity pivots, timeline |
-| Case workspace | Triage queue, case detail, playbook status |
-| Coverage dashboard | The landing view: for each ATT&CK technique, whether a rule covers it, whether the data that rule needs is being collected, and whether it fired in its last backtest; a technique with a rule but no data is shown as uncovered |
+| Platform | Sources, roles, flows, feeds, and exports of context, as [ADR-0023](adr/0023-platform-health.md) judges them |
+| Case workspace | Case detail, playbook status, and where a decision is kept |
+| Coverage dashboard | For each ATT&CK technique, whether a rule covers it, whether the data that rule needs is being collected, and whether it fired in its last backtest; a technique with a rule but no data is shown as uncovered |
 | Configuration | Source onboarding with dry-run plan preview |
 | Analyst assistant | A question in plain language becomes a search, a graph query, or a draft rule in the same typed structures a person writes, checked against the schema and shown for review before it runs; never free SQL; works with a local model, so no event has to leave the deployment |
 
