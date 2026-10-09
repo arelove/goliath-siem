@@ -20,6 +20,9 @@ use crate::RunError;
 pub struct Config {
     /// The roles this process runs.
     pub roles: BTreeSet<Role>,
+    /// What this process is called in the health of the platform; its
+    /// host's name, or its pod's, if left out.
+    pub instance: Option<String>,
     /// Where durable topics and positions are kept, unless they are in
     /// Kafka.
     pub data: Option<PathBuf>,
@@ -77,6 +80,20 @@ pub enum Role {
     /// Matches indicators against normalized events, and sends each match
     /// on as a finding for the writer to store.
     Detector,
+}
+
+impl Role {
+    /// The role as the configuration names it.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Collector => "collector",
+            Self::Normalizer => "normalizer",
+            Self::Writer => "writer",
+            Self::Api => "api",
+            Self::Receiver => "receiver",
+            Self::Detector => "detector",
+        }
+    }
 }
 
 /// The receiver: where it listens, and with what certificate.

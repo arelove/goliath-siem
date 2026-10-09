@@ -12,11 +12,12 @@ use std::time::Duration;
 
 use goliath_normalize::{Envelope, Normalizer, Outcome};
 use goliath_pipe::{Delivery, Receiver, Sender};
-use goliath_store::{Batch, Limits, Store, StoreError, Writer};
+use goliath_store::{Batch, Limits, Report, Standing, Store, StoreError, Writer};
 use tokio::sync::watch;
 use tracing::{info, warn};
 
 use crate::RunError;
+use crate::health::Health;
 use crate::metrics::Metrics;
 
 /// How long a loop waits for records before checking for shutdown.
@@ -271,9 +272,18 @@ pub(crate) async fn write(
     threads: NonZeroUsize,
     topic: &'static str,
     mut outcomes: impl Receiver + Sync,
-    metrics: Metrics,
+    (metrics, health): (Metrics, Health),
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
+    // The condition of storing what this topic holds.
+    let storing = Storing {
+        health,
+        kind: if topic == "findings" {
+            "storing_findings"
+        } else {
+            "storing"
+        },
+    };
     let mut writer = Writer::new(store.clone(), limits);
     // The last offset the writer holds, and when the platform took each
     // outcome it holds.
@@ -318,6 +328,7 @@ pub(crate) async fn write(
                 &mut writer,
                 &mut received,
                 &mut pending,
+                &storing,
                 &stop,
             ));
         }
@@ -336,6 +347,7 @@ pub(crate) async fn write(
                 .await
                 .map_err(|error| RunError::Role(format!("writing: {error}")))??;
             outcomes.acknowledge(insert.through).await?;
+            storing.stored(took);
             metrics.flushed(took);
             metrics.stored(&insert.received, crate::raw::now());
             info!(through = insert.through, "stored");
@@ -413,10 +425,16 @@ impl Insert {
         writer: &mut Writer,
         through: &mut Option<u64>,
         received: &mut Vec<Option<i64>>,
+        storing: &Storing,
         stop: &watch::Receiver<bool>,
     ) -> Self {
         let batches = writer.take();
-        let task = tokio::spawn(insert(store.clone(), batches, stop.clone()));
+        let task = tokio::spawn(insert(
+            store.clone(),
+            batches,
+            storing.clone(),
+            stop.clone(),
+        ));
         Self {
             // Something was added before anything is taken.
             through: through.take().unwrap_or_default(),
@@ -433,6 +451,7 @@ impl Insert {
 async fn insert(
     store: Store,
     batches: Vec<Batch>,
+    storing: Storing,
     mut stop: watch::Receiver<bool>,
 ) -> Result<Duration, RunError> {
     let mut pause = Duration::from_millis(250);
@@ -451,12 +470,93 @@ async fn insert(
             None => return Ok(started.elapsed()),
             Some(StoreError::ClickHouse(error)) if !*stop.borrow() => {
                 warn!(%error, retry_in = ?pause, "store unavailable; holding records and retrying");
+                storing.refused(&error);
                 let _ = tokio::time::timeout(pause, stop.changed()).await;
                 pause = (pause * 2).min(Duration::from_secs(30));
             }
             Some(error) => return Err(RunError::Store(error)),
         }
     }
+}
+
+/// A batch that takes the store longer than this is told.
+const SLOW: Duration = Duration::from_secs(10);
+
+/// How storing goes, as the writer's condition says it.
+#[derive(Clone)]
+struct Storing {
+    health: Health,
+    kind: &'static str,
+}
+
+impl Storing {
+    /// A batch was stored, in `took`.
+    fn stored(&self, took: Duration) {
+        if took > SLOW {
+            self.health.set(
+                "writer",
+                self.kind,
+                Standing::Degraded,
+                "store_slow",
+                format!(
+                    "The store took {} seconds for the last batch. Look at its load and its disk.",
+                    took.as_secs()
+                ),
+            );
+        } else {
+            self.health.set(
+                "writer",
+                self.kind,
+                Standing::Ok,
+                "stored",
+                "The last batch was stored.".to_owned(),
+            );
+        }
+    }
+
+    /// The store refused a batch, which is held and tried again.
+    fn refused(&self, error: &impl std::fmt::Display) {
+        self.health.set(
+            "writer",
+            self.kind,
+            Standing::Failing,
+            "store_refused",
+            format!("The store refused the last batch, which is held and tried again: {error}"),
+        );
+    }
+}
+
+/// Keeps what the processes of the platform report of themselves, from the
+/// `health` topic.
+///
+/// A report is worth what it says now: one that cannot be read or stored
+/// is given up and not held, and the next one of its process says more.
+pub(crate) async fn keep_reports(
+    store: Store,
+    mut reports: impl Receiver + Sync,
+    mut stop: watch::Receiver<bool>,
+) -> Result<(), RunError> {
+    while !*stop.borrow_and_update() {
+        let deliveries = reports.receive(BATCH, POLL).await?;
+        let Some(last) = deliveries.last().map(|delivery| delivery.offset) else {
+            continue;
+        };
+        let read: Vec<Report> = deliveries
+            .iter()
+            .filter_map(|delivery| match serde_json::from_slice(&delivery.payload) {
+                Ok(report) => Some(report),
+                Err(error) => {
+                    warn!(%error, "a report on the health topic cannot be read");
+                    None
+                }
+            })
+            .collect();
+        if let Err(error) = store.write_reports(&read, crate::raw::now()).await {
+            warn!(%error, reports = read.len(), "reports of the platform were not stored");
+        }
+        reports.acknowledge(last).await?;
+    }
+    Ok(())
 }
 
 fn io(path: &Path, error: &std::io::Error) -> RunError {

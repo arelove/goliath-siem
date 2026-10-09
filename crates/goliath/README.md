@@ -110,6 +110,35 @@ readinessProbe:
   httpGet: { path: /health/ready, port: 9464 }
 ```
 
+## Reports
+
+Every process that reaches the pipe says of itself every 15 seconds: its
+name, its roles, its version, when it started, and the condition of each
+thing it does. The report goes to the `health` topic, and the writer keeps
+it in the store, the newest of each process for a day and each time a
+condition's status held for five weeks.
+
+```toml
+# What this process is called; its host's name, or its pod's, if left out.
+instance = "writer-eu-1"
+```
+
+A condition is a question, an answer, and why:
+
+```json
+{"role": "writer", "type": "storing", "status": "failing",
+ "reason": "store_refused", "since": 1791586220000,
+ "message": "The store refused the last batch, which is held and tried again: ..."}
+```
+
+| Role | Condition | Degraded when | Failing when |
+| --- | --- | --- | --- |
+| writer | `storing`, and `storing_findings` for what the detector found | The store took longer than 10 seconds for a batch | The store refused the last batch |
+
+The other conditions of [ADR-0023](../../docs/adr/0023-platform-health.md)
+follow. A report that cannot be sent is given up, and the next says more: a
+process never waits or stops over its own health.
+
 ## License
 
 Copyright 2026 arelove. Licensed under the
