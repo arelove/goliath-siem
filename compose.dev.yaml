@@ -7,7 +7,7 @@
 #   cargo test -p goliath-pipe -p goliath --features kafka
 #
 # It is not the platform: for that, with the interface, see compose.yaml.
-# Both publish ClickHouse on port 8123, so run one of them at a time.
+# ClickHouse is on port 18123 here and on 8123 there, so both can run.
 #
 #   docker compose -f compose.dev.yaml down -v     # stop, and delete the data
 
@@ -18,6 +18,10 @@ services:
     extends:
       file: compose.yaml
       service: clickhouse
+    # Not the platform's own port: a container whose port is taken starts
+    # with no network, and the platform beside it then cannot reach it.
+    ports: !override
+      - "127.0.0.1:18123:8123"
     restart: "no"
 
   redpanda:
