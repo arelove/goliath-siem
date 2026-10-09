@@ -317,7 +317,8 @@ Left for later, each with the condition that brings it:
 
 Built of ADR-0023 so far: the three probes on every process, the report
 each sends through the pipe every 15 seconds, the writer keeping them, and
-the conditions of storing and of keeping up with a topic, and
+the conditions of storing, of keeping up with a topic, of normalizing a
+source, and of each feed being current, and
 `GET /api/v1/platform`, which judges each role by the processes that
 report and gives each topic's backlog. The other conditions, the time
 until a topic is full, the account of records, and the view of the

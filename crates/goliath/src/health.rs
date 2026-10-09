@@ -39,6 +39,57 @@ const WINDOW: i64 = 600_000;
 /// A backlog shorter than this is not said to grow, whatever it does.
 const WORTH_TELLING: u64 = 1_000;
 
+/// Outcomes are counted by the minute, for this many minutes.
+const OUTCOME_MINUTES: i64 = 60;
+/// Fewer outcomes than this in the hour say nothing of a source.
+const OUTCOMES_WORTH_TELLING: u64 = 100;
+
+/// What the records of one source became, by the minute, over the last
+/// hour.
+#[derive(Default)]
+struct Outcomes {
+    /// The minute since the epoch, events, and dead letters.
+    minutes: VecDeque<(i64, u64, u64)>,
+}
+
+impl Outcomes {
+    fn add(&mut self, now: i64, events: u64, dead_letters: u64) {
+        let minute = now / 60_000;
+        match self.minutes.back_mut() {
+            Some((last, counted, dead)) if *last == minute => {
+                *counted += events;
+                *dead += dead_letters;
+            }
+            _ => self.minutes.push_back((minute, events, dead_letters)),
+        }
+        while self
+            .minutes
+            .front()
+            .is_some_and(|(first, _, _)| minute - first >= OUTCOME_MINUTES)
+        {
+            self.minutes.pop_front();
+        }
+    }
+
+    /// Events and dead letters of the last hour.
+    fn hour(&self) -> (u64, u64) {
+        self.minutes
+            .iter()
+            .fold((0, 0), |(events, dead), (_, counted, dead_letters)| {
+                (events + counted, dead + dead_letters)
+            })
+    }
+}
+
+/// What is known of one feed of indicators.
+#[derive(Default)]
+struct FeedState {
+    /// Whether a publication of it was ever loaded.
+    held: bool,
+    /// When it was last known to be current, in seconds since the epoch.
+    checked: Option<i64>,
+}
+
 /// What one reader of one topic had still to read, over the last ten
 /// minutes.
 #[derive(Default)]
@@ -101,6 +152,10 @@ struct Inner {
     conditions: Mutex<BTreeMap<(&'static str, String), Condition>>,
     /// What each reader has still to read, by topic and reader.
     backlogs: Mutex<BTreeMap<(String, &'static str), Backlog>>,
+    /// What the records of each source became.
+    outcomes: Mutex<BTreeMap<String, Outcomes>>,
+    /// What is known of each feed.
+    feeds: Mutex<BTreeMap<String, FeedState>>,
 }
 
 /// Who a process is, as its reports say.
@@ -247,6 +302,124 @@ impl Health {
                 format!("The backlog of `{topic}` is {records} records."),
             ),
         }
+    }
+
+    /// Notes that records of `source` became so many events and dead
+    /// letters, and says how normalizing it goes: the condition
+    /// `normalizing:<source>` of the normalizer is degraded while more than
+    /// 1% of the last hour's records became dead letters, and failing while
+    /// more than half did.
+    pub(crate) fn outcomes(&self, source: &str, events: u64, dead_letters: u64) {
+        self.outcomes_at(crate::raw::now(), source, events, dead_letters);
+    }
+
+    fn outcomes_at(&self, now: i64, source: &str, events: u64, dead_letters: u64) {
+        let (events, dead) = {
+            let mut outcomes = self
+                .0
+                .outcomes
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
+            let outcomes = outcomes.entry(source.to_owned()).or_default();
+            outcomes.add(now, events, dead_letters);
+            outcomes.hour()
+        };
+        let all = events + dead;
+        let kind = format!("normalizing:{source}");
+        let told = format!(
+            "{dead} of the {all} records of `{source}` in the last hour became dead letters."
+        );
+        let (status, reason, message) = if all < OUTCOMES_WORTH_TELLING || dead * 100 <= all {
+            (Standing::Ok, "normalized", told)
+        } else if dead * 2 > all {
+            (
+                Standing::Failing,
+                "mostly_dead_letters",
+                format!(
+                    "{told} The source sends something its definition does not read: look at \
+                     the stage and the error of its dead letters."
+                ),
+            )
+        } else {
+            (
+                Standing::Degraded,
+                "dead_letters",
+                format!("{told} Look at the stage and the error of its dead letters."),
+            )
+        };
+        self.set_at(now, "normalizer", &kind, status, reason, message);
+    }
+
+    /// A publication of `feed` is held.
+    pub(crate) fn feed_held(&self, feed: &str) {
+        self.feeds().entry(feed.to_owned()).or_default().held = true;
+    }
+
+    /// `feed` is known to be current at `at`, in seconds since the epoch.
+    pub(crate) fn feed_checked(&self, feed: &str, at: i64) {
+        self.feeds().entry(feed.to_owned()).or_default().checked = Some(at);
+    }
+
+    /// Says whether `feed`, which is refreshed every `refresh_minutes`, is
+    /// current: the detector's condition `feeds_current:<feed>` is failing
+    /// while no publication of it was ever loaded, and degraded while it is
+    /// older than twice its refresh.
+    pub(crate) fn feed_watched(&self, feed: &str, refresh_minutes: u32) {
+        self.feed_watched_at(crate::raw::now(), feed, refresh_minutes);
+    }
+
+    fn feed_watched_at(&self, now: i64, feed: &str, refresh_minutes: u32) {
+        let (held, checked) = {
+            let mut feeds = self.feeds();
+            let state = feeds.entry(feed.to_owned()).or_default();
+            (state.held, state.checked)
+        };
+        let every = i64::from(refresh_minutes) * 60;
+        let age = checked.map(|checked| now / 1000 - checked);
+        let (status, reason, message) = match (held, age) {
+            (false, _) => (
+                Standing::Failing,
+                "feed_never_loaded",
+                format!(
+                    "The feed `{feed}` was never loaded, so nothing is matched against it. \
+                     Look at whether its address answers, or its file is there."
+                ),
+            ),
+            (true, None) => (
+                Standing::Degraded,
+                "feed_old",
+                format!(
+                    "The feed `{feed}` is held as it was before this process started, and was \
+                     not fetched since. Look at whether its address answers."
+                ),
+            ),
+            (true, Some(age)) if age > 2 * every => (
+                Standing::Degraded,
+                "feed_old",
+                format!(
+                    "The feed `{feed}` was last current {} minutes ago, and is to be \
+                     refreshed every {refresh_minutes}. Look at whether its address answers.",
+                    age / 60
+                ),
+            ),
+            (true, Some(_)) => (
+                Standing::Ok,
+                "current",
+                format!("The feed `{feed}` is held and current."),
+            ),
+        };
+        self.set_at(
+            now,
+            "detector",
+            &format!("feeds_current:{feed}"),
+            status,
+            reason,
+            message,
+        );
+    }
+
+    fn feeds(&self) -> std::sync::MutexGuard<'_, BTreeMap<String, FeedState>> {
+        self.0.feeds.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     /// What the process `identity` names says of itself at `now`.
@@ -575,6 +748,90 @@ mod tests {
             level.backlog_at(i64::from(step) * 15_000, "normalized", "writer", 50_000);
         }
         assert_eq!(condition(&level).1, Standing::Ok);
+    }
+
+    fn only(health: &Health) -> (String, Standing, String) {
+        let report = health.report(&identity(), 0);
+        assert_eq!(report.conditions.len(), 1, "{:?}", report.conditions);
+        let held = &report.conditions[0];
+        (held.kind.clone(), held.status, held.reason.clone())
+    }
+
+    #[test]
+    fn a_source_whose_records_become_dead_letters_is_told_by_their_share() {
+        let health = Health::default();
+        // Too few to say anything of.
+        health.outcomes_at(0, "zeek", 10, 40);
+        assert_eq!(
+            only(&health),
+            (
+                "normalizing:zeek".to_owned(),
+                Standing::Ok,
+                "normalized".to_owned()
+            )
+        );
+        // One in a hundred is not told; more is.
+        health.outcomes_at(60_000, "zeek", 4_940, 10);
+        assert_eq!(only(&health).1, Standing::Ok);
+        health.outcomes_at(120_000, "zeek", 0, 1);
+        assert_eq!(
+            (only(&health).1, only(&health).2.as_str()),
+            (Standing::Degraded, "dead_letters")
+        );
+        let report = health.report(&identity(), 0);
+        assert_eq!(
+            report.conditions[0].message,
+            "51 of the 5001 records of `zeek` in the last hour became dead letters. Look at \
+             the stage and the error of its dead letters."
+        );
+        assert_eq!(report.conditions[0].role, "normalizer");
+        // More than half.
+        health.outcomes_at(180_000, "zeek", 0, 6_000);
+        assert_eq!(only(&health).2, "mostly_dead_letters");
+        // An hour on, what was counted then is forgotten.
+        health.outcomes_at(3_780_000, "zeek", 500, 0);
+        assert_eq!(only(&health).1, Standing::Ok);
+    }
+
+    #[test]
+    fn a_feed_is_failing_until_loaded_and_degraded_when_old() {
+        let health = Health::default();
+        let now = 1_000_000_000;
+        health.feed_watched_at(now, "urlhaus", 30);
+        assert_eq!(
+            only(&health),
+            (
+                "feeds_current:urlhaus".to_owned(),
+                Standing::Failing,
+                "feed_never_loaded".to_owned()
+            )
+        );
+        // Held from before a restart, and not fetched since.
+        health.feed_held("urlhaus");
+        health.feed_watched_at(now, "urlhaus", 30);
+        assert_eq!(only(&health).1, Standing::Degraded);
+        // Fetched a minute ago.
+        health.feed_checked("urlhaus", now / 1000 - 60);
+        health.feed_watched_at(now, "urlhaus", 30);
+        assert_eq!(
+            (only(&health).1, only(&health).2.as_str()),
+            (Standing::Ok, "current")
+        );
+        // Twice its refresh is not old; a second more is.
+        health.feed_watched_at(now + 3_540_000, "urlhaus", 30);
+        assert_eq!(only(&health).1, Standing::Ok);
+        health.feed_watched_at(now + 3_541_000, "urlhaus", 30);
+        assert_eq!(
+            (only(&health).1, only(&health).2.as_str()),
+            (Standing::Degraded, "feed_old")
+        );
+        let report = health.report(&identity(), 0);
+        assert_eq!(report.conditions[0].role, "detector");
+        assert_eq!(
+            report.conditions[0].message,
+            "The feed `urlhaus` was last current 60 minutes ago, and is to be refreshed every \
+             30. Look at whether its address answers."
+        );
     }
 
     #[tokio::test]
