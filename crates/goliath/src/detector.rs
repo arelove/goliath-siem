@@ -11,9 +11,11 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use goliath_enrich::{Definition, Id, Snapshot, enrichments};
+use goliath_enrich::{Definition, Id, IdKind, Range, Record, Snapshot, enrichments};
 
-use goliath_intel::{Allowlist, Allowlists, Feed, Matcher, RocksStore, finding, observables};
+use goliath_intel::{
+    Allowlist, Allowlists, Feed, Kind, Matcher, RocksStore, Usage, finding, observables,
+};
 use goliath_normalize::{Envelope, EventId, Normalized, Outcome};
 use goliath_pipe::{Delivery, Receiver, Sender};
 use goliath_store::Kept;
@@ -150,6 +152,81 @@ impl Detection {
         }
         // No scope yet: every source of events is one site's.
         enrichments(&context, &ids, None, at)
+    }
+}
+
+/// The rows of a feed used as context, as records of a list: an address, a
+/// host name, or a range each, with what its row says it is. Values of
+/// other kinds describe nothing context is looked up by, and are left out.
+fn list_records(parsed: goliath_intel::Parsed) -> Vec<Record> {
+    let mut labels = parsed.labels.into_iter();
+    let mut records = Vec::with_capacity(parsed.indicators.len());
+    for (key, _) in parsed.indicators {
+        let label = labels.next().flatten();
+        let mut record = Record::new(goliath_enrich::Kind::List);
+        match key.kind() {
+            Kind::Ip => record
+                .ids
+                .extend(Id::new(IdKind::Address, key.value()).ok()),
+            Kind::Domain => record.ids.extend(Id::new(IdKind::Host, key.value()).ok()),
+            Kind::Cidr => record.ranges.extend(Range::new(key.value()).ok()),
+            _ => {}
+        }
+        if record.ids.is_empty() && record.ranges.is_empty() {
+            continue;
+        }
+        if let Some(label) = label {
+            record
+                .fields
+                .insert("label".to_owned(), Value::String(label));
+        }
+        records.push(record);
+    }
+    records
+}
+
+/// Reads the publication of a feed used as context, and puts its rows in
+/// the place of what the context held of it. A publication that is refused
+/// leaves the context as it was, and is reported.
+fn load_list(
+    detection: &Detection,
+    published: &Published,
+    version: &str,
+    now: i64,
+    modified: i64,
+    metrics: &Metrics,
+) {
+    let name = &published.feed.name;
+    let listed = std::fs::read(&published.file)
+        .map_err(|error| error.to_string())
+        .and_then(|bytes| {
+            published
+                .feed
+                .parse(&bytes, now)
+                .map_err(|error| error.to_string())
+        });
+    match listed {
+        Ok(parsed) => {
+            let records = list_records(parsed);
+            let count = records.len();
+            detection
+                .context
+                .write()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .replace(name, version, records);
+            info!(feed = name, rows = count, "context list loaded");
+            metrics.feed_refreshed(name, "loaded", Some((count, modified)));
+            if published.remote.is_none() {
+                metrics.feed_checked(name, modified);
+            }
+        }
+        Err(error) => {
+            warn!(
+                feed = name,
+                error, "context list refused; the context keeps what it had"
+            );
+            metrics.feed_refreshed(name, "refused", None);
+        }
     }
 }
 
@@ -383,6 +460,12 @@ impl Intel {
             // length, which tells two written within one second apart; or
             // the revision a feed is pinned to.
             let version = published.feed.version(&format!("{modified}.{}", changed.1));
+            // A list that describes and does not accuse goes to the
+            // context, where it can never raise a finding.
+            if published.feed.usage == Usage::Context {
+                load_list(&self.matcher, published, &version, now, modified, metrics);
+                continue;
+            }
             // The store holds this very publication, from before a restart:
             // reading it again would give what is there, and with a large
             // feed would take minutes in which nothing is matched.
@@ -829,6 +912,75 @@ file = "feeds/feodo.csv"
             ),
         )
         .unwrap();
+    }
+
+    #[test]
+    fn a_list_used_as_context_describes_a_finding_and_never_raises_one() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("goliath.toml");
+        std::fs::write(
+            &path,
+            r#"
+roles = ["detector"]
+data = "data"
+
+[[detector.feeds]]
+definition = "feodo-tracker"
+file = "feeds/feodo.csv"
+
+[[detector.feeds]]
+definition = "feeds/hosting.yaml"
+file = "feeds/hosting.csv"
+"#,
+        )
+        .unwrap();
+        std::fs::create_dir_all(directory.path().join("feeds")).unwrap();
+        std::fs::write(
+            directory.path().join("feeds/hosting.yaml"),
+            "name: hosting-ranges\nconfidence: 50\nuse: context\nformat: csv\n\
+             csv: { value: range, kind: cidr, label: provider }\n",
+        )
+        .unwrap();
+        // The range the fixture's connection goes into.
+        std::fs::write(
+            directory.path().join("feeds/hosting.csv"),
+            "range,provider\n192.0.2.0/24,Example Hosting\n",
+        )
+        .unwrap();
+        let config = Config::load(&path).unwrap();
+        let metrics = Metrics::new();
+        let mut intel = Intel::open(
+            config.detector.as_ref().unwrap(),
+            &config.detector_state().unwrap(),
+        )
+        .unwrap();
+        let events = deliveries();
+
+        // The list alone: the event is in its range, and nothing is found.
+        intel.refresh(&metrics);
+        let (findings, tally) = detect_run(&intel.matcher(), &events).unwrap();
+        assert_eq!((findings.len(), tally.hits), (0, 0));
+        assert_eq!(intel.matcher().store().feeds().len(), 0);
+
+        // An indicator feed names the address: its finding says what the
+        // list knows of it.
+        publish(directory.path(), "192.0.2.10");
+        intel.refresh(&metrics);
+        let (findings, _) = detect_run(&intel.matcher(), &events).unwrap();
+        assert_eq!(findings.len(), 1);
+        let Outcome::Event(finding) = Envelope::decode(&findings[0]).unwrap().outcome else {
+            panic!("not an event");
+        };
+        let entry = &finding.event["enrichments"][0];
+        assert_eq!(entry["type"], "list");
+        assert_eq!(entry["provider"], "hosting-ranges");
+        assert_eq!(entry["data"]["label"], "Example Hosting");
+        assert_eq!(entry["data"]["range"], "192.0.2.0/24");
+        assert!(
+            metrics
+                .encode()
+                .contains("goliath_feed_indicators{feed=\"hosting-ranges\"} 1")
+        );
     }
 
     #[test]
