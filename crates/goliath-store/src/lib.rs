@@ -28,7 +28,9 @@ pub use health::{
 };
 pub use migrate::{MIGRATIONS, Migration};
 pub use overview::{Arrived, Bucket, Frequent, HostBucket, Overview};
-pub use platform::{Condition, Held, Report, Reported, Standing};
+pub use platform::{
+    Condition, Held, Instance, Platform, Report, Reported, RoleHealth, Standing, judge_platform,
+};
 pub use reread::{Kept, Reading};
 pub use search::{Found, Page, SearchLimits, Stored};
 pub use store::Store;
