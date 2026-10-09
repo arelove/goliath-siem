@@ -6,8 +6,9 @@ anything made later stay one thing.
 ## The mark
 
 A letter G built from seven horizontal bars, as lines of a log are. Six bars
-take the colour of the text. One has the accent: the crossbar of the letter,
-the event that matters among the others.
+take the colour of the text. One is bronze: the crossbar of the letter, the
+event that matters among the others. The armour of Goliath is bronze in the
+text the name comes from.
 
 - The drawing is in [Mark.tsx](../ui/src/components/Mark.tsx), on a grid of
   32 units: bars 4 high, 2 apart.
@@ -41,6 +42,7 @@ are in [ADR-0024](adr/0024-interface.md).
 | `--muted` | `#8b8d98` | `#68686d` | Labels and what matters less |
 | `--accent` | `#0a84ff` | `#0066cc` | What can be acted on, and what is selected |
 | `--accent-fill` | `#0071e3` | `#0066cc` | The ground of the main action, under white text |
+| `--brand` | `#c98a4b` | `#9c5f22` | The mark's one bar, and nothing else |
 
 The tokens are defined in [styles.css](../ui/src/styles.css). Text, the
 accent, and every state have a contrast of 4.5 to 1 or more against each
@@ -50,8 +52,10 @@ surface.
 
 In a product that reports severities, a colour of the product that could be
 read as one is a defect. The accent was bronze until ADR-0024; bronze reads
-as orange, and orange is high severity in most systems, so it went. Blue
-means that something can be acted on, and nothing else:
+as orange, and orange is high severity in most systems, so in the interface
+it went. It stays where it cannot be read as a severity: in the mark, which
+is the product's and says nothing of an event. Blue means that something
+can be acted on, and nothing else:
 
 | Severity | Token | Dark | Light |
 | --- | --- | --- | --- |
