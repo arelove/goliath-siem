@@ -6,8 +6,8 @@ anything made later stay one thing.
 ## The mark
 
 A letter G built from seven horizontal bars, as lines of a log are. Six bars
-take the colour of the text. One is bronze: the crossbar of the letter, the
-event that matters among the others.
+take the colour of the text. One has the accent: the crossbar of the letter,
+the event that matters among the others.
 
 - The drawing is in [Mark.tsx](../ui/src/components/Mark.tsx), on a grid of
   32 units: bars 4 high, 2 apart.
@@ -26,38 +26,47 @@ In running text the product is Goliath, as any name is written.
 
 ## Colour
 
-Warm graphite, and bronze. The armour of Goliath is bronze in the text the
-name comes from, and no other product of this kind uses it.
+A cool, near black ground, surfaces told apart by lightness, and one blue
+accent. The interface is read for hours in a dark room, so it is dark
+first; the light theme has the same tokens. The decision and its reasons
+are in [ADR-0024](adr/0024-interface.md).
 
 | Token | Dark | Light | Use |
 | --- | --- | --- | --- |
-| `--bg` | `#121110` | `#f3efe9` | The ground |
-| `--panel` | `#1b1917` | `#ffffff` | Bars, cards, tables |
-| `--line` | `#2e2a26` | `#e2dbd1` | Borders and rules |
-| `--text` | `#ece6dd` | `#221d17` | Text |
-| `--muted` | `#9a9085` | `#766c60` | Labels and what matters less |
-| `--accent` | `#c98a4b` | `#9c5f22` | The product's own: what is selected, the main action, links |
-| `--on-accent` | `#17110a` | `#ffffff` | Text on the accent |
+| `--bg` | `#0b0c0e` | `#f5f5f7` | The ground |
+| `--panel` | `#141518` | `#ffffff` | Bars, cards, tables |
+| `--raised` | `#1c1d21` | `#f0f0f3` | A surface above a surface |
+| `--line` | `#26282d` | `#dedee3` | Borders and rules |
+| `--text` | `#f2f3f5` | `#1d1d1f` | Text |
+| `--muted` | `#8b8d98` | `#68686d` | Labels and what matters less |
+| `--accent` | `#0a84ff` | `#0066cc` | What can be acted on, and what is selected |
+| `--accent-fill` | `#0071e3` | `#0066cc` | The ground of the main action, under white text |
 
-The tokens are defined in [styles.css](../ui/src/styles.css).
+The tokens are defined in [styles.css](../ui/src/styles.css). Text, the
+accent, and every state have a contrast of 4.5 to 1 or more against each
+surface.
 
-## Bronze is never a severity
+## The accent is never a severity
 
 In a product that reports severities, a colour of the product that could be
-read as one is a defect. Bronze lies between orange and amber, so those two
-are not used for severities:
+read as one is a defect. The accent was bronze until ADR-0024; bronze reads
+as orange, and orange is high severity in most systems, so it went. Blue
+means that something can be acted on, and nothing else:
 
-| Severity | Colour |
-| --- | --- |
-| Informational, Low | Blues |
-| Medium | Yellow, `#e3c341` |
-| High | Red-orange, `#f2643a` |
-| Critical | Crimson, `#dc3550` |
-| Fatal | Purple, `#a23b8f` |
+| Severity | Token | Dark | Light |
+| --- | --- | --- | --- |
+| Critical | `--critical` | `#ff453a` | `#d70015` |
+| High | `--high` | `#ff9f0a` | `#c93400` |
+| Medium | `--medium` | `#ffd60a` | `#a05a00` |
+| Low | `--low` | `#7d8fa9` | `#5b6b82` |
+| Informational | `--info` | `#787a85` | `#86868b` |
 
-Blue is a colour of data here, not of the product. A new state or a new
-chart series takes a colour from this scale or a neutral, never a second
-bronze.
+A state is green when it is as it should be, the yellow of medium when it
+is degraded, and the red of critical when it is failing. A severity is
+never shown by its colour alone: it has its word beside it. A series of a
+chart that is not a severity takes a colour from the list of eight in
+[canvas.ts](../ui/src/charts/canvas.ts), which holds no red, orange, or
+yellow.
 
 ## Type
 
