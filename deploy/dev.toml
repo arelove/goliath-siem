@@ -14,7 +14,7 @@ definition = "sysmon"
 inbox = "../inbox/sysmon"
 
 [store]
-url = "http://127.0.0.1:8123"
+url = "http://127.0.0.1:18123"
 database = "goliath_dev"
 user = "goliath"
 # Set by scripts/dev-env.sh from the CLICKHOUSE_PASSWORD in .env.

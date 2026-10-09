@@ -86,8 +86,9 @@ docker compose -f compose.dev.yaml down -v
 ```
 
 - `compose.dev.yaml` starts ClickHouse and Redpanda on 127.0.0.1 only. It is
-  not the platform; that is `compose.yaml`. Both publish port 8123, so run
-  one of them at a time.
+  not the platform; that is `compose.yaml`. Its ClickHouse is on port 18123
+  and the platform's on 8123, so both can run. `scripts/dev-run.sh` and the
+  platform's container both serve port 8080: run one of those at a time.
 - `scripts/dev-env.sh` reads the ClickHouse password from `.env` and sets the
   variables the tests read. Make `.env` from `.env.example` first.
 - The last command deletes what the tests stored.
