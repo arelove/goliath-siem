@@ -15,6 +15,9 @@
 //! - `GET /api/v1/sources`: the health of each source: its last event, its
 //!   last hour against its baseline, its dead letters, and a status. See
 //!   `docs/adr/0019-source-health.md`.
+//! - `GET /api/v1/platform`: the health of the platform itself: each role
+//!   with the processes that run it and their conditions, and what changed
+//!   lately. See `docs/adr/0023-platform-health.md`.
 //! - `GET /api/v1/health`: whether the service is up; needs no token.
 //!
 //! With a token configured, every other API request must carry it as
@@ -41,7 +44,7 @@ use tokio::net::TcpListener;
 use tokio::sync::watch;
 use tower_http::services::{ServeDir, ServeFile};
 use tower_http::set_header::SetResponseHeaderLayer;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::RunError;
 use crate::config::ApiConfig;
@@ -153,6 +156,7 @@ fn app(shared: Shared, ui: Option<PathBuf>) -> Router {
         .route("/overview", post(overview))
         .route("/arrivals", get(arrivals))
         .route("/sources", get(sources))
+        .route("/platform", get(platform))
         .route_layer(middleware::from_fn_with_state(
             Arc::clone(&shared),
             authorize,
@@ -442,6 +446,51 @@ async fn arrivals(State(shared): State<Arc<Shared>>) -> Response {
         }))
         .into_response(),
         Err(error) => store_failed(&error),
+    }
+}
+
+/// Reports are judged over the last day, and the changes of conditions
+/// over the five weeks they are kept.
+const REPORTS_OF: i64 = 86_400_000;
+const CHANGES_OF: i64 = 35 * 86_400_000;
+
+/// The health of the platform, judged from what its processes reported.
+///
+/// What the reports cannot say, this says itself: with the store not
+/// answering, that is the answer, since no report can be read.
+async fn platform(State(shared): State<Arc<Shared>>) -> Response {
+    let now = crate::raw::now();
+    let reports = shared
+        .store
+        .platform_reports(now - REPORTS_OF, shared.query)
+        .await;
+    let held = shared
+        .store
+        .platform_conditions(now - CHANGES_OF, shared.query)
+        .await;
+    match (reports, held) {
+        (Ok(reports), Ok(held)) => {
+            let judged = goliath_store::judge_platform(now, &reports, &held);
+            axum::Json(json!({ "now": now, "store": "answers", "platform": judged }))
+                .into_response()
+        }
+        (Err(error), _) | (_, Err(error)) => {
+            warn!(%error, "the store did not answer for the health of the platform");
+            axum::Json(json!({
+                "now": now,
+                "store": "silent",
+                "platform": {
+                    "status": "failing",
+                    "reason": "store_unreachable",
+                    "message": "The store does not answer, so no report can be read. \
+                                Look at the store before anything else.",
+                    "newest_report": null,
+                    "roles": [],
+                    "changes": [],
+                },
+            }))
+            .into_response()
+        }
     }
 }
 
@@ -780,6 +829,25 @@ mod tests {
         // A valid range reaches the store, which is not there.
         let (status, _, _) = call(test_app(None), post("/api/v1/overview", day, None)).await;
         assert_eq!(status, StatusCode::BAD_GATEWAY);
+    }
+
+    #[tokio::test]
+    async fn the_platform_says_itself_that_the_store_does_not_answer() {
+        let get = || {
+            Request::get("/api/v1/platform")
+                .body(Body::empty())
+                .unwrap()
+        };
+        let (status, _, _) = call(test_app(Some(TOKEN)), get()).await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        // No store is there: that is an answer about the platform, not an
+        // error of the request.
+        let (status, answer, _) = call(test_app(None), get()).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(answer["store"], "silent");
+        assert_eq!(answer["platform"]["status"], "failing");
+        assert_eq!(answer["platform"]["reason"], "store_unreachable");
+        assert_eq!(answer["platform"]["roles"], json!([]));
     }
 
     #[tokio::test]
