@@ -135,6 +135,33 @@ A condition is a question, an answer, and why:
 | --- | --- | --- | --- |
 | writer | `storing`, and `storing_findings` for what the detector found | The store took longer than 10 seconds for a batch | The store refused the last batch |
 
+`GET /api/v1/platform` judges the platform from the reports:
+
+- A process is `reporting` while its newest report is younger than a
+  minute. Gone for an hour, it leaves the answer, unless its role is then
+  short of processes.
+- A role is as bad as the worst condition of the processes that report.
+  It is failing when none reports, and degraded when fewer report than ran
+  at once within the last day, or when it started more than three times in
+  ten minutes. It is judged by how many report and not by which: a pod
+  that comes back under another name is the same role.
+- The platform is as bad as its worst role, with that role's reason, such
+  as `writer:store_refused`.
+- `changes` are the last 50 times a condition's status held, the newest
+  first: what changed, and when.
+- With the store not answering, the answer says so itself, as
+  `store_unreachable`: no report can be read then.
+
+```json
+{"now": 1791586241867, "store": "answers",
+ "platform": {"status": "failing", "reason": "writer:store_refused",
+  "message": "The store refused the last batch, which is held and tried again: ...",
+  "roles": [{"role": "writer", "status": "failing", "reporting": 1, "expected": 1,
+             "starts": 0, "instances": [{"instance": "writer-eu-1", "reporting": true}]}],
+  "changes": [{"instance": "writer-eu-1", "role": "writer", "kind": "storing",
+               "status": "failing", "since": 1791586220000}]}}
+```
+
 The other conditions of [ADR-0023](../../docs/adr/0023-platform-health.md)
 follow. A report that cannot be sent is given up, and the next says more: a
 process never waits or stops over its own health.
