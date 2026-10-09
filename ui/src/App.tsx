@@ -80,12 +80,35 @@ function viewOf(params: URLSearchParams): View {
   return view === "search" || view === "sources" || view === "platform" ? view : "overview";
 }
 
-const TABS: Record<View, { tab: string; section: string }> = {
-  overview: { tab: "Dashboard", section: "Security overview" },
-  search: { tab: "Events", section: "Event search" },
-  sources: { tab: "Sources", section: "Source health" },
-  platform: { tab: "Platform", section: "Platform health" },
+const TABS: Record<View, { tab: string }> = {
+  overview: { tab: "Dashboard" },
+  search: { tab: "Events" },
+  sources: { tab: "Sources" },
+  platform: { tab: "Platform" },
 };
+
+/** What each view's tab is drawn with: four strokes at most. */
+const ICONS: Record<View, string> = {
+  overview: "M4 4h7v7H4zM13 4h7v4h-7zM13 11h7v9h-7zM4 14h7v6H4z",
+  search: "M4 6h16M4 12h16M4 18h10",
+  sources: "M12 3v6M12 15v6M5 9h14v6H5z",
+  platform: "M3 12h4l3-8 4 16 3-8h4",
+};
+
+function ViewIcon({ view }: { view: View }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d={ICONS[view]}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export function App() {
   const client = useQueryClient();
@@ -176,19 +199,7 @@ export function App() {
           <Mark />
           goliath
         </span>
-        <span className="section">{TABS[view].section}</span>
-        <button
-          type="button"
-          className="icon"
-          aria-label={theme === "dark" ? "Light theme" : "Dark theme"}
-          title={theme === "dark" ? "Light theme" : "Dark theme"}
-          onClick={() => setTheme(applyTheme(theme === "dark" ? "light" : "dark"))}
-        >
-          {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-        </button>
-      </header>
-      <nav className="subbar">
-        <div className="tabs" role="tablist">
+        <div className="tabs" role="tablist" aria-label="Views">
           {(["overview", "search", "sources", "platform"] as const).map((name) => (
             <button
               key={name}
@@ -198,24 +209,36 @@ export function App() {
               className={view === name ? "tab active" : "tab"}
               onClick={() => show(name)}
             >
+              <ViewIcon view={name} />
               {TABS[name].tab}
             </button>
           ))}
         </div>
-        {view === "overview" && (
-          <select
-            aria-label="Time range"
-            value={span}
-            onChange={(event) => setSpan(Number(event.target.value))}
+        <div className="tools">
+          {view === "overview" && (
+            <select
+              aria-label="Time range"
+              value={span}
+              onChange={(event) => setSpan(Number(event.target.value))}
+            >
+              {RANGES.map((range) => (
+                <option key={range.ms} value={range.ms}>
+                  {range.label}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            className="icon"
+            aria-label={theme === "dark" ? "Light theme" : "Dark theme"}
+            title={theme === "dark" ? "Light theme" : "Dark theme"}
+            onClick={() => setTheme(applyTheme(theme === "dark" ? "light" : "dark"))}
           >
-            {RANGES.map((range) => (
-              <option key={range.ms} value={range.ms}>
-                {range.label}
-              </option>
-            ))}
-          </select>
-        )}
-      </nav>
+            {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+          </button>
+        </div>
+      </header>
       {view === "platform" ? (
         <Platform onError={setOverviewError} />
       ) : view === "sources" ? (
