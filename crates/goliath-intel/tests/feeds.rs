@@ -177,6 +177,30 @@ fn tor_exit_nodes_are_addresses_of_both_families() {
 }
 
 #[test]
+fn lists_that_describe_are_marked_as_context_and_keep_what_a_row_says() {
+    use goliath_intel::Usage;
+    let feed = shipped("dynamic-dns");
+    assert_eq!(feed.usage, Usage::Context);
+    let parsed = feed
+        .parse(
+            b"dest_nt_domain,metadata_RetrievedAt,metadata_Provider\n\
+              mooo.com,2024-02-18T18:00:22.076Z,afraid.org\n\
+              us.to,2024-02-18T18:00:22.076Z,\n",
+            FETCHED,
+        )
+        .expect("parsed");
+    assert_eq!(parsed.indicators.len(), 2);
+    assert_eq!(parsed.labels, [Some("afraid.org".to_owned()), None]);
+    assert_eq!(shipped("dns-over-https").usage, Usage::Context);
+    // Every other shipped feed raises findings, and has no labels.
+    assert_eq!(shipped("feodo-tracker").usage, Usage::Indicators);
+    let parsed = shipped("tor-exit-nodes")
+        .parse(include_bytes!("data/tor-exit-nodes.csv"), FETCHED)
+        .expect("parsed");
+    assert_eq!(parsed.labels, []);
+}
+
+#[test]
 fn sslbl_gives_certificate_fingerprints_from_unquoted_rows() {
     let parsed = shipped("sslbl")
         .parse(include_bytes!("data/sslbl.csv"), FETCHED)

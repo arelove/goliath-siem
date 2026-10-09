@@ -38,7 +38,14 @@ compares for equality are taken.
 | `feeds/malicious-bootloaders.yaml` | bootloaders.io, by way of mthcht/awesome-lists | Hashes of malicious and vulnerable bootloaders |
 | `feeds/tor-exit-nodes.yaml` | Tor exit nodes, by way of mthcht/awesome-lists | Addresses, at a low confidence |
 
-The last three are reference lists from a repository, and are pinned: the
+| `feeds/dynamic-dns.yaml` | Dynamic DNS domains, by way of mthcht/awesome-lists | Context, not indicators: domains with their provider |
+| `feeds/dns-over-https.yaml` | DNS over HTTPS resolvers, by way of mthcht/awesome-lists | Context, not indicators: host names with their kind |
+
+A definition that says `use: context` describes values and does not accuse
+them. Its rows keep the column named as `label`, and whoever loads it puts
+them where they can never raise a finding.
+
+The lists from mthcht/awesome-lists are reference lists from a repository, and are pinned: the
 definition names a `revision`, the commit, and `{revision}` in its `url`
 stands for it. A hit is reported with that commit as the feed's version, and
 taking a newer list is a change of that one line. A list of file hashes of

@@ -43,7 +43,7 @@ mod stix;
 mod store;
 
 pub use allow::{Allowed, Allowlist, Allowlists, Entry};
-pub use feed::{Csv, Feed, Format, Loaded, Parsed};
+pub use feed::{Csv, Feed, Format, Loaded, Parsed, Usage};
 pub use finding::{finding, finding_uid};
 pub use key::{Key, Kind, PrefixLengths};
 pub use matcher::{Hit, Matcher};
@@ -52,6 +52,12 @@ pub use observe::{Observed, observables};
 pub use rocks::RocksStore;
 pub use store::{MemoryStore, Replaced, Store};
 
+/// The definition of the DNS over HTTPS resolvers shipped with this crate,
+/// from mthcht/awesome-lists: context, not indicators.
+pub const DNS_OVER_HTTPS: &str = include_str!("../feeds/dns-over-https.yaml");
+/// The definition of the dynamic DNS domains shipped with this crate, from
+/// mthcht/awesome-lists: context, not indicators.
+pub const DYNAMIC_DNS: &str = include_str!("../feeds/dynamic-dns.yaml");
 /// The definition of abuse.ch Feodo Tracker shipped with this crate, ready
 /// for [`Feed::from_yaml`].
 pub const FEODO_TRACKER: &str = include_str!("../feeds/feodo-tracker.yaml");
@@ -73,6 +79,8 @@ pub const URLHAUS: &str = include_str!("../feeds/urlhaus.yaml");
 
 /// Every feed definition shipped with this crate, by name.
 pub const FEEDS: &[(&str, &str)] = &[
+    ("dns-over-https", DNS_OVER_HTTPS),
+    ("dynamic-dns", DYNAMIC_DNS),
     ("feodo-tracker", FEODO_TRACKER),
     ("loldrivers", LOLDRIVERS),
     ("malicious-bootloaders", MALICIOUS_BOOTLOADERS),

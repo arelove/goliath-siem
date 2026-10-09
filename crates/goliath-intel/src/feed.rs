@@ -56,6 +56,10 @@ pub struct Feed {
     /// it, or was fetched, whichever the feed gives; without end if left
     /// out. An indicator that says until when it holds keeps its own end.
     pub valid_days: Option<u32>,
+    /// What its values are used as: indicators, which raise findings, if
+    /// left out.
+    #[serde(rename = "use", default)]
+    pub usage: Usage,
     /// How what it publishes is read.
     pub format: Format,
     /// How its rows are read; needed by, and only by, the `csv` format.
@@ -64,6 +68,20 @@ pub struct Feed {
 
 fn hourly() -> u32 {
     60
+}
+
+/// What a feed's values are used as.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Usage {
+    /// Each value is an indicator: an event that holds it gives a finding.
+    #[default]
+    Indicators,
+    /// Each value is described, not accused, as the ranges of a VPN
+    /// provider are. It is added to findings as context and never raises
+    /// one. See `docs/adr/0022-context-snapshot.md`.
+    Context,
 }
 
 /// How what a feed publishes is read.
@@ -112,6 +130,9 @@ pub struct Csv {
     pub last_seen: Option<String>,
     /// The column of the row's own confidence, 0 to 100.
     pub confidence: Option<String>,
+    /// The column that says what the row is, such as the provider a range
+    /// belongs to. Kept for a feed used as context.
+    pub label: Option<String>,
 }
 
 fn hash() -> String {
@@ -134,6 +155,9 @@ pub struct Parsed {
     pub rejected: usize,
     /// Why the first of them were rejected.
     pub reasons: Vec<String>,
+    /// What each indicator's row says it is, in the order of `indicators`,
+    /// for a feed whose rows have a label; empty otherwise.
+    pub labels: Vec<Option<String>>,
 }
 
 /// What replacing a feed with its publication did.
@@ -348,6 +372,7 @@ impl Feed {
         let first = csv.first_seen.as_deref().map(column).transpose()?;
         let last = csv.last_seen.as_deref().map(column).transpose()?;
         let confidence = csv.confidence.as_deref().map(column).transpose()?;
+        let label = csv.label.as_deref().map(column).transpose()?;
 
         for line in lines {
             let row = fields(line, csv.delimiter);
@@ -384,15 +409,24 @@ impl Feed {
                 }
             };
             match key(kind, text) {
-                Ok(key) => parsed.indicators.push((
-                    key,
-                    self.assertion(
-                        field(confidence).and_then(|text| text.parse::<u8>().ok()),
-                        field(first).and_then(|text| time(text)),
-                        field(last).and_then(|text| time(text)),
-                        fetched_at,
-                    ),
-                )),
+                Ok(key) => {
+                    parsed.indicators.push((
+                        key,
+                        self.assertion(
+                            field(confidence).and_then(|text| text.parse::<u8>().ok()),
+                            field(first).and_then(|text| time(text)),
+                            field(last).and_then(|text| time(text)),
+                            fetched_at,
+                        ),
+                    ));
+                    if label.is_some() {
+                        parsed.labels.push(
+                            field(label)
+                                .map(|text| text.trim().to_owned())
+                                .filter(|text| !text.is_empty()),
+                        );
+                    }
+                }
                 Err(error) => parsed.reject(|| error.to_string()),
             }
         }

@@ -1,0 +1,25 @@
+# Domains of dynamic DNS providers, from the reference lists of
+# mthcht/awesome-lists. A row is a domain under which anyone can register a
+# name, when it was listed, and the provider.
+#
+# A name under one of them is not an attack: home users and small sites
+# have them. It says that the name costs nothing and is tied to nobody,
+# which is worth knowing of the host a finding is about. So this list is
+# context: it is added to findings and never raises one.
+#
+# The list is pinned to a commit: what an entry is reported with is that
+# commit, and taking a newer list is a change of `revision`.
+
+name: dynamic-dns
+description: Domains of dynamic DNS providers, by way of mthcht/awesome-lists
+url: https://raw.githubusercontent.com/mthcht/awesome-lists/{revision}/Lists/DYNDNS/dyndns_list.csv
+revision: 2e4e649b0e06c1923e85687673238a87ffbc29ee
+licence: MIT
+use: context
+confidence: 50
+refresh_minutes: 1440
+format: csv
+csv:
+  value: dest_nt_domain
+  kind: domain
+  label: metadata_Provider
