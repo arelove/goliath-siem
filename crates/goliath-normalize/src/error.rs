@@ -74,6 +74,11 @@ pub enum DefinitionError {
         decoding: &'static str,
     },
 
+    /// The definition decodes rows and does not name their columns, or
+    /// names columns and decodes something else.
+    #[error("`columns` is needed by decoding `csv`, and by no other")]
+    Columns,
+
     /// The definition has no kinds, so every record would be rejected.
     #[error("the definition has no kinds")]
     NoKinds,

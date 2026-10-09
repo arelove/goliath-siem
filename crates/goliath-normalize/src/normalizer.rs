@@ -9,7 +9,7 @@ use serde_json::{Map, Value};
 
 use crate::definition::{Coercion, Decoding, FieldSpec, Framing, SourceDefinition};
 use crate::error::DefinitionError;
-use crate::{auditd, syslog};
+use crate::{auditd, csv, syslog};
 
 /// A source definition, checked and compiled.
 ///
@@ -22,6 +22,7 @@ pub struct Normalizer {
     version: u32,
     framing: Framing,
     decoding: Decoding,
+    columns: Vec<String>,
     kinds: Vec<Kind>,
     nil: Vec<Value>,
     unwrap: Option<String>,
@@ -388,6 +389,9 @@ impl Normalizer {
                 unmapped,
             });
         }
+        if (definition.decoding == Decoding::Csv) == definition.columns.is_empty() {
+            return Err(DefinitionError::Columns);
+        }
         let fits = match definition.framing {
             Framing::Lines => true,
             Framing::JsonValues => definition.decoding == Decoding::Json,
@@ -409,6 +413,7 @@ impl Normalizer {
                     Decoding::Auditd => "auditd",
                     Decoding::Syslog => "syslog",
                     Decoding::SyslogJson => "syslog-json",
+                    Decoding::Csv => "csv",
                 },
             });
         }
@@ -417,6 +422,7 @@ impl Normalizer {
             version: definition.version,
             framing: definition.framing,
             decoding: definition.decoding,
+            columns: definition.columns.clone(),
             kinds,
             nil: definition
                 .nil
@@ -523,6 +529,12 @@ impl Normalizer {
             Decoding::SyslogJson => {
                 syslog::decode(raw, syslog::Message::Json, jiff::Timestamp::now)
             }
+            Decoding::Csv => match csv::decode(raw, &self.columns) {
+                Ok(Some(record)) => Ok(record),
+                // The header of a file.
+                Ok(None) => return,
+                Err(error) => Err(error),
+            },
         };
         match record {
             Ok(record) => self.records(&record, raw, out),
