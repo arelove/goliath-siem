@@ -120,6 +120,63 @@ fn threatfox_gives_each_kind_with_its_own_confidence() {
 }
 
 #[test]
+fn a_pinned_list_is_fetched_at_its_revision_and_reported_with_it() {
+    let feed = shipped("loldrivers");
+    let revision = feed.revision.clone().expect("pinned");
+    assert_eq!(revision.len(), 40, "a commit");
+    let url = feed.url.as_deref().expect("an address");
+    assert!(url.contains(&revision) && !url.contains('{'), "{url}");
+    // Whatever tells one publication from another, the version is the pin.
+    assert_eq!(feed.version("1791028800.202008"), revision);
+    assert_eq!(shipped("feodo-tracker").version("1.2"), "1.2");
+    for name in ["malicious-bootloaders", "tor-exit-nodes"] {
+        assert_eq!(shipped(name).revision.as_deref(), Some(revision.as_str()));
+    }
+}
+
+#[test]
+fn driver_hashes_are_told_apart_by_their_length() {
+    let parsed = shipped("loldrivers")
+        .parse(include_bytes!("data/loldrivers.csv"), FETCHED)
+        .expect("parsed");
+    // A row with no hash is not an indicator, and not a fault of the list.
+    assert_eq!(
+        (parsed.indicators.len(), parsed.ignored, parsed.rejected),
+        (3, 1, 0)
+    );
+    let assertion = find(
+        &parsed.indicators,
+        Kind::Sha256,
+        "090d409f86430e078694e621ad0bd5e458d32aa727f0eb99bda3961577df8d49",
+    );
+    assert_eq!(assertion.confidence, 80);
+    assert_eq!(assertion.valid_until, None);
+    find(
+        &parsed.indicators,
+        Kind::Sha1,
+        "94f7575a6bb378d0cf85b3dc65941c95415e7a80",
+    );
+    // The bootloaders are the same shape of list.
+    let parsed = shipped("malicious-bootloaders")
+        .parse(include_bytes!("data/loldrivers.csv"), FETCHED)
+        .expect("parsed");
+    assert_eq!(parsed.indicators.len(), 3);
+}
+
+#[test]
+fn tor_exit_nodes_are_addresses_of_both_families() {
+    let parsed = shipped("tor-exit-nodes")
+        .parse(include_bytes!("data/tor-exit-nodes.csv"), FETCHED)
+        .expect("parsed");
+    assert_eq!((parsed.ignored, parsed.rejected), (0, 0));
+    assert_eq!(
+        find(&parsed.indicators, Kind::Ip, "204.8.96.141").confidence,
+        40
+    );
+    find(&parsed.indicators, Kind::Ip, "2620:7:6003::141");
+}
+
+#[test]
 fn sslbl_gives_certificate_fingerprints_from_unquoted_rows() {
     let parsed = shipped("sslbl")
         .parse(include_bytes!("data/sslbl.csv"), FETCHED)
@@ -279,6 +336,20 @@ fn definitions_that_contradict_themselves_are_refused() {
         (
             csv("csv: { value: v, kind_column: k }\n"),
             "`kinds` goes with",
+        ),
+        (
+            csv("csv: { value: v, kind: sha256, hashes: true }\n"),
+            "`csv` needs `kind`",
+        ),
+        (
+            "name: a\nconfidence: 50\nurl: https://lists.example.com/a.csv\nrevision: abc\nformat: stix\n"
+                .to_owned(),
+            "`revision` goes with",
+        ),
+        (
+            "name: a\nconfidence: 50\nurl: https://lists.example.com/{revision}/a.csv\nformat: stix\n"
+                .to_owned(),
+            "`revision` goes with",
         ),
         (
             csv("csv: { value: v, kind: ip, kinds: { a: ip } }\n"),

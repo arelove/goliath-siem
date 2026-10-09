@@ -81,6 +81,9 @@ as it arrives, in a detector that reads beside storage and never slows it
 - feeds are described in YAML, as CSV or STIX 2.1, and fetched over HTTPS;
   definitions ship for abuse.ch Feodo Tracker, URLhaus, ThreatFox, and
   SSLBL;
+- curated reference lists are feeds pinned to a commit of their repository,
+  so a finding says which state of the list matched; vulnerable drivers,
+  malicious bootloaders, and Tor exit nodes ship, from mthcht/awesome-lists;
 - addresses, domains, URLs, file hashes, and the other values of an event
   are found by the types of the OCSF schema, not by a list of field names;
 - each match is stored as an OCSF Detection Finding beside its event, and

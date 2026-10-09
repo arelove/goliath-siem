@@ -1,0 +1,18 @@
+# Bootloaders that are malicious or let Secure Boot be passed, as the
+# Bootloaders project lists them, from the reference lists of
+# mthcht/awesome-lists. A row is the SHA-256 of the file and its name.
+#
+# The list is pinned to a commit: what a hit is reported with is that
+# commit, and taking a newer list is a change of `revision`.
+
+name: malicious-bootloaders
+description: Hashes of malicious and vulnerable bootloaders, from bootloaders.io by way of mthcht/awesome-lists
+url: https://raw.githubusercontent.com/mthcht/awesome-lists/{revision}/Lists/Drivers/malicious_bootloaders_only_hashes_list.csv
+revision: 2e4e649b0e06c1923e85687673238a87ffbc29ee
+licence: MIT
+confidence: 80
+refresh_minutes: 1440
+format: csv
+csv:
+  value: file_hash
+  hashes: true

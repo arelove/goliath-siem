@@ -38,8 +38,13 @@ pub struct Feed {
     pub name: String,
     /// What the feed is, for those who read the file.
     pub description: Option<String>,
-    /// Where it is published.
+    /// Where it is published. `{revision}` in it stands for `revision`.
     pub url: Option<String>,
+    /// The revision of the source that `url` is pinned to, such as the
+    /// commit of a repository. What is published under it never changes, so
+    /// it is the version a hit is reported with, and a newer list is a
+    /// change of this line.
+    pub revision: Option<String>,
     /// The terms it is published under.
     pub licence: Option<String>,
     /// The confidence of its indicators, 0 to 100, unless a row says.
@@ -89,8 +94,12 @@ pub struct Csv {
     pub delimiter: char,
     /// The column of the indicator's value.
     pub value: String,
-    /// What every value is; or `kind_column` and `kinds`.
+    /// What every value is; or `kind_column` and `kinds`; or `hashes`.
     pub kind: Option<Kind>,
+    /// Every value is the hash of a file, and its length says which: MD5,
+    /// SHA-1, or SHA-256. A row with no value is ignored.
+    #[serde(default)]
+    pub hashes: bool,
     /// The column that says what the value is.
     pub kind_column: Option<String>,
     /// What each value of `kind_column` means. A row with a value not
@@ -159,9 +168,26 @@ impl Feed {
     /// Returns [`IntelError::Yaml`] if the YAML is malformed or is not a
     /// feed, and [`IntelError::Feed`] if the definition contradicts itself:
     /// a confidence above 100, a `csv` format without `csv`, both `kind` and
-    /// `kind_column` or neither.
+    /// `kind_column` or neither, a `revision` the `url` does not name.
     pub fn from_yaml(source: &str) -> Result<Self, IntelError> {
-        let feed: Self = goliath_sigma::yaml::from_str(source)?;
+        let mut feed: Self = goliath_sigma::yaml::from_str(source)?;
+        // The address is whole from here on.
+        let pinned = match (&feed.revision, &feed.url) {
+            (Some(revision), Some(url)) if url.contains("{revision}") && !revision.is_empty() => {
+                Some(url.replace("{revision}", revision))
+            }
+            (None, Some(url)) if !url.contains("{revision}") => None,
+            (None, None) => None,
+            _ => {
+                return Err(IntelError::Feed {
+                    feed: feed.name.clone(),
+                    why: "`revision` goes with a `url` that holds `{revision}`".to_owned(),
+                });
+            }
+        };
+        if pinned.is_some() {
+            feed.url = pinned;
+        }
         let refuse = |why: &str| {
             Err(IntelError::Feed {
                 feed: feed.name.clone(),
@@ -181,8 +207,13 @@ impl Feed {
             (Format::Csv, None) => return refuse("the csv format needs `csv`"),
             (Format::Stix, Some(_)) => return refuse("`csv` is for the csv format"),
             (Format::Csv, Some(csv)) => {
-                if csv.kind.is_some() == csv.kind_column.is_some() {
-                    return refuse("`csv` needs `kind`, or `kind_column` with `kinds`");
+                let ways = usize::from(csv.kind.is_some())
+                    + usize::from(csv.kind_column.is_some())
+                    + usize::from(csv.hashes);
+                if ways != 1 {
+                    return refuse(
+                        "`csv` needs `kind`, or `kind_column` with `kinds`, or `hashes`",
+                    );
                 }
                 if csv.kind_column.is_some() == csv.kinds.is_empty() {
                     return refuse("`kinds` goes with `kind_column`");
@@ -282,6 +313,15 @@ impl Feed {
             .added_at(fetched_at)
     }
 
+    /// The version a hit of this feed is reported with, for a publication
+    /// the caller tells apart by `publication`: the pinned revision if the
+    /// feed has one, since nothing else is published under it.
+    pub fn version(&self, publication: &str) -> String {
+        self.revision
+            .clone()
+            .unwrap_or_else(|| publication.to_owned())
+    }
+
     fn rows(
         &self,
         csv: &Csv,
@@ -317,6 +357,19 @@ impl Feed {
                 continue;
             };
             let kind = match (csv.kind, field(kind)) {
+                (None, _) if csv.hashes => match text.trim().len() {
+                    0 => {
+                        parsed.ignored += 1;
+                        continue;
+                    }
+                    32 => Kind::Md5,
+                    40 => Kind::Sha1,
+                    64 => Kind::Sha256,
+                    length => {
+                        parsed.reject(|| format!("a hash of {length} characters: {line}"));
+                        continue;
+                    }
+                },
                 (Some(kind), _) => kind,
                 (None, Some(name)) => {
                     let Some(kind) = csv.kinds.get(name.as_str()) else {

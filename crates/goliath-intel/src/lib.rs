@@ -55,18 +55,30 @@ pub use store::{MemoryStore, Replaced, Store};
 /// The definition of abuse.ch Feodo Tracker shipped with this crate, ready
 /// for [`Feed::from_yaml`].
 pub const FEODO_TRACKER: &str = include_str!("../feeds/feodo-tracker.yaml");
+/// The definition of the `LOLDrivers` hashes shipped with this crate: drivers
+/// that are vulnerable or malicious, from mthcht/awesome-lists.
+pub const LOLDRIVERS: &str = include_str!("../feeds/loldrivers.yaml");
+/// The definition of the malicious bootloader hashes shipped with this
+/// crate, from mthcht/awesome-lists.
+pub const MALICIOUS_BOOTLOADERS: &str = include_str!("../feeds/malicious-bootloaders.yaml");
 /// The definition of abuse.ch SSLBL shipped with this crate.
 pub const SSLBL: &str = include_str!("../feeds/sslbl.yaml");
 /// The definition of abuse.ch `ThreatFox` shipped with this crate.
 pub const THREATFOX: &str = include_str!("../feeds/threatfox.yaml");
+/// The definition of the Tor exit nodes shipped with this crate, from
+/// mthcht/awesome-lists.
+pub const TOR_EXIT_NODES: &str = include_str!("../feeds/tor-exit-nodes.yaml");
 /// The definition of abuse.ch `URLhaus` shipped with this crate.
 pub const URLHAUS: &str = include_str!("../feeds/urlhaus.yaml");
 
 /// Every feed definition shipped with this crate, by name.
 pub const FEEDS: &[(&str, &str)] = &[
     ("feodo-tracker", FEODO_TRACKER),
+    ("loldrivers", LOLDRIVERS),
+    ("malicious-bootloaders", MALICIOUS_BOOTLOADERS),
     ("sslbl", SSLBL),
     ("threatfox", THREATFOX),
+    ("tor-exit-nodes", TOR_EXIT_NODES),
     ("urlhaus", URLHAUS),
 ];
 
