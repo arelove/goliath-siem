@@ -234,8 +234,9 @@ impl Intel {
             let now = seconds(SystemTime::now());
             let modified = seconds(changed.0);
             // The publication's version: when it was written, and its
-            // length, which tells two written within one second apart.
-            let version = format!("{modified}.{}", changed.1);
+            // length, which tells two written within one second apart; or
+            // the revision a feed is pinned to.
+            let version = published.feed.version(&format!("{modified}.{}", changed.1));
             // The store holds this very publication, from before a restart:
             // reading it again would give what is there, and with a large
             // feed would take minutes in which nothing is matched.
