@@ -73,7 +73,9 @@ Entra ID, AWS CloudTrail, Okta, Microsoft 365, Zeek, Suricata, and the
 connections of an Android phone ([docs/phone.md](docs/phone.md)), and any
 other source can be described in the same YAML. Each source's health, when
 it last sent and how its last hour compares with the same hour of its week,
-is shown beside the search.
+is shown beside the search. So is the platform's own: every process reports
+what it does and how that goes, and a view says which role is failing and
+why, where records wait, and what changed, with no other product needed.
 
 Indicators from threat intelligence feeds are matched against every event
 as it arrives, in a detector that reads beside storage and never slows it
