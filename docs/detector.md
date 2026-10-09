@@ -72,9 +72,9 @@ under the MIT licence:
 - A match with a Tor exit node is not an attack: it says that the other end
   hides where it is. Leave the definition out where people have a use for
   Tor, or keep it and read its findings by their confidence.
-- Other lists of that repository, such as ranges of VPN providers and
-  dynamic DNS domains, describe an address and do not accuse it. They are
-  context, not indicators, and wait for the context the detector adds.
+- Other lists of that repository describe a value and do not accuse it.
+  They are context, not indicators: see [lists used as
+  context](#lists-used-as-context).
 
 ## How a feed is kept current
 
@@ -158,9 +158,38 @@ labels:
 - Events are not changed. Context is in findings only, at most 32 entries
   in each.
 
-Not built yet: context lists from feed definitions, a scope for sites that
-use one address range twice, and the snapshot on disk. The snapshot is in
-memory, which is enough for some hundreds of thousands of records.
+Not built yet: a scope for sites that use one address range twice, and the
+snapshot on disk. The snapshot is in memory, which is enough for some
+hundreds of thousands of records.
+
+### Lists used as context
+
+Some lists describe a value and do not accuse it: the domains of dynamic
+DNS providers, public resolvers that answer DNS over HTTPS, the ranges of
+VPN providers. Matched as indicators they would raise a finding for
+ordinary traffic. A feed definition that says `use: context` is fetched,
+pinned, and kept current as any feed, and its values go to the context: it
+is added to the findings other feeds raise, and never raises one.
+
+```toml
+[[detector.feeds]]
+definition = "dynamic-dns"
+```
+
+| Definition | What it holds | The row's label |
+|---|---|---|
+| `dynamic-dns` | Domains under which anyone can register a name | The provider |
+| `dns-over-https` | Public resolvers that answer DNS over HTTPS | The kind of resolver |
+
+- Both are from [mthcht/awesome-lists](https://github.com/mthcht/awesome-lists)
+  and pinned to a commit, which is the `source_version` of their entries.
+- A host name is described by a list that names a domain above it, so
+  `a.b.mooo.com` is found by `mooo.com`. An address is found by a range
+  that holds it.
+- A definition of your own takes `use: context`, and `label` in its `csv`
+  for the column that says what a row is.
+- Its values are addresses, ranges, and domains. Rows of other kinds are
+  left out.
 
 ## Allowlists
 
