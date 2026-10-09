@@ -154,5 +154,5 @@ export function colorOf(entries: Frequent[], key: string): string {
     0,
     entries.findIndex((entry) => entry.key === key),
   );
-  return PALETTE[index % PALETTE.length] ?? "#9aa5b5";
+  return PALETTE[index % PALETTE.length] ?? "#98989d";
 }
