@@ -8,8 +8,10 @@
 use std::fmt::Write as _;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+use goliath_enrich::{Definition, Id, Snapshot, enrichments};
 
 use goliath_intel::{Allowlist, Allowlists, Feed, Matcher, RocksStore, finding, observables};
 use goliath_normalize::{Envelope, EventId, Normalized, Outcome};
@@ -110,9 +112,59 @@ impl Published {
 
 /// The indicators and allowlists the detector asks, and the feeds that fill
 /// them.
+/// What an event is matched against, and what its findings are given: the
+/// indicators, and the site's own context.
+pub(crate) struct Detection {
+    matcher: Matcher<RocksStore>,
+    /// Replaced a source at a time while events are matched.
+    context: RwLock<Snapshot>,
+}
+
+impl std::ops::Deref for Detection {
+    type Target = Matcher<RocksStore>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.matcher
+    }
+}
+
+impl Detection {
+    /// The entries of context a finding of `event` gets, for the time the
+    /// event happened. They are looked up for the event's own values, so
+    /// they are the same for every finding of it.
+    fn enrichments(&self, event: &Value, at: i64) -> Vec<Value> {
+        let context = self
+            .context
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if context.sources().is_empty() {
+            return Vec::new();
+        }
+        let mut ids: Vec<Id> = Vec::new();
+        for observed in observables(event) {
+            if let Some(id) = Id::of(observed.kind, &observed.value)
+                && !ids.contains(&id)
+            {
+                ids.push(id);
+            }
+        }
+        // No scope yet: every source of events is one site's.
+        enrichments(&context, &ids, None, at)
+    }
+}
+
+/// An export of the site, and when it was last read.
+struct Export {
+    definition: Definition,
+    file: PathBuf,
+    seen: Option<(SystemTime, u64)>,
+    missing: bool,
+}
+
 pub(crate) struct Intel {
-    matcher: Arc<Matcher<RocksStore>>,
+    matcher: Arc<Detection>,
     feeds: Vec<Published>,
+    context: Vec<Export>,
     fetcher: Fetcher,
     /// Where it is noted that a feed added indicators, for a look back over
     /// the events stored before them.
@@ -172,6 +224,33 @@ impl Intel {
                 })
             })
             .collect::<Result<Vec<_>, RunError>>()?;
+        let context = config
+            .context
+            .iter()
+            .map(|configured| {
+                let refuse = |error: &dyn std::fmt::Display| {
+                    RunError::Config(format!("{}: {error}", configured.definition.display()))
+                };
+                let yaml =
+                    std::fs::read_to_string(&configured.definition).map_err(|e| refuse(&e))?;
+                Ok(Export {
+                    definition: Definition::from_yaml(&yaml).map_err(|e| refuse(&e))?,
+                    file: configured.file.clone(),
+                    seen: None,
+                    missing: false,
+                })
+            })
+            .collect::<Result<Vec<_>, RunError>>()?;
+        let mut names = std::collections::BTreeSet::new();
+        if let Some(twice) = context
+            .iter()
+            .find(|export| !names.insert(export.definition.name.as_str()))
+        {
+            return Err(RunError::Config(format!(
+                "two sources of context are named `{}`",
+                twice.definition.name
+            )));
+        }
         std::fs::create_dir_all(state).map_err(io)?;
         let store = match config.cache_mebibytes {
             Some(mebibytes) => RocksStore::open_with(
@@ -185,11 +264,16 @@ impl Intel {
             state = %state.display(),
             feeds = feeds.len(),
             allowlist_entries = allowlists.len(),
+            context = context.len(),
             "indicator store opened"
         );
         Ok(Self {
-            matcher: Arc::new(Matcher::new(store, allowlists)),
+            matcher: Arc::new(Detection {
+                matcher: Matcher::new(store, allowlists),
+                context: RwLock::new(Snapshot::new()),
+            }),
             feeds,
+            context,
             fetcher: Fetcher::new(),
             noted: None,
         })
@@ -200,8 +284,69 @@ impl Intel {
         self.noted = Some(unmatched);
     }
 
+    /// Reads every export of context that changed since it was last looked
+    /// at, and puts its records in the place of what its source held. An
+    /// export that is missing or refused leaves the source as it was, and
+    /// is reported.
+    fn refresh_context(&mut self, metrics: &Metrics) {
+        for export in &mut self.context {
+            let name = export.definition.name.clone();
+            let changed = match std::fs::metadata(&export.file) {
+                Ok(metadata) => (metadata.modified().unwrap_or(UNIX_EPOCH), metadata.len()),
+                Err(error) => {
+                    if !export.missing {
+                        warn!(source = name, file = %export.file.display(), %error, "no export of context");
+                        metrics.context_refreshed(&name, "refused", None);
+                    }
+                    export.missing = true;
+                    export.seen = None;
+                    continue;
+                }
+            };
+            export.missing = false;
+            if export.seen == Some(changed) {
+                continue;
+            }
+            export.seen = Some(changed);
+            let written = seconds(changed.0);
+            let parsed = std::fs::read(&export.file)
+                .map_err(|error| error.to_string())
+                .and_then(|bytes| {
+                    export
+                        .definition
+                        .parse(&bytes)
+                        .map_err(|error| error.to_string())
+                });
+            match parsed {
+                Ok(parsed) => {
+                    let records = parsed.records.len();
+                    // The version a finding names: when the export was
+                    // written, as a time anyone can read.
+                    let version = jiff::Timestamp::from_second(written)
+                        .map_or_else(|_| written.to_string(), |time| time.to_string());
+                    self.matcher
+                        .context
+                        .write()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner)
+                        .replace(&name, &version, parsed.records);
+                    info!(
+                        source = name,
+                        records,
+                        rejected = parsed.rejected,
+                        "context loaded"
+                    );
+                    metrics.context_refreshed(&name, "loaded", Some((records, written)));
+                }
+                Err(error) => {
+                    warn!(source = name, %error, "export of context refused; the source is kept as it was");
+                    metrics.context_refreshed(&name, "refused", None);
+                }
+            }
+        }
+    }
+
     /// The matcher events are looked up in.
-    pub(crate) fn matcher(&self) -> Arc<Matcher<RocksStore>> {
+    pub(crate) fn matcher(&self) -> Arc<Detection> {
         Arc::clone(&self.matcher)
     }
 
@@ -210,6 +355,7 @@ impl Intel {
     /// is missing, not fetched, or refused leaves the feed as the store has
     /// it, and is reported.
     fn refresh(&mut self, metrics: &Metrics) {
+        self.refresh_context(metrics);
         for published in &mut self.feeds {
             published.fetch(&self.fetcher, metrics);
             let name = published.feed.name.clone();
@@ -365,7 +511,7 @@ pub(crate) async fn after_feeds(
 /// of receipt time they lie in is noted in `unmatched`, to be matched from
 /// the store.
 pub(crate) async fn detect(
-    matcher: Arc<Matcher<RocksStore>>,
+    matcher: Arc<Detection>,
     threads: NonZeroUsize,
     mut events: impl Receiver + Sync,
     findings: impl Sender + Sync,
@@ -434,6 +580,8 @@ pub(crate) struct Tally {
     pub(crate) hits: u64,
     /// Hits an allowlist suppressed.
     pub(crate) suppressed: u64,
+    /// Entries of context added to findings.
+    pub(crate) enrichments: u64,
 }
 
 impl Tally {
@@ -441,6 +589,7 @@ impl Tally {
         self.events += other.events;
         self.observables += other.observables;
         self.hits += other.hits;
+        self.enrichments += other.enrichments;
         self.suppressed += other.suppressed;
     }
 }
@@ -451,10 +600,10 @@ pub(crate) type Detected = Result<(Vec<Vec<u8>>, Tally), RunError>;
 /// consecutive records through `run`, and joins their findings in the
 /// records' order.
 pub(crate) fn detect_batch<T: Sync>(
-    matcher: &Matcher<RocksStore>,
+    matcher: &Detection,
     records: &[T],
     threads: NonZeroUsize,
-    run: impl Fn(&Matcher<RocksStore>, &[T]) -> Detected + Sync,
+    run: impl Fn(&Detection, &[T]) -> Detected + Sync,
 ) -> Detected {
     let run = &run;
     let per_thread = records.len().div_ceil(threads.get()).max(1);
@@ -483,7 +632,7 @@ pub(crate) fn detect_batch<T: Sync>(
     Ok((encoded, tally))
 }
 
-fn detect_run(matcher: &Matcher<RocksStore>, deliveries: &[Delivery]) -> Detected {
+fn detect_run(matcher: &Detection, deliveries: &[Delivery]) -> Detected {
     let created = jiff::Timestamp::now().as_millisecond();
     let mut encoded = Vec::new();
     let mut tally = Tally::default();
@@ -509,11 +658,7 @@ fn detect_run(matcher: &Matcher<RocksStore>, deliveries: &[Delivery]) -> Detecte
 /// With `since`, in seconds since the epoch, only indicators the store has
 /// held since then or later are reported: the ones that arrived after the
 /// events were matched.
-pub(crate) fn detect_kept(
-    matcher: &Matcher<RocksStore>,
-    kept: &[Kept],
-    since: Option<i64>,
-) -> Detected {
+pub(crate) fn detect_kept(matcher: &Detection, kept: &[Kept], since: Option<i64>) -> Detected {
     let created = jiff::Timestamp::now().as_millisecond();
     let mut encoded = Vec::new();
     let mut tally = Tally::default();
@@ -552,7 +697,7 @@ struct Seen<'a> {
 /// from the store, is stored once. With `since`, a hit of an indicator the
 /// store held before then is passed over.
 fn detect_event(
-    matcher: &Matcher<RocksStore>,
+    matcher: &Detection,
     seen: &Seen<'_>,
     created: i64,
     since: Option<i64>,
@@ -571,6 +716,8 @@ fn detect_event(
         .and_then(Value::as_i64)
         .unwrap_or(created)
         .div_euclid(1000);
+    // Looked up once an event, at its first hit: most events have none.
+    let mut context: Option<Vec<Value>> = None;
     for observed in observables(event) {
         tally.observables += 1;
         let hits = matcher
@@ -583,7 +730,14 @@ fn detect_event(
             }
             tally.hits += 1;
             tally.suppressed += u64::from(hit.suppressed.is_some());
-            let finding = finding(id, event, &observed, &hit, created);
+            let mut finding = finding(id, event, &observed, &hit, created);
+            let entries = context.get_or_insert_with(|| matcher.enrichments(event, at));
+            if !entries.is_empty()
+                && let Some(members) = finding.as_object_mut()
+            {
+                tally.enrichments += entries.len() as u64;
+                members.insert("enrichments".to_owned(), Value::Array(entries.clone()));
+            }
             // The same event and indicator give the same identity, so an
             // event detected twice is stored once.
             let uid = finding
@@ -675,6 +829,122 @@ file = "feeds/feodo.csv"
             ),
         )
         .unwrap();
+    }
+
+    #[test]
+    fn a_finding_is_given_what_the_site_knows_of_the_events_values() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("goliath.toml");
+        std::fs::write(
+            &path,
+            r#"
+roles = ["detector"]
+data = "data"
+
+[[detector.feeds]]
+definition = "feodo-tracker"
+file = "feeds/feodo.csv"
+
+[[detector.context]]
+definition = "context/networks.yaml"
+file = "context/networks.csv"
+
+[[detector.context]]
+definition = "context/hosting.yaml"
+file = "context/hosting.csv"
+"#,
+        )
+        .unwrap();
+        std::fs::create_dir_all(directory.path().join("context")).unwrap();
+        std::fs::write(
+            directory.path().join("context/networks.yaml"),
+            "name: ipam\nkind: network\nformat: csv\nrange: cidr\n\
+             fields: { name: name, zone: zone }\nlabels: { pci_scope: pci }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            directory.path().join("context/hosting.yaml"),
+            "name: hosting\nkind: asset\nformat: csv\nidentifiers: { address: [ip] }\n\
+             fields: { owner: owner, criticality: tier }\n",
+        )
+        .unwrap();
+        let config = Config::load(&path).unwrap();
+        let metrics = Metrics::new();
+        let mut intel = Intel::open(
+            config.detector.as_ref().unwrap(),
+            &config.detector_state().unwrap(),
+        )
+        .unwrap();
+        publish(directory.path(), "192.0.2.10");
+        let events = deliveries();
+        let entries = |intel: &Intel| {
+            let (findings, tally) = detect_run(&intel.matcher(), &events).unwrap();
+            assert_eq!(findings.len(), 1);
+            let Outcome::Event(finding) = Envelope::decode(&findings[0]).unwrap().outcome else {
+                panic!("not an event");
+            };
+            (finding, tally.enrichments)
+        };
+
+        // No export yet: the finding is made all the same, with no context.
+        intel.refresh(&metrics);
+        let (bare, added) = entries(&intel);
+        assert_eq!((bare.event.get("enrichments"), added), (None, 0));
+
+        std::fs::write(
+            directory.path().join("context/networks.csv"),
+            "cidr,name,zone,pci\n192.0.2.0/24,partner extranet,dmz,out\n",
+        )
+        .unwrap();
+        std::fs::write(
+            directory.path().join("context/hosting.csv"),
+            "ip,owner,tier\n192.0.2.10,partners@corp.example,3\n",
+        )
+        .unwrap();
+        intel.refresh(&metrics);
+        let (finding, added) = entries(&intel);
+        let found = finding.event["enrichments"].as_array().unwrap();
+        assert_eq!((found.len(), added), (2, 2));
+        // The network first, then the machine, each under its source.
+        assert_eq!(found[0]["provider"], "ipam");
+        assert_eq!(found[0]["type"], "network");
+        assert_eq!(found[0]["value"], "192.0.2.10");
+        assert_eq!(found[0]["data"]["zone"], "dmz");
+        assert_eq!(found[0]["data"]["labels"]["pci_scope"], "out");
+        assert_eq!(found[1]["provider"], "hosting");
+        assert_eq!(found[1]["data"]["owner"], "partners@corp.example");
+        assert_eq!(found[1]["data"]["criticality"], 3);
+        // The version is when the export was written, as a time.
+        assert!(
+            found[1]["data"]["source_version"]
+                .as_str()
+                .unwrap()
+                .ends_with('Z')
+        );
+        // The context does not change which finding it is.
+        assert_eq!(finding.id, bare.id);
+
+        // An export that lost a column is refused, and the source kept.
+        std::fs::write(
+            directory.path().join("context/hosting.csv"),
+            "address,team\n192.0.2.10,nobody\n",
+        )
+        .unwrap();
+        intel.refresh(&metrics);
+        let (finding, _) = entries(&intel);
+        assert_eq!(
+            finding.event["enrichments"][1]["data"]["owner"],
+            "partners@corp.example"
+        );
+        let text = metrics.encode();
+        for expected in [
+            "goliath_context_records{source=\"ipam\"} 1",
+            "goliath_context_refreshes_total{source=\"hosting\",result=\"loaded\"} 1",
+            "goliath_context_refreshes_total{source=\"hosting\",result=\"refused\"} 2",
+            "goliath_context_written_timestamp_seconds{source=\"hosting\"}",
+        ] {
+            assert!(text.contains(expected), "{expected} missing from\n{text}");
+        }
     }
 
     #[test]

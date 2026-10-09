@@ -14,6 +14,7 @@ publish = false
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "matched-path", "tokio"] }
 clap = { version = "4.6", features = ["derive"] }
 flate2 = "1"
+goliath-enrich = { path = "../goliath-enrich", version = "0.1.0" }
 goliath-intel = { path = "../goliath-intel", version = "0.1.0", features = ["rocksdb"] }
 goliath-normalize = { path = "../goliath-normalize", version = "0.2.17" }
 goliath-ocsf = { path = "../goliath-ocsf", version = "0.1.2" }

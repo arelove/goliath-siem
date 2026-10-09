@@ -71,6 +71,17 @@ struct FeedRefresh {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, EncodeLabelSet)]
+struct Context {
+    source: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, EncodeLabelSet)]
+struct ContextRefresh {
+    source: String,
+    result: &'static str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, EncodeLabelSet)]
 struct Hit {
     status: &'static str,
 }
@@ -100,6 +111,10 @@ struct Inner {
     feed_indicators: Family<Feed, Gauge>,
     feed_published_timestamp_seconds: Family<Feed, Gauge>,
     feed_checked_timestamp_seconds: Family<Feed, Gauge>,
+    context_refreshes: Family<ContextRefresh, Counter>,
+    context_records: Family<Context, Gauge>,
+    context_written_timestamp_seconds: Family<Context, Gauge>,
+    finding_enrichments: Counter,
     receipt_to_stored_seconds: Histogram,
     flush_seconds: Histogram,
     searches: Family<Answer, Counter>,
@@ -161,6 +176,10 @@ impl Metrics {
         let feed_indicators = Family::default();
         let feed_published_timestamp_seconds = Family::default();
         let feed_checked_timestamp_seconds = Family::default();
+        let context_refreshes = Family::default();
+        let context_records = Family::default();
+        let context_written_timestamp_seconds = Family::default();
+        let finding_enrichments = Counter::default();
         // From 10 milliseconds to about five minutes.
         let receipt_to_stored_seconds = Histogram::new(exponential_buckets(0.01, 2.0, 15));
         // From a millisecond to about 30 seconds.
@@ -276,6 +295,26 @@ impl Metrics {
             feed_refreshes.clone(),
         );
         registry.register(
+            "context_refreshes",
+            "Exports of a source of context looked at after a change, by result: loaded, or refused as not what its definition describes",
+            context_refreshes.clone(),
+        );
+        registry.register(
+            "context_records",
+            "Records a source of context holds, as last loaded",
+            context_records.clone(),
+        );
+        registry.register(
+            "context_written_timestamp_seconds",
+            "When the export of a source of context last loaded was written",
+            context_written_timestamp_seconds.clone(),
+        );
+        registry.register(
+            "finding_enrichments",
+            "Entries of context added to findings",
+            finding_enrichments.clone(),
+        );
+        registry.register(
             "feed_indicators",
             "Indicators a feed asserts, as last loaded",
             feed_indicators.clone(),
@@ -321,6 +360,10 @@ impl Metrics {
             feed_indicators,
             feed_published_timestamp_seconds,
             feed_checked_timestamp_seconds,
+            context_refreshes,
+            context_records,
+            context_written_timestamp_seconds,
+            finding_enrichments,
             receipt_to_stored_seconds,
             flush_seconds,
             searches,
@@ -438,6 +481,7 @@ impl Metrics {
     /// What the detector found in a batch.
     pub(crate) fn detected(&self, tally: &crate::detector::Tally) {
         self.0.detected_events.inc_by(tally.events);
+        self.0.finding_enrichments.inc_by(tally.enrichments);
         self.0.detected_observables.inc_by(tally.observables);
         for (status, count) in [
             ("reported", tally.hits - tally.suppressed),
@@ -488,6 +532,37 @@ impl Metrics {
     /// `unchanged` since it was loaded before a restart, with so many
     /// indicators and written at that time, in seconds since the epoch;
     /// `refused`; or `failed`.
+    /// The export of `source` was looked at after it changed, with
+    /// `result`: `loaded`, with so many records and written at that time, in
+    /// seconds since the epoch; or `refused`.
+    pub(crate) fn context_refreshed(
+        &self,
+        source: &str,
+        result: &'static str,
+        now: Option<(usize, i64)>,
+    ) {
+        self.0
+            .context_refreshes
+            .get_or_create(&ContextRefresh {
+                source: source.to_owned(),
+                result,
+            })
+            .inc();
+        if let Some((records, written)) = now {
+            let source = Context {
+                source: source.to_owned(),
+            };
+            self.0
+                .context_records
+                .get_or_create(&source)
+                .set(i64::try_from(records).unwrap_or(i64::MAX));
+            self.0
+                .context_written_timestamp_seconds
+                .get_or_create(&source)
+                .set(written);
+        }
+    }
+
     pub(crate) fn feed_refreshed(
         &self,
         feed: &str,
