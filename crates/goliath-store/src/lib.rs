@@ -19,6 +19,7 @@ mod migrate;
 mod overview;
 mod platform;
 mod reread;
+mod resolution;
 mod search;
 mod store;
 mod writer;
@@ -37,6 +38,7 @@ pub use platform::{
     judge_platform,
 };
 pub use reread::{Kept, Reading};
+pub use resolution::{Claimed, Placed, Resolving};
 pub use search::{Found, Page, SearchLimits, Stored};
 pub use store::Store;
 pub use writer::{Limits, Writer};
