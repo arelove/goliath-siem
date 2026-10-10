@@ -61,6 +61,22 @@ normalization issues, and `/api/v1/schema/classes/{uid}/paths` lists what a
 search can name. The API listens on loopback unless `[api]` names a
 `token_file`, whose token every request then carries as a bearer token.
 
+`POST /api/v1/findings` is the queue of findings
+([ADR-0024](../../docs/adr/0024-interface.md)): a search of the findings
+alone, the most severe first and then the newest.
+
+```sh
+curl -s localhost:8080/api/v1/findings -H 'content-type: application/json' -d '{
+  "from": "2026-09-24T00:00:00Z", "to": "2026-09-25T00:00:00Z", "severities": [4, 5]
+}'
+```
+
+It takes a search's `filters` and `limit`, and no `classes`. `severities`
+bounds the page and not the counts: the answer's `severities` says how many
+findings of each severity the range and the filters leave, so that an
+interface can say what choosing another would show. `next` goes into the
+next request's `after`.
+
 ## Metrics
 
 With `[metrics]` set, every process serves Prometheus metrics at `/metrics`
