@@ -104,6 +104,12 @@ as it arrives, in a detector that reads beside storage and never slows it
 - a detector that falls behind does not slow ingestion: it is moved
   forward, and matches what it missed from the store afterwards.
 
+What was found is a queue in the interface, the most severe first: a
+finding opens beside the queue and says which feeds assert the indicator,
+what the site knows of the machine and the account, and the event it was
+made of. Every value it names is a way on, to the other findings of it or
+to the events that hold it.
+
 The indicators are kept in RocksDB inside the process, behind a filter in
 memory. The budgets it must meet at 100 million indicators are set in
 [ADR-0021](docs/adr/0021-enrichment-placement.md); that run is not made yet.

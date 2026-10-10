@@ -323,6 +323,12 @@ role by the processes that report and gives each topic's backlog, and the
 Platform view of the interface. The conditions of the collector and of the
 API, the time until a topic is full, and the account of records follow.
 
+Built of ADR-0024 so far: the look, the Platform view, and the queue of
+findings with its panel and the menu of a value, over
+`POST /api/v1/findings`. The Overview rebuilt on findings, Coverage, and
+the field that finds anything follow; Entity comes with M4.5 and the
+decision with M6.
+
 After M4 and before any more of the interface is built, two decisions are
 written down, each as ADR-0022 was: from how the systems in use do it, what
 their users say of them, and cases the answer must serve.
