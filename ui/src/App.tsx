@@ -7,6 +7,7 @@ import { Mark } from "./components/Mark";
 import { Results } from "./components/Results";
 import { SearchBar } from "./components/SearchBar";
 import { TokenPrompt } from "./components/TokenPrompt";
+import { Entity } from "./Entity";
 import type { Lead } from "./Findings";
 import { Findings } from "./Findings";
 import { Overview } from "./Overview";
@@ -20,9 +21,9 @@ function unauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401;
 }
 
-type View = "overview" | "findings" | "search" | "sources" | "platform";
+type View = "overview" | "findings" | "search" | "entity" | "sources" | "platform";
 
-const VIEWS: readonly View[] = ["overview", "findings", "search", "sources", "platform"];
+const VIEWS: readonly View[] = ["overview", "findings", "search", "entity", "sources", "platform"];
 
 /** Ranges the dashboard offers, each ending now. */
 const RANGES = [
@@ -88,6 +89,7 @@ const TABS: Record<View, { tab: string }> = {
   overview: { tab: "Dashboard" },
   findings: { tab: "Findings" },
   search: { tab: "Events" },
+  entity: { tab: "Entities" },
   sources: { tab: "Sources" },
   platform: { tab: "Platform" },
 };
@@ -97,6 +99,7 @@ const ICONS: Record<View, string> = {
   overview: "M4 4h7v7H4zM13 4h7v4h-7zM13 11h7v9h-7zM4 14h7v6H4z",
   findings: "M12 3l9 16H3zM12 10v4M12 17v.5",
   search: "M4 6h16M4 12h16M4 18h10",
+  entity: "M12 8l-6 9M12 8l6 9M12 4v4M9 19h6",
   sources: "M12 3v6M12 15v6M5 9h14v6H5z",
   platform: "M3 12h4l3-8 4 16 3-8h4",
 };
@@ -126,11 +129,34 @@ export function App() {
   const [overviewError, setOverviewError] = useState<unknown>(null);
   const [span, setSpan] = useState(24 * 3_600_000);
   const [theme, setTheme] = useState(currentTheme);
+  // The entity that is open is in the address, so that a link opens it.
+  const [entity, setEntity] = useState(
+    () => new URLSearchParams(window.location.search).get("entity") ?? "",
+  );
   const show = (next: View) => {
     setView(next);
     const params = new URLSearchParams(window.location.search);
     params.set("view", next);
     params.delete("finding");
+    if (next === "entity" && entity) {
+      params.set("entity", entity);
+    } else {
+      params.delete("entity");
+    }
+    window.history.replaceState(null, "", `?${params.toString()}`);
+  };
+  /** The entity view on an identifier, or on a value that may be one. */
+  const openEntity = (asked: string) => {
+    setEntity(asked);
+    setView("entity");
+    const params = new URLSearchParams(window.location.search);
+    params.set("view", "entity");
+    params.delete("finding");
+    if (asked) {
+      params.set("entity", asked);
+    } else {
+      params.delete("entity");
+    }
     window.history.replaceState(null, "", `?${params.toString()}`);
   };
 
@@ -232,7 +258,7 @@ export function App() {
           ))}
         </div>
         <div className="tools">
-          {(view === "overview" || view === "findings") && (
+          {(view === "overview" || view === "findings" || view === "entity") && (
             <select
               aria-label="Time range"
               value={span}
@@ -266,7 +292,10 @@ export function App() {
           className={(uid) => names.get(uid) ?? `Class ${uid}`}
           onError={setOverviewError}
           onEvents={follow}
+          onEntity={openEntity}
         />
+      ) : view === "entity" ? (
+        <Entity span={span} asked={entity} onOpen={openEntity} onError={setOverviewError} />
       ) : view === "overview" ? (
         <Overview
           span={span}

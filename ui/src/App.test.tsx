@@ -167,6 +167,73 @@ interface Call {
   authorization: string | null;
 }
 
+const SID = "user:sid:s-1-5-21-1-2-3-1104";
+
+const ENTITY = {
+  asked: "user:name:corp\\adam",
+  entity: SID,
+  kind: "user",
+  provisional: false,
+  shared: false,
+  alias_of: [],
+  identifiers: [
+    {
+      identifier: SID,
+      form: "sid",
+      strong: true,
+      standing: "member",
+      via: null,
+      rule: null,
+      said: null,
+      events: 0,
+      first_seen: 0,
+      last_seen: 0,
+    },
+    {
+      identifier: "user:name:corp\\adam",
+      form: "name",
+      strong: true,
+      standing: "member",
+      via: SID,
+      rule: "user",
+      said: null,
+      events: 41,
+      first_seen: 1790330400000,
+      last_seen: 1790334000000,
+    },
+  ],
+};
+
+const NEIGHBOURS = {
+  entity: SID,
+  kind: "user",
+  identifiers: [SID, "user:name:corp\\adam"],
+  from: 1790326800000,
+  to: 1790413200000,
+  degree: 2,
+  limit: 100,
+  neighbours: [
+    {
+      entity: "host:name:dc-1.corp.example",
+      kind: "host",
+      direction: "out",
+      link: "logged_on_to",
+      events: 5,
+      first_seen: 1790330460000,
+      last_seen: 1790330520005,
+    },
+    {
+      entity: "address:ip:10.0.0.5",
+      kind: "address",
+      direction: "in",
+      link: "connected_to",
+      events: 2,
+      first_seen: 1790330460000,
+      last_seen: 1790330470000,
+    },
+  ],
+};
+
 let calls: Call[] = [];
 let requireToken: string | null = null;
 
@@ -208,6 +275,12 @@ beforeEach(() => {
           total: 3,
           severities: { "4": 1, "2": 2 },
         });
+      }
+      if (path === "/entity") {
+        return reply(200, ENTITY);
+      }
+      if (path === "/entity/neighbours") {
+        return reply(200, NEIGHBOURS);
       }
       if (path === "/overview") {
         return reply(200, OVERVIEW);
@@ -441,5 +514,72 @@ describe("the queue of findings", () => {
       }),
     );
     expect(screen.getByRole("tab", { name: "Events" })).toHaveAttribute("aria-selected", "true");
+  });
+});
+
+describe("the entity view", () => {
+  it("shows what an entity is known by, and what it was seen with", async () => {
+    window.history.replaceState(null, "", "/?view=entity&entity=CORP\\Adam");
+    show();
+    // The value is asked for as the identifier its form says.
+    await waitFor(() =>
+      expect(calls.find((call) => call.path === "/entity")?.body).toEqual({
+        identifier: "user:name:corp\\adam",
+      }),
+    );
+    expect(await screen.findByRole("heading", { name: "s-1-5-21-1-2-3-1104" })).toBeInTheDocument();
+    const why = (await screen.findByText("rule user", { exact: false })).closest("tr");
+    expect(why).toHaveTextContent(`seen with ${SID}`);
+    expect(why).toHaveTextContent("41");
+
+    const row = (await screen.findByRole("cell", { name: /logged on to/ })).closest("tr");
+    expect(row).toHaveTextContent("dc-1.corp.example");
+    expect(screen.getByRole("cell", { name: /connected from/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "2 neighbours" })).toBeInTheDocument();
+  });
+
+  it("asks for the kinds of link chosen, and opens a neighbour", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/?view=entity&entity=${SID}`);
+    show();
+    await user.click(await screen.findByRole("button", { name: "logged on to" }));
+    await waitFor(() =>
+      expect(calls.findLast((call) => call.path === "/entity/neighbours")?.body).toMatchObject({
+        identifier: SID,
+        links: ["logged_on_to"],
+        limit: 100,
+      }),
+    );
+
+    const named = (await screen.findAllByRole("button", { name: "10.0.0.5" }))[0];
+    await user.click(named as HTMLElement);
+    await waitFor(() =>
+      expect(calls.findLast((call) => call.path === "/entity")?.body).toEqual({
+        identifier: "address:ip:10.0.0.5",
+      }),
+    );
+    expect(window.location.search).toContain("entity=address%3Aip%3A10.0.0.5");
+  });
+
+  it("is reached from the value a finding names", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/?view=findings");
+    show();
+    const named = (await screen.findAllByRole("button", { name: "c2.bad.example.com" }))[0];
+    await user.click(named as HTMLElement);
+    await user.click(screen.getByRole("menuitem", { name: "Open its entity" }));
+    await waitFor(() =>
+      expect(calls.findLast((call) => call.path === "/entity")?.body).toEqual({
+        identifier: "domain:name:c2.bad.example.com",
+      }),
+    );
+    expect(screen.getByRole("tab", { name: "Entities" })).toHaveAttribute("aria-selected", "true");
+    // A name with dots may be a machine: the other reading is offered.
+    await user.click(screen.getByRole("button", { name: "as a host" }));
+    await waitFor(() =>
+      expect(calls.findLast((call) => call.path === "/entity")?.body).toEqual({
+        identifier: "host:name:c2.bad.example.com",
+      }),
+    );
   });
 });
