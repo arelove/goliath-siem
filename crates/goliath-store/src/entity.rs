@@ -258,4 +258,183 @@ impl Store {
             .await?;
         Ok(Neighbours { neighbours, degree })
     }
+
+    /// How many entities each of `entities` was seen with in the range:
+    /// its degree, by which a walk tells a hub before it walks through
+    /// one. An entity seen with nothing has no row.
+    ///
+    /// `entities` are named as the newest resolution names them, and each
+    /// is read under every identifier it holds.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError::ClickHouse`] if the query fails or exceeds
+    /// `limits`.
+    pub async fn degrees(
+        &self,
+        scope: &str,
+        entities: &[String],
+        range: (i64, i64),
+        links: &[String],
+        limits: SearchLimits,
+    ) -> Result<Vec<Degree>, StoreError> {
+        if entities.is_empty() {
+            return Ok(Vec::new());
+        }
+        let around = around(links);
+        Ok(self
+            .step(
+                &format!(
+                    "SELECT origin AS entity, uniqExact(neighbour) AS degree FROM ({around}) \
+                     WHERE neighbour != origin GROUP BY origin ORDER BY origin"
+                ),
+                scope,
+                entities,
+                range,
+                links,
+                limits,
+            )
+            .fetch_all::<Degree>()
+            .await?)
+    }
+
+    /// One step of a walk: every way each of `entities` was seen with
+    /// another entity in the range, the most recently seen first and
+    /// `limit` rows at most.
+    ///
+    /// A step is one bounded query, and a walk is made of steps, so that
+    /// the bounds of a walk apply between them: see "What the API answers"
+    /// in `docs/adr/0025-entity-graph.md`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError::ClickHouse`] if the query fails or exceeds
+    /// `limits`.
+    pub async fn edges(
+        &self,
+        scope: &str,
+        entities: &[String],
+        range: (i64, i64),
+        links: &[String],
+        limit: u32,
+        limits: SearchLimits,
+    ) -> Result<Vec<Edge>, StoreError> {
+        if entities.is_empty() {
+            return Ok(Vec::new());
+        }
+        let around = around(links);
+        Ok(self
+            .step(
+                &format!(
+                    "SELECT origin, neighbour, direction, link, sum(counted) AS events, \
+                     toUnixTimestamp64Milli(min(first_at)) AS first_seen, \
+                     toUnixTimestamp64Milli(max(last_at)) AS last_seen \
+                     FROM ({around}) WHERE neighbour != origin \
+                     GROUP BY origin, neighbour, direction, link \
+                     ORDER BY last_seen DESC, origin, neighbour, direction, link \
+                     LIMIT {{limit:UInt32}}"
+                ),
+                scope,
+                entities,
+                range,
+                links,
+                limits,
+            )
+            .param("limit", limit)
+            .fetch_all::<Edge>()
+            .await?)
+    }
+
+    /// A query of one step, with what every step is asked with.
+    fn step(
+        &self,
+        sql: &str,
+        scope: &str,
+        entities: &[String],
+        (from, to): (i64, i64),
+        links: &[String],
+        limits: SearchLimits,
+    ) -> clickhouse::query::Query {
+        let mut query = self
+            .client()
+            .query(sql)
+            .param("scope", scope)
+            .param("entities", entities)
+            .param("from", from)
+            .param("to", to);
+        if !links.is_empty() {
+            query = query.param("links", links);
+        }
+        with_limits(query, limits)
+    }
+}
+
+/// How many entities one entity was seen with in a range.
+#[derive(Debug, Clone, PartialEq, Eq, Row, Deserialize)]
+pub struct Degree {
+    /// The entity, as its strongest identifier.
+    pub entity: String,
+    /// Entities it was seen with.
+    pub degree: u64,
+}
+
+/// One way two entities were seen together, as a step of a walk reads it.
+#[derive(Debug, Clone, PartialEq, Eq, Row, Deserialize)]
+pub struct Edge {
+    /// The entity the step was made from.
+    pub origin: String,
+    /// The entity it was seen with.
+    pub neighbour: String,
+    /// Whether the origin acted, `out`, or was acted on, `in`.
+    pub direction: String,
+    /// What was done, such as `logged_on_to`.
+    pub link: String,
+    /// Events that showed it.
+    pub events: u64,
+    /// When it was first seen in the range, in milliseconds since the
+    /// epoch.
+    pub first_seen: i64,
+    /// When it was last seen in the range.
+    pub last_seen: i64,
+}
+
+/// The links of the entities asked for, in both directions, each end as
+/// the entity it is a member of. The columns are named apart from what a
+/// step answers, so that no name means two things.
+fn around(links: &[String]) -> String {
+    let kinds = if links.is_empty() {
+        ""
+    } else {
+        "AND link IN {links:Array(String)}"
+    };
+    let members = format!(
+        "SELECT identifier, entity FROM graph_entities \
+         WHERE version = {NEWEST} AND scope = {{scope:String}} AND standing = 'member'"
+    );
+    // An entity is read under its own name and under every identifier it
+    // holds.
+    let held = format!(
+        "SELECT arrayJoin({{entities:Array(String)}}) \
+         UNION DISTINCT SELECT identifier FROM graph_entities \
+         WHERE version = {NEWEST} AND scope = {{scope:String}} AND standing = 'member' \
+         AND entity IN {{entities:Array(String)}}"
+    );
+    let hours = "AND hour >= toDateTime(intDiv({from:Int64}, 1000), 'UTC') \
+                 AND hour < toDateTime(intDiv({to:Int64}, 1000), 'UTC')";
+    format!(
+        "SELECT if(own.entity = '', seen.self, own.entity) AS origin, \
+         if(placed.entity = '', seen.other, placed.entity) AS neighbour, \
+         seen.direction AS direction, seen.link AS link, seen.counted AS counted, \
+         seen.first_at AS first_at, seen.last_at AS last_at FROM ( \
+           SELECT src AS self, dst AS other, 'out' AS direction, link, events AS counted, \
+           first_seen AS first_at, last_seen AS last_at \
+           FROM graph_links WHERE scope = {{scope:String}} AND src IN ({held}) {hours} {kinds} \
+           UNION ALL \
+           SELECT dst AS self, src AS other, 'in' AS direction, link, events AS counted, \
+           first_seen AS first_at, last_seen AS last_at \
+           FROM graph_links WHERE scope = {{scope:String}} AND dst IN ({held}) {hours} {kinds} \
+         ) AS seen \
+         LEFT JOIN ({members}) AS own ON own.identifier = seen.self \
+         LEFT JOIN ({members}) AS placed ON placed.identifier = seen.other"
+    )
 }

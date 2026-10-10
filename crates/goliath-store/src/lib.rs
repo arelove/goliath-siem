@@ -26,7 +26,7 @@ mod store;
 mod writer;
 
 pub use batch::Batch;
-pub use entity::{Entity, Neighbour, Neighbours};
+pub use entity::{Degree, Edge, Entity, Neighbour, Neighbours};
 pub use error::StoreError;
 pub use findings::{FINDING, Place, PlaceError, Queue, SeverityCount};
 pub use graph::{ClaimSeen, Graphed, LinkSeen};
