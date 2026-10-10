@@ -2,7 +2,7 @@
 # container: /var/lib/goliath is a volume, and the inbox is bound to ./inbox
 # on the host.
 
-roles = ["collector", "normalizer", "detector", "writer", "api"]
+roles = ["collector", "normalizer", "detector", "graph", "writer", "api"]
 data = "/var/lib/goliath/data"
 
 [[sources]]

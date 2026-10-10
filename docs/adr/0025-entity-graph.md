@@ -197,7 +197,9 @@ each event:
   storage. It gathers the claims and links of a batch, adds up those that
   repeat, and sends the rows through the pipe to the writer.
 - If it falls behind and is moved past events, it notes the range and
-  reads those events back from the store, as the detector does.
+  reads those events back from the store, as the detector does. Until
+  that is built it counts them, in `goliath_graph_skipped_records_total`,
+  and their links are not in the graph.
 - Rows that repeat are added up again in ClickHouse. An event read twice
   is counted twice: the count of a link is a number to look at, as the
   counts of an overview are, and not one to audit. That a link exists,
