@@ -46,6 +46,7 @@ orchestration, and incident handling in one system.
 | [0022](adr/0022-context-snapshot.md) | What the context snapshot holds and where it comes from: networks, assets, identities, groups, and context lists, with typed fields in OCSF's names and a site's own labels, found by any identifier within a scope at the event's time, read from the site's exports, and written into findings as enrichments with their source |
 | [0023](adr/0023-platform-health.md) | Platform health: every process reports conditions with a reason and a time through the pipe, the writer stores them, and the API judges each role by its instances, each flow by its backlog and trend, and the records by an account of where each went; three probes on every process |
 | [0024](adr/0024-interface.md) | The interface: seven views in one shell with one time range, detail in a panel beside its list, every value a way on and every number a link to its rows, the way from a finding to a decision, and a dark palette with one blue accent that is never a severity |
+| [0025](adr/0025-entity-graph.md) | The entity graph: what events show is kept under the identifiers they give, as claims that two identifiers are one thing and links between things; which identifiers are one entity is decided at rest from strong identifiers alone and applied when the graph is read, so a merge is explained and undone; walks are bounded by time, size, and degree; and PostgreSQL waits for M6 |
 
 ## The site
 
