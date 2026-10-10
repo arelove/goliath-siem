@@ -198,8 +198,11 @@ each event:
   repeat, and sends the rows through the pipe to the writer.
 - If it falls behind and is moved past events, it notes the range and
   reads those events back from the store, as the detector does.
-- Rows that repeat are added up again in ClickHouse, so an event read
-  twice is counted in a row that is replaced, not added.
+- Rows that repeat are added up again in ClickHouse. An event read twice
+  is counted twice: the count of a link is a number to look at, as the
+  counts of an overview are, and not one to audit. That a link exists,
+  when it was first and last seen, and which events those were do not
+  change by a second reading.
 
 ### How identifiers become an entity
 

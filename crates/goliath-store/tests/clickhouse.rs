@@ -666,3 +666,138 @@ async fn reports_keep_the_newest_of_each_run_and_how_long_each_status_held() {
     assert_eq!(held[1].message, "store_refused.");
     scratch.drop().await;
 }
+
+#[tokio::test]
+async fn what_events_showed_is_added_up_and_keeps_its_first_and_last_event() {
+    use goliath_search::Cursor;
+    use goliath_store::{ClaimSeen, Graphed, LinkSeen};
+
+    let Some(scratch) = Scratch::new("graph") else {
+        return;
+    };
+    scratch.store.migrate().await.unwrap();
+    // 2026-09-25T10:00:00Z, and events within that hour.
+    let hour = 1_790_330_400_000;
+    let at = |minute: i64, id: u8| Cursor {
+        time: hour + minute * 60_000,
+        id: [id; 16],
+    };
+    let run = |events: u64, first: Cursor, last: Cursor| Graphed {
+        scope: String::new(),
+        received: hour + 3_600_000,
+        links: vec![LinkSeen {
+            src: "user:name:corp\\adam".to_owned(),
+            link: "logged_on_to".to_owned(),
+            dst: "host:name:dc-1.corp.example".to_owned(),
+            events,
+            first,
+            last,
+        }],
+        claims: vec![ClaimSeen {
+            one: "user:sid:s-1-5-21-1-2-3-1104".to_owned(),
+            other: "user:name:corp\\adam".to_owned(),
+            rule: "user".to_owned(),
+            events,
+            first,
+            last,
+        }],
+    };
+    // Two runs of one hour, the later one holding the earlier event, and a
+    // run of another scope, which is another row.
+    let mut other = run(7, at(1, 7), at(2, 7));
+    other.scope = "branch".to_owned();
+    scratch
+        .store
+        .write_graph(&[
+            run(2, at(20, 1), at(50, 2)),
+            run(3, at(5, 3), at(30, 4)),
+            other,
+        ])
+        .await
+        .unwrap();
+    // Nothing to write is no request.
+    scratch.store.write_graph(&[]).await.unwrap();
+
+    for table in ["graph_links", "graph_claims"] {
+        let sum = |column: &str| {
+            format!(
+                "SELECT toUInt64({column}) FROM (SELECT sum(events) AS events, \
+                     toUnixTimestamp64Milli(min(first_seen)) AS first_seen, \
+                     toUnixTimestamp64Milli(max(last_seen)) AS last_seen, \
+                     reinterpretAsUInt8(substring(min(first_event), 24, 1)) AS first_id, \
+                     reinterpretAsUInt8(substring(max(last_event), 24, 1)) AS last_id \
+                     FROM {table} WHERE scope = '')"
+            )
+        };
+        assert_eq!(scratch.count(&sum("events")).await, 5, "{table}");
+        assert_eq!(
+            scratch.count(&sum("first_seen")).await,
+            u64::try_from(at(5, 0).time).unwrap(),
+            "{table}"
+        );
+        assert_eq!(
+            scratch.count(&sum("last_seen")).await,
+            u64::try_from(at(50, 0).time).unwrap(),
+            "{table}"
+        );
+        // The events themselves: the earliest and the latest of both runs.
+        assert_eq!(scratch.count(&sum("first_id")).await, 3, "{table}");
+        assert_eq!(scratch.count(&sum("last_id")).await, 2, "{table}");
+        // Merged, the rows of one key are one row.
+        scratch
+            .client
+            .query(&format!("OPTIMIZE TABLE {table} FINAL"))
+            .execute()
+            .await
+            .unwrap();
+        assert_eq!(
+            scratch.count(&format!("SELECT count() FROM {table}")).await,
+            2,
+            "{table}"
+        );
+        assert_eq!(scratch.count(&sum("events")).await, 5, "{table}");
+    }
+    // A walk from the other end reads the same rows.
+    assert_eq!(
+        scratch
+            .count(
+                "SELECT sum(events) FROM graph_links \
+                 WHERE scope = '' AND dst = 'host:name:dc-1.corp.example'"
+            )
+            .await,
+        5
+    );
+
+    scratch.drop().await;
+}
+
+#[tokio::test]
+async fn links_are_kept_as_long_as_events_and_claims_a_year() {
+    let Some(scratch) = Scratch::new("graph_kept") else {
+        return;
+    };
+    scratch.store.migrate().await.unwrap();
+    let week = std::num::NonZeroU16::new(7);
+    scratch.store.set_retention(week).await.unwrap();
+    assert_eq!(scratch.store.retention().await.unwrap(), week);
+    assert_eq!(
+        scratch
+            .count(
+                "SELECT count() FROM system.tables WHERE database = currentDatabase() \
+                 AND name = 'graph_links' AND engine_full LIKE '%toIntervalDay(7)%'"
+            )
+            .await,
+        1
+    );
+    assert_eq!(
+        scratch
+            .count(
+                "SELECT count() FROM system.tables WHERE database = currentDatabase()                  AND name = 'graph_claims' AND engine_full LIKE '%toIntervalDay(365)%'"
+            )
+            .await,
+        1
+    );
+    scratch.store.set_retention(None).await.unwrap();
+    assert_eq!(scratch.store.retention().await.unwrap(), None);
+    scratch.drop().await;
+}
