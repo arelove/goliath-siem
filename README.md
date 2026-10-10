@@ -114,8 +114,17 @@ The indicators are kept in RocksDB inside the process, behind a filter in
 memory. The budgets it must meet at 100 million indicators are set in
 [ADR-0021](docs/adr/0021-enrichment-placement.md); that run is not made yet.
 
-Not built yet: Sigma rules on the live stream, the entity graph, response,
-and the investigation and case views. The order is in
+Who and what the events are about is kept as a graph of entities: users,
+hosts, addresses, domains, and files, each under every identifier the
+sources know it by, with the reason each identifier is in it, and the links
+between them by hour. The interface opens an entity from a value a finding
+names: what it is known by, and what it was seen with in the range. How
+identifiers are joined, and what is never joined, is in
+[ADR-0025](docs/adr/0025-entity-graph.md); its precision and recall are not
+measured yet.
+
+Not built yet: Sigma rules on the live stream, paths between entities,
+response, and the case views. The order is in
 [docs/roadmap.md](docs/roadmap.md).
 
 ## Run it

@@ -1175,3 +1175,144 @@ button.way-name[aria-expanded="true"] {
   gap: 8px;
   height: 26px;
 }
+
+/* One entity: what it is known by, and what it was seen with. */
+.entity-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.entity-bar input {
+  flex: 1 1 320px;
+  max-width: 620px;
+}
+
+.entity-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+
+.entity-head h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.entity-head .again {
+  margin-left: auto;
+}
+
+.entity-note {
+  margin: -4px 0 0;
+}
+
+.entity-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 1100px) {
+  .entity-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.entity .scroll {
+  overflow-x: auto;
+}
+
+.entity .card > header {
+  flex-wrap: wrap;
+}
+
+.entity td.reason {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.named {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+/* A kind of entity has a colour, wherever it is marked. */
+.user {
+  --tone: var(--accent-2);
+}
+
+.host {
+  --tone: var(--accent);
+}
+
+.address {
+  --tone: var(--low);
+}
+
+.domain {
+  --tone: var(--good);
+}
+
+.file {
+  --tone: var(--high);
+}
+
+/* The entity among what it was seen with. */
+.web {
+  position: relative;
+  height: 320px;
+  min-width: 0;
+}
+
+.web .lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.web line {
+  stroke: var(--line);
+}
+
+.web .node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 150px;
+  height: 22px;
+  padding: 0 8px 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--raised);
+  font-size: 11px;
+}
+
+.web .node .mono {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.web button.node:hover {
+  border-color: var(--accent);
+  background: var(--selected);
+}
+
+.web .node.centre {
+  height: 26px;
+  border-color: var(--accent);
+  background: var(--selected);
+  font-size: 12px;
+  z-index: 1;
+}

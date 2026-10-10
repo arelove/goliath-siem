@@ -27,6 +27,8 @@ interface Props {
   onError: (error: unknown) => void;
   /** Opens the events view on what a finding names. */
   onEvents: (lead: Lead) => void;
+  /** Opens the entity a value names. */
+  onEntity: (value: string) => void;
 }
 
 const number = new Intl.NumberFormat();
@@ -52,7 +54,7 @@ function Severity({ id }: { id: number }) {
  * the newest, and beside it what one finding says. See "From a finding to
  * a decision" in docs/adr/0024-interface.md.
  */
-export function Findings({ span, className, onError, onEvents }: Props) {
+export function Findings({ span, className, onError, onEvents, onEntity }: Props) {
   const [severities, setSeverities] = useState<number[]>([]);
   const [filters, setFilters] = useState<Filter[]>([]);
   // The finding that is open is in the address, so that a link opens it.
@@ -155,6 +157,7 @@ export function Findings({ span, className, onError, onEvents }: Props) {
           },
         ]
       : []),
+    { label: "Open its entity", run: () => onEntity(finding.value) },
   ];
 
   return (
@@ -285,6 +288,7 @@ export function Findings({ span, className, onError, onEvents }: Props) {
             ways={ways(open)}
             className={className}
             onSelect={setSelected}
+            onEntity={onEntity}
             onEvents={(path, value) =>
               onEvents({ ...range, classUid: open.evidence.classUid, path, value })
             }
@@ -320,10 +324,20 @@ interface PanelProps {
   className: (uid: number) => string;
   onSelect: (at: string) => void;
   onEvents: (path: string, value: Scalar) => void;
+  onEntity: (value: string) => void;
   onClose: () => void;
 }
 
-function Panel({ finding, others, ways, className, onSelect, onEvents, onClose }: PanelProps) {
+function Panel({
+  finding,
+  others,
+  ways,
+  className,
+  onSelect,
+  onEvents,
+  onEntity,
+  onClose,
+}: PanelProps) {
   const source = useQuery({
     queryKey: ["event", finding.evidence.at],
     queryFn: () => event(finding.evidence.at ?? ""),
@@ -400,7 +414,11 @@ function Panel({ finding, others, ways, className, onSelect, onEvents, onClose }
           finding.enrichments.map((entry) => (
             <div className="known" key={`${entry.name}|${entry.value}|${entry.provider}`}>
               <p>
-                <span className="muted">{entry.name}</span> <ValueMenu value={entry.value} />
+                <span className="muted">{entry.name}</span>{" "}
+                <ValueMenu
+                  value={entry.value}
+                  ways={[{ label: "Open its entity", run: () => onEntity(entry.value) }]}
+                />
                 <span className="muted">
                   {" "}
                   · {entry.type} from {entry.provider}

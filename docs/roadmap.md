@@ -364,8 +364,11 @@ entities at the start and every 15 minutes, from the claims and from a
 file of what people decided, and the answer is kept as a version with the
 reason for every identifier in it. What was stored before the role first
 ran, and what it is moved past when it falls behind, is read into the
-graph from the store. The measurement against the generator's truth and
-the API follow.
+graph from the store. The API answers for an entity by any of its
+identifiers and for what it was seen with in a range, and the interface
+has a view of one entity, opened from the menu of a value. The path
+between two entities, the walk of two links, findings grouped by entity,
+and the measurement against the generator's truth follow.
 
 **Exit criterion:** on the M3 generator's stream with the hard cases, where
 each entity appears under different identifiers per source, resolution
