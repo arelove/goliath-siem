@@ -359,8 +359,12 @@ Built so far: `goliath-graph` reads an event's identifiers, with their
 strength, and the claims and links it shows, and is tested on the fixture
 events of every shipped source. The `graph` role reads them from the
 stream beside the writer, adds up what repeats, and the writer keeps the
-rows in `graph_links` and `graph_claims`. Reading back the events the role
-was moved past, resolution, and the API follow.
+rows in `graph_links` and `graph_claims`. Identifiers are resolved into
+entities at the start and every 15 minutes, from the claims and from a
+file of what people decided, and the answer is kept as a version with the
+reason for every identifier in it. Reading back the events the role was
+moved past, the measurement against the generator's truth, and the API
+follow.
 
 **Exit criterion:** on the M3 generator's stream with the hard cases, where
 each entity appears under different identifiers per source, resolution
