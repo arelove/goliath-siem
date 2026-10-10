@@ -41,6 +41,7 @@ SELECT time, event.process.cmd_line FROM goliath.events WHERE class_uid = 1007
 | `collector` | Takes finished files from each source's inbox | The file is in the raw topic |
 | `normalizer` | Turns raw records into OCSF events and dead letters | The outcomes are in the normalized topic |
 | `writer` | Batches outcomes into ClickHouse, retrying while it is unavailable | The batch is stored |
+| `graph` | Reads what normalized events show of the things they name, beside the writer: links between things and claims that two identifiers are one, added up ([ADR-0025](../../docs/adr/0025-entity-graph.md)) | The rows are in the graph topic |
 | `api` | Serves searches over the stored events over HTTP, under `/api/v1` | Reads only |
 
 ## Search
@@ -149,8 +150,8 @@ A condition is a question, an answer, and why:
 
 | Role | Condition | Degraded when | Failing when |
 | --- | --- | --- | --- |
-| writer | `storing`, and `storing_findings` for what the detector found | The store took longer than 10 seconds for a batch | The store refused the last batch |
-| writer, normalizer, detector | `keeping_up:<topic>`, one for each topic it reads | The backlog grew through the last ten minutes, and is 1,000 records or more | Not told yet |
+| writer | `storing`, `storing_findings` for what the detector found, and `storing_graph` for what the graph role read | The store took longer than 10 seconds for a batch | The store refused the last batch |
+| writer, normalizer, detector, graph | `keeping_up:<topic>`, one for each topic it reads | The backlog grew through the last ten minutes, and is 1,000 records or more | Not told yet |
 | normalizer | `normalizing:<source>` | More than 1% of the source's records in the last hour became dead letters | More than half did |
 | detector | `feeds_current:<feed>` | The feed is older than twice its refresh, or was not fetched since the process started | No publication of it was ever loaded |
 

@@ -357,8 +357,10 @@ bounds a walk.
 
 Built so far: `goliath-graph` reads an event's identifiers, with their
 strength, and the claims and links it shows, and is tested on the fixture
-events of every shipped source. The tables, the role, resolution, and the
-API follow.
+events of every shipped source. The `graph` role reads them from the
+stream beside the writer, adds up what repeats, and the writer keeps the
+rows in `graph_links` and `graph_claims`. Reading back the events the role
+was moved past, resolution, and the API follow.
 
 **Exit criterion:** on the M3 generator's stream with the hard cases, where
 each entity appears under different identifiers per source, resolution
