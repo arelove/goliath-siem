@@ -70,6 +70,35 @@ whatever events show, each with a reason; its shape is in the
 at every run. A file that cannot be used fails the run, and the condition
 `resolving` says which decision is wrong.
 
+The API answers for an entity by any identifier it has:
+
+```sh
+curl -s localhost:8080/api/v1/entity -H 'content-type: application/json' -d '{
+  "identifier": "user:name:corp\\adam"
+}'
+```
+
+The answer names the entity by its strongest identifier and lists every
+identifier it holds, each with why it is there: the identifier it was seen
+with, the rule that read the claim or a person's reason, how often, and
+from when until when. An identifier nothing was resolved for is an entity
+of its own, and `provisional` says so of a weak one.
+
+```sh
+curl -s localhost:8080/api/v1/entity/neighbours -H 'content-type: application/json' -d '{
+  "identifier": "user:name:corp\\adam",
+  "from": "2026-09-24T00:00:00Z", "to": "2026-09-25T00:00:00Z",
+  "links": ["logged_on_to"], "limit": 100
+}'
+```
+
+Its neighbours are what the entity was seen with in the range, under all
+of its identifiers together and each neighbour as its own entity, the most
+recently seen first. Three bounds hold: a walk has a time range, with the
+limits a search has; an answer holds 100 rows unless it asks for up to
+1,000; and `degree` says how many neighbours there are in all, so that a
+machine everything talks to is seen as one before it is walked through.
+
 ## Search
 
 With the `api` role, events are searched by OCSF path, checked against the
