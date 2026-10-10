@@ -349,3 +349,32 @@ export interface PlatformHealth {
 export function platform(signal?: AbortSignal): Promise<PlatformHealth> {
   return request<PlatformHealth>("/platform", signal ? { signal } : {});
 }
+
+/** A page of the queue of findings, as it is asked for. */
+export interface Asked {
+  from: string;
+  to: string;
+  filters?: Filter[];
+  /** The `severity_id`s to show; every severity if absent. */
+  severities?: number[];
+  limit?: number;
+  after?: string;
+}
+
+/** One page of the queue: the most severe first, then the newest. */
+export interface Queue {
+  findings: Found[];
+  next: string | null;
+  /** Findings the range and the filters leave, of every severity. */
+  total: number;
+  /** The same by `severity_id`, whichever severities were asked for. */
+  severities: Record<string, number>;
+}
+
+export function findings(asked: Asked, signal?: AbortSignal): Promise<Queue> {
+  return request<Queue>("/findings", {
+    method: "POST",
+    body: JSON.stringify(asked),
+    ...(signal ? { signal } : {}),
+  });
+}

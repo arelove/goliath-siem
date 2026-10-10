@@ -55,7 +55,7 @@ interface TreeProps {
 }
 
 /** The event as a tree; a value outside lists can become a filter. */
-function Tree({ value, path, inList, onFilter }: TreeProps) {
+export function Tree({ value, path, inList, onFilter }: TreeProps) {
   if (value !== null && typeof value === "object") {
     const entries = Array.isArray(value)
       ? value.map((item, index) => [String(index), item] as const)

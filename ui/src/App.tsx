@@ -7,6 +7,8 @@ import { Mark } from "./components/Mark";
 import { Results } from "./components/Results";
 import { SearchBar } from "./components/SearchBar";
 import { TokenPrompt } from "./components/TokenPrompt";
+import type { Lead } from "./Findings";
+import { Findings } from "./Findings";
 import { Overview } from "./Overview";
 import { Platform } from "./Platform";
 import type { Draft } from "./query";
@@ -18,7 +20,9 @@ function unauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401;
 }
 
-type View = "overview" | "search" | "sources" | "platform";
+type View = "overview" | "findings" | "search" | "sources" | "platform";
+
+const VIEWS: readonly View[] = ["overview", "findings", "search", "sources", "platform"];
 
 /** Ranges the dashboard offers, each ending now. */
 const RANGES = [
@@ -77,11 +81,12 @@ function MoonIcon() {
 
 function viewOf(params: URLSearchParams): View {
   const view = params.get("view");
-  return view === "search" || view === "sources" || view === "platform" ? view : "overview";
+  return VIEWS.find((name) => name === view) ?? "overview";
 }
 
 const TABS: Record<View, { tab: string }> = {
   overview: { tab: "Dashboard" },
+  findings: { tab: "Findings" },
   search: { tab: "Events" },
   sources: { tab: "Sources" },
   platform: { tab: "Platform" },
@@ -90,6 +95,7 @@ const TABS: Record<View, { tab: string }> = {
 /** What each view's tab is drawn with: four strokes at most. */
 const ICONS: Record<View, string> = {
   overview: "M4 4h7v7H4zM13 4h7v4h-7zM13 11h7v9h-7zM4 14h7v6H4z",
+  findings: "M12 3l9 16H3zM12 10v4M12 17v.5",
   search: "M4 6h16M4 12h16M4 18h10",
   sources: "M12 3v6M12 15v6M5 9h14v6H5z",
   platform: "M3 12h4l3-8 4 16 3-8h4",
@@ -124,6 +130,7 @@ export function App() {
     setView(next);
     const params = new URLSearchParams(window.location.search);
     params.set("view", next);
+    params.delete("finding");
     window.history.replaceState(null, "", `?${params.toString()}`);
   };
 
@@ -170,6 +177,16 @@ export function App() {
     window.history.replaceState(null, "", `?${params.toString()}`);
   };
 
+  /** The events view on what a finding names, in the queue's range. */
+  const follow = (lead: Lead) => {
+    run({
+      range: { from: lead.from, to: lead.to },
+      classUid: lead.classUid,
+      filters: [{ path: lead.path, op: "equals", value: String(lead.value) }],
+    });
+    setView("search");
+  };
+
   const addFilter = (path: string, value: Scalar) =>
     run({ ...draft, filters: [...draft.filters, { path, op: "equals", value: String(value) }] });
 
@@ -200,7 +217,7 @@ export function App() {
           goliath
         </span>
         <div className="tabs" role="tablist" aria-label="Views">
-          {(["overview", "search", "sources", "platform"] as const).map((name) => (
+          {VIEWS.map((name) => (
             <button
               key={name}
               type="button"
@@ -215,7 +232,7 @@ export function App() {
           ))}
         </div>
         <div className="tools">
-          {view === "overview" && (
+          {(view === "overview" || view === "findings") && (
             <select
               aria-label="Time range"
               value={span}
@@ -243,6 +260,13 @@ export function App() {
         <Platform onError={setOverviewError} />
       ) : view === "sources" ? (
         <Sources onError={setOverviewError} />
+      ) : view === "findings" ? (
+        <Findings
+          span={span}
+          className={(uid) => names.get(uid) ?? `Class ${uid}`}
+          onError={setOverviewError}
+          onEvents={follow}
+        />
       ) : view === "overview" ? (
         <Overview
           span={span}
