@@ -801,3 +801,108 @@ async fn links_are_kept_as_long_as_events_and_claims_a_year() {
     assert_eq!(scratch.store.retention().await.unwrap(), None);
     scratch.drop().await;
 }
+
+#[tokio::test]
+async fn a_run_of_resolution_is_read_once_complete_and_old_ones_are_dropped() {
+    use goliath_search::Cursor;
+    use goliath_store::{ClaimSeen, Graphed, Placed, Resolving};
+
+    let Some(scratch) = Scratch::new("resolution") else {
+        return;
+    };
+    scratch.store.migrate().await.unwrap();
+    assert_eq!(scratch.store.resolution().await.unwrap(), None);
+
+    // One claim seen on two days is one claim, added up.
+    let day = 86_400_000;
+    let seen = |time: i64, events: u64| Graphed {
+        scope: String::new(),
+        received: time,
+        links: Vec::new(),
+        claims: vec![ClaimSeen {
+            one: "user:sid:s-1-5-21-1-2-3-1104".to_owned(),
+            other: "user:name:corp\\adam".to_owned(),
+            rule: "user".to_owned(),
+            events,
+            first: Cursor { time, id: [1; 16] },
+            last: Cursor {
+                time: time + 5,
+                id: [2; 16],
+            },
+        }],
+    };
+    let first = 1_790_330_400_000;
+    scratch
+        .store
+        .write_graph(&[seen(first, 2), seen(first + day, 3)])
+        .await
+        .unwrap();
+    let claimed = scratch.store.claimed().await.unwrap();
+    assert_eq!(claimed.len(), 1);
+    assert_eq!(
+        (
+            claimed[0].events,
+            claimed[0].first_seen,
+            claimed[0].last_seen
+        ),
+        (5, first, first + day + 5)
+    );
+    assert_eq!(claimed[0].other, "user:name:corp\\adam");
+
+    let placed = |identifier: &str, via: &str| Placed {
+        scope: String::new(),
+        identifier: identifier.to_owned(),
+        entity: "user:sid:s-1-5-21-1-2-3-1104".to_owned(),
+        standing: "member".to_owned(),
+        via: via.to_owned(),
+        rule: if via.is_empty() { "" } else { "user" }.to_owned(),
+        said: String::new(),
+        events: 5,
+        first_seen: first,
+        last_seen: first + day,
+    };
+    let rows = [
+        placed("user:sid:s-1-5-21-1-2-3-1104", ""),
+        placed("user:name:corp\\adam", "user:sid:s-1-5-21-1-2-3-1104"),
+    ];
+    let run = |version: u64| Resolving {
+        version,
+        finished: i64::try_from(version).unwrap() + 40,
+        claims: 1,
+        entities: 1,
+        members: 2,
+        aliases: 0,
+        shared: 0,
+        held_apart: 0,
+        decisions: "identity 2".to_owned(),
+    };
+    // Five runs: the newest is the one read, and three are kept.
+    for version in 1..=5_u64 {
+        scratch
+            .store
+            .write_resolution(&run(version * 1000), &rows)
+            .await
+            .unwrap();
+    }
+    assert_eq!(scratch.store.resolution().await.unwrap(), Some(run(5000)));
+    assert_eq!(
+        scratch
+            .count("SELECT uniqExact(version) FROM graph_entities")
+            .await,
+        3
+    );
+    assert_eq!(
+        scratch
+            .count("SELECT min(version) FROM graph_entities")
+            .await,
+        3000
+    );
+    // A run that found nothing is a run all the same.
+    scratch
+        .store
+        .write_resolution(&run(6000), &[])
+        .await
+        .unwrap();
+    assert_eq!(scratch.store.resolution().await.unwrap(), Some(run(6000)));
+    scratch.drop().await;
+}
