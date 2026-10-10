@@ -79,6 +79,9 @@ pub fn finding(
 
     let mut unmapped = Map::new();
     unmapped.insert("indicator_kind".to_owned(), json!(kind.as_str()));
+    // The value is in `observables` and `osint` too, which are lists, and a
+    // search does not look into a list.
+    unmapped.insert("indicator_value".to_owned(), json!(hit.indicator.value()));
     unmapped.insert("assertions".to_owned(), Value::Array(assertions));
 
     let mut finding = json!({

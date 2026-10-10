@@ -414,6 +414,7 @@ fn a_hit_is_a_detection_finding_with_its_provenance() {
     );
     assert_eq!(domain["unmapped"]["assertions"][1]["confidence"], 60);
     assert_eq!(domain["unmapped"]["indicator_kind"], "domain");
+    assert_eq!(domain["unmapped"]["indicator_value"], "c2.bad.example.com");
     assert_eq!(
         domain["finding_info"]["data_sources"],
         json!(["feed-a", "feed-b"])
