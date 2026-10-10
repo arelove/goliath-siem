@@ -59,6 +59,7 @@ use tracing::{error, info, warn};
 use crate::RunError;
 use crate::config::ApiConfig;
 use crate::metrics::{Metrics, Searched};
+use crate::walk::{self, Bounds, InStore};
 
 /// Bytes a request body may hold.
 const MAX_BODY: usize = 64 * 1024;
@@ -166,6 +167,8 @@ fn app(shared: Shared, ui: Option<PathBuf>) -> Router {
         .route("/findings", post(findings))
         .route("/entity", post(entity))
         .route("/entity/neighbours", post(neighbours))
+        .route("/entity/walk", post(walked))
+        .route("/entity/path", post(path_between))
         .route("/overview", post(overview))
         .route("/arrivals", get(arrivals))
         .route("/sources", get(sources))
@@ -392,6 +395,281 @@ fn kind_of(identifier: &str) -> Value {
         .map_or(Value::Null, |identifier| json!(identifier.kind().as_str()))
 }
 
+/// Refuses a kind of link that is none.
+fn links_known(links: &[String]) -> Result<(), String> {
+    let Some(unknown) = links.iter().find(|link| {
+        !LinkKind::ALL
+            .iter()
+            .any(|kind| kind.as_str() == link.as_str())
+    }) else {
+        return Ok(());
+    };
+    let known: Vec<&str> = LinkKind::ALL.iter().map(|kind| kind.as_str()).collect();
+    Err(format!(
+        "`{}` is no kind of link; the kinds are {}",
+        unknown.chars().take(64).collect::<String>(),
+        known.join(", ")
+    ))
+}
+
+/// What lies within some links of an entity, as a client asks for it.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OfWalk {
+    identifier: String,
+    #[serde(default)]
+    scope: String,
+    from: String,
+    to: String,
+    /// The kinds of link to follow; every kind if empty.
+    #[serde(default)]
+    links: Vec<String>,
+    /// Links from the entity at most: one or two.
+    #[serde(default)]
+    depth: Option<u8>,
+    /// An entity seen with more others than this is a hub, and is not
+    /// walked through.
+    #[serde(default)]
+    hub_over: Option<u64>,
+}
+
+/// A path between two entities, as a client asks for it.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OfPath {
+    /// An identifier of the entity the path begins at.
+    source: String,
+    /// An identifier of the entity it ends at.
+    target: String,
+    #[serde(default)]
+    scope: String,
+    from: String,
+    to: String,
+    #[serde(default)]
+    links: Vec<String>,
+    /// Links the path has at most: one to four.
+    #[serde(default)]
+    most: Option<u8>,
+    #[serde(default)]
+    hub_over: Option<u64>,
+    /// Whether the path may pass through a hub.
+    #[serde(default)]
+    through_hubs: bool,
+}
+
+/// Links a walk goes from an entity at most, and a path has at most.
+const WALK_DEPTH: u8 = 2;
+const PATH_LINKS: u8 = 4;
+/// An entity seen with more others than this is a hub, unless the request
+/// says another number, which is this at most.
+const HUB_OVER: u64 = 100;
+const HUB_OVER_MOST: u64 = 1000;
+/// Entities one step of a walk is made from, and rows it reads, at most.
+const STEP_FROM: usize = 200;
+const STEP_ROWS: u32 = 5000;
+
+/// The bounds of a walk, with the degree a request names for a hub.
+fn bounds_of(hub_over: Option<u64>) -> Result<Bounds, String> {
+    let hub_over = hub_over.unwrap_or(HUB_OVER);
+    if hub_over == 0 || hub_over > HUB_OVER_MOST {
+        return Err(format!("`hub_over` is from 1 to {HUB_OVER_MOST}"));
+    }
+    Ok(Bounds {
+        hub_over,
+        frontier: STEP_FROM,
+        rows: STEP_ROWS,
+    })
+}
+
+/// The range a walk is asked within, and the kinds of link it follows.
+fn walk_within(
+    from: &str,
+    to: &str,
+    links: &[String],
+    limits: &Limits,
+) -> Result<(i64, i64), String> {
+    let window = Window {
+        from: from.to_owned(),
+        to: to.to_owned(),
+    };
+    let range = window.check(limits).map_err(|error| error.to_string())?;
+    links_known(links)?;
+    Ok(range)
+}
+
+fn link_body(link: &walk::Link) -> Value {
+    json!({
+        "src": link.src,
+        "dst": link.dst,
+        "link": link.kind,
+        "events": link.events,
+        "first_seen": link.first_seen,
+        "last_seen": link.last_seen,
+    })
+}
+
+async fn walked(
+    State(shared): State<Arc<Shared>>,
+    body: Result<axum::Json<OfWalk>, JsonRejection>,
+) -> Response {
+    let asked = match body {
+        Ok(axum::Json(asked)) => asked,
+        Err(rejection) => return problem(rejection.status(), rejection.body_text()),
+    };
+    let checked =
+        identifier_of(&asked.identifier, &asked.scope, &shared.limits).and_then(|identifier| {
+            let range = walk_within(&asked.from, &asked.to, &asked.links, &shared.limits)?;
+            let depth = asked.depth.unwrap_or(WALK_DEPTH);
+            if depth == 0 || depth > WALK_DEPTH {
+                return Err(format!("`depth` is from 1 to {WALK_DEPTH}"));
+            }
+            Ok((identifier, range, depth, bounds_of(asked.hub_over)?))
+        });
+    let (identifier, range, depth, bounds) = match checked {
+        Ok(checked) => checked,
+        Err(refused) => return problem(StatusCode::BAD_REQUEST, refused),
+    };
+    let start = match shared
+        .store
+        .entity(&asked.scope, &identifier.to_string(), shared.query)
+        .await
+    {
+        Ok(found) => found.entity,
+        Err(error) => return store_failed(&error),
+    };
+    let steps = InStore {
+        store: &shared.store,
+        scope: &asked.scope,
+        range,
+        links: &asked.links,
+        limits: shared.query,
+    };
+    match walk::walk(&steps, &start, depth, bounds).await {
+        Ok(walked) => axum::Json(json!({
+            "entity": start,
+            "kind": identifier.kind().as_str(),
+            "from": range.0,
+            "to": range.1,
+            "depth": depth,
+            "hub_over": bounds.hub_over,
+            // Whether no bound cut the walk short.
+            "complete": walked.complete,
+            "nodes": walked
+                .nodes
+                .iter()
+                .map(|node| json!({
+                    "entity": node.entity,
+                    "kind": kind_of(&node.entity),
+                    "distance": node.distance,
+                    "degree": node.degree,
+                    "hub": node.hub,
+                }))
+                .collect::<Vec<_>>(),
+            "links": walked.links.iter().map(link_body).collect::<Vec<_>>(),
+        }))
+        .into_response(),
+        Err(error) => store_failed(&error),
+    }
+}
+
+/// A path as the answer holds it.
+fn path_body(ends: &[String], found: &walk::Found) -> Value {
+    let named = |entity: &str| json!({"entity": entity, "kind": kind_of(entity)});
+    let path: Option<Vec<Value>> = found.hops.as_ref().map(|hops| {
+        ends.first()
+            .map(String::as_str)
+            .into_iter()
+            .chain(hops.iter().map(|hop| hop.to.as_str()))
+            .map(named)
+            .collect()
+    });
+    json!({
+        "found": found.hops.is_some(),
+        // Whether no bound cut the search short: if not, a path may exist
+        // that was not found.
+        "complete": found.complete,
+        "path": path,
+        "hops": found.hops.as_ref().map(|hops| hops
+            .iter()
+            .map(|hop| json!({
+                "from": hop.from,
+                "to": hop.to,
+                "links": hop.links.iter().map(link_body).collect::<Vec<_>>(),
+            }))
+            .collect::<Vec<_>>()),
+        // Hubs the search met and did not go through.
+        "hubs": found
+            .hubs
+            .iter()
+            .map(|(entity, degree)| json!({
+                "entity": entity,
+                "kind": kind_of(entity),
+                "degree": degree,
+            }))
+            .collect::<Vec<_>>(),
+    })
+}
+
+async fn path_between(
+    State(shared): State<Arc<Shared>>,
+    body: Result<axum::Json<OfPath>, JsonRejection>,
+) -> Response {
+    let asked = match body {
+        Ok(axum::Json(asked)) => asked,
+        Err(rejection) => return problem(rejection.status(), rejection.body_text()),
+    };
+    let checked = identifier_of(&asked.source, &asked.scope, &shared.limits).and_then(|source| {
+        let target = identifier_of(&asked.target, &asked.scope, &shared.limits)?;
+        let range = walk_within(&asked.from, &asked.to, &asked.links, &shared.limits)?;
+        let most = asked.most.unwrap_or(PATH_LINKS);
+        if most == 0 || most > PATH_LINKS {
+            return Err(format!("`most` is from 1 to {PATH_LINKS}"));
+        }
+        Ok(([source, target], range, most, bounds_of(asked.hub_over)?))
+    });
+    let (identifiers, range, most, bounds) = match checked {
+        Ok(checked) => checked,
+        Err(refused) => return problem(StatusCode::BAD_REQUEST, refused),
+    };
+    let mut ends = Vec::new();
+    for identifier in &identifiers {
+        match shared
+            .store
+            .entity(&asked.scope, &identifier.to_string(), shared.query)
+            .await
+        {
+            Ok(found) => ends.push(found.entity),
+            Err(error) => return store_failed(&error),
+        }
+    }
+    let [source, target] = ends.as_slice() else {
+        return problem(StatusCode::INTERNAL_SERVER_ERROR, "a path has two ends");
+    };
+    let steps = InStore {
+        store: &shared.store,
+        scope: &asked.scope,
+        range,
+        links: &asked.links,
+        limits: shared.query,
+    };
+    match walk::path(&steps, source, target, most, asked.through_hubs, bounds).await {
+        Ok(found) => {
+            let mut body = path_body(&ends, &found);
+            if let Some(body) = body.as_object_mut() {
+                body.insert("source".to_owned(), json!(source));
+                body.insert("target".to_owned(), json!(target));
+                body.insert("from".to_owned(), json!(range.0));
+                body.insert("to".to_owned(), json!(range.1));
+                body.insert("most".to_owned(), json!(most));
+                body.insert("hub_over".to_owned(), json!(bounds.hub_over));
+                body.insert("through_hubs".to_owned(), json!(asked.through_hubs));
+            }
+            axum::Json(body).into_response()
+        }
+        Err(error) => store_failed(&error),
+    }
+}
+
 /// An entity as the answer holds it.
 fn entity_body(asked: &Identifier, entity: &goliath_store::Entity) -> Value {
     let identifiers: Vec<Value> = entity
@@ -468,20 +746,8 @@ async fn neighbours(
         Ok(range) => range,
         Err(error) => return problem(StatusCode::BAD_REQUEST, error.to_string()),
     };
-    if let Some(unknown) = asked.links.iter().find(|link| {
-        !LinkKind::ALL
-            .iter()
-            .any(|kind| kind.as_str() == link.as_str())
-    }) {
-        let known: Vec<&str> = LinkKind::ALL.iter().map(|kind| kind.as_str()).collect();
-        return problem(
-            StatusCode::BAD_REQUEST,
-            format!(
-                "`{}` is no kind of link; the kinds are {}",
-                unknown.chars().take(64).collect::<String>(),
-                known.join(", ")
-            ),
-        );
+    if let Err(refused) = links_known(&asked.links) {
+        return problem(StatusCode::BAD_REQUEST, refused);
     }
     let limit = asked.limit.unwrap_or(shared.limits.default_limit);
     if limit == 0 || limit > shared.limits.max_limit {
@@ -1135,6 +1401,125 @@ mod tests {
         )
         .await;
         assert_eq!(status, StatusCode::BAD_GATEWAY);
+    }
+
+    #[tokio::test]
+    async fn a_walk_and_a_path_are_asked_for_within_bounds() {
+        const RANGE: &str = r#""from":"2026-09-25T00:00:00Z","to":"2026-09-26T00:00:00Z""#;
+        let refused = |path: &'static str, body: String| async move {
+            let (status, body, _) = call(test_app(None), post(path, &body, None)).await;
+            assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+            body["error"].as_str().unwrap_or_default().to_owned()
+        };
+        let walk = |rest: &str| {
+            refused(
+                "/api/v1/entity/walk",
+                format!(r#"{{"identifier":"host:name:ws-7",{RANGE}{rest}}}"#),
+            )
+        };
+        // Two links at most: a third is the whole company.
+        assert_eq!(walk(r#","depth":3"#).await, "`depth` is from 1 to 2");
+        assert_eq!(walk(r#","depth":0"#).await, "`depth` is from 1 to 2");
+        assert_eq!(
+            walk(r#","hub_over":5000"#).await,
+            "`hub_over` is from 1 to 1000"
+        );
+        assert!(
+            walk(r#","links":["befriended"]"#)
+                .await
+                .starts_with("`befriended` is no kind of link")
+        );
+        assert_eq!(
+            refused(
+                "/api/v1/entity/walk",
+                r#"{"identifier":"ws-7","from":"x","to":"y"}"#.to_owned()
+            )
+            .await,
+            "`ws-7` is not an identifier: it is written kind:form:value"
+        );
+
+        let path = |ends: &str, rest: &str| {
+            refused("/api/v1/entity/path", format!("{{{ends},{RANGE}{rest}}}"))
+        };
+        let ends = r#""source":"host:name:ws-7","target":"address:ip:10.0.0.5""#;
+        assert_eq!(path(ends, r#","most":5"#).await, "`most` is from 1 to 4");
+        assert_eq!(
+            path(ends, r#","hub_over":0"#).await,
+            "`hub_over` is from 1 to 1000"
+        );
+        assert_eq!(
+            path(r#""source":"host:name:ws-7","target":"there""#, "").await,
+            "`there` is not an identifier: it is written kind:form:value"
+        );
+        // A path has a range, as every walk has.
+        let (status, _, _) = call(
+            test_app(None),
+            post("/api/v1/entity/path", &format!("{{{ends}}}"), None),
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[test]
+    fn a_path_is_answered_as_its_entities_and_what_joins_them() {
+        let link = |src: &str, dst: &str| walk::Link {
+            src: src.to_owned(),
+            dst: dst.to_owned(),
+            kind: "logged_on_to".to_owned(),
+            events: 3,
+            first_seen: 10,
+            last_seen: 20,
+        };
+        let ends = ["user:name:adam".to_owned(), "host:name:files".to_owned()];
+        let found = walk::Found {
+            hops: Some(vec![
+                walk::Hop {
+                    from: "user:name:adam".to_owned(),
+                    to: "host:name:ws-7".to_owned(),
+                    links: vec![link("user:name:adam", "host:name:ws-7")],
+                },
+                walk::Hop {
+                    from: "host:name:ws-7".to_owned(),
+                    to: "host:name:files".to_owned(),
+                    links: vec![link("host:name:files", "host:name:ws-7")],
+                },
+            ]),
+            hubs: vec![("host:name:dc-1".to_owned(), 412)],
+            complete: true,
+        };
+        let body = path_body(&ends, &found);
+        assert_eq!(body["found"], true);
+        let names: Vec<&str> = body["path"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|node| node["entity"].as_str())
+            .collect();
+        assert_eq!(
+            names,
+            ["user:name:adam", "host:name:ws-7", "host:name:files"]
+        );
+        assert_eq!(body["path"][0]["kind"], "user");
+        // A link keeps the direction it was seen in, whichever way the
+        // path runs.
+        assert_eq!(body["hops"][1]["links"][0]["src"], "host:name:files");
+        assert_eq!(body["hops"][1]["links"][0]["link"], "logged_on_to");
+        assert_eq!(
+            body["hubs"][0],
+            json!({"entity": "host:name:dc-1", "kind": "host", "degree": 412})
+        );
+
+        let none = walk::Found {
+            hops: None,
+            hubs: Vec::new(),
+            complete: false,
+        };
+        let body = path_body(&ends, &none);
+        assert_eq!(
+            (&body["found"], &body["complete"]),
+            (&json!(false), &json!(false))
+        );
+        assert_eq!(body["path"], Value::Null);
     }
 
     #[test]

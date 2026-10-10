@@ -26,6 +26,7 @@ mod roles;
 mod syslog;
 mod tls;
 mod topics;
+mod walk;
 
 use std::future::Future;
 
