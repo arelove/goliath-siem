@@ -20,5 +20,9 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 
+[dev-dependencies]
+goliath-gen = { path = "../goliath-gen" }
+goliath-normalize = { path = "../goliath-normalize" }
+
 [lints]
 workspace = true

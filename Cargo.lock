@@ -851,6 +851,8 @@ dependencies = [
 name = "goliath-graph"
 version = "0.1.0"
 dependencies = [
+ "goliath-gen",
+ "goliath-normalize",
  "goliath-ocsf",
  "goliath-sigma",
  "serde",

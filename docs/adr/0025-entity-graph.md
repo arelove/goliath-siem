@@ -315,6 +315,28 @@ The exit criterion of M4.5 is made testable:
   an alert's subject, on a named size of organization and day of events,
   with the bounds above. The target is one second.
 
+What was measured so far, on the generator as it is, with none of the hard
+cases yet: 60,000 events of Sysmon and Entra ID sign-ins for an
+organization of 300 people over two days.
+
+| | Pairs | Share |
+|---|---|---|
+| Joined, and truly one entity | 285 of 285 | precision 1.0 |
+| Truly one entity, and joined | 285 of 1,140 | recall 0.25 |
+
+- Every pair joined is a sign-in name with the directory's object
+  identifier, which a sign-in gives together.
+- What is missed is of two kinds, and no event of this stream holds
+  either: a Windows account name, `ACME\mcruz`, with the same person's
+  sign-in name and object identifier; and a machine's full name with its
+  device identifier, which a sign-in gives beside a short name only.
+- Both are what a directory's export states in one row. Claims read from
+  records of context are the next source to build, and the hard cases
+  follow, so that the precision is measured where it can be lost.
+
+The numbers are made by `cargo test -p goliath-graph --test generated --
+--nocapture`, which fails if precision falls under its target.
+
 ### Order of building
 
 1. The identifiers: kinds, strength, canonical forms, and reading them
