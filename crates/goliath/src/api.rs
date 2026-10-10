@@ -8,6 +8,9 @@
 //! - `GET /api/v1/schema/classes`: the OCSF classes.
 //! - `GET /api/v1/schema/classes/{uid}/paths`: the paths a search can name
 //!   in a class, with what each holds, for the interface to complete.
+//! - `POST /api/v1/findings`: one page of the queue of findings, the most
+//!   severe first and then the newest, with how many of each severity the
+//!   range and the filters leave. See `docs/adr/0024-interface.md`.
 //! - `POST /api/v1/overview`: what the events in a time range add up to, for
 //!   a dashboard: counts by time and severity, and the most frequent classes,
 //!   sources, hosts, and users.
@@ -36,8 +39,9 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use goliath_ocsf::schema::{self, Attribute, Base};
-use goliath_search::{Cursor, Limits, Search, Window};
-use goliath_store::{Found, Frequent, SearchLimits, Store, StoreError, Watched};
+use goliath_search::{Cursor, Filter, Limits, Search, Window};
+use goliath_store::{FINDING, Found, Frequent, Place, SearchLimits, Store, StoreError, Watched};
+use serde::Deserialize;
 use serde_json::{Value, json};
 use subtle::ConstantTimeEq;
 use tokio::net::TcpListener;
@@ -153,6 +157,7 @@ fn app(shared: Shared, ui: Option<PathBuf>) -> Router {
         .route("/events/{at}", get(event))
         .route("/schema/classes", get(classes))
         .route("/schema/classes/{uid}/paths", get(paths))
+        .route("/findings", post(findings))
         .route("/overview", post(overview))
         .route("/arrivals", get(arrivals))
         .route("/sources", get(sources))
@@ -327,6 +332,84 @@ async fn event(State(shared): State<Arc<Shared>>, Path(at): Path<String>) -> Res
             axum::Json(body).into_response()
         }
         Ok(None) => problem(StatusCode::NOT_FOUND, "no event is stored there"),
+        Err(error) => store_failed(&error),
+    }
+}
+
+/// A page of the queue of findings, as a client asks for it: a search
+/// without classes, since the queue holds one, and with the severities to
+/// show.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Asked {
+    from: String,
+    to: String,
+    #[serde(default)]
+    filters: Vec<Filter>,
+    /// The `severity_id`s to show; every severity if empty.
+    #[serde(default)]
+    severities: Vec<u8>,
+    #[serde(default)]
+    limit: Option<u32>,
+    /// The `next` of the page before.
+    #[serde(default)]
+    after: Option<String>,
+}
+
+/// Severities a request may name: OCSF has eight.
+const MAX_SEVERITIES: usize = 8;
+
+async fn findings(
+    State(shared): State<Arc<Shared>>,
+    body: Result<axum::Json<Asked>, JsonRejection>,
+) -> Response {
+    let asked = match body {
+        Ok(axum::Json(asked)) => asked,
+        Err(rejection) => return problem(rejection.status(), rejection.body_text()),
+    };
+    if asked.severities.len() > MAX_SEVERITIES {
+        return problem(
+            StatusCode::BAD_REQUEST,
+            format!("`severities` may name {MAX_SEVERITIES} at most"),
+        );
+    }
+    let after = match asked.after.as_deref().map(str::parse::<Place>).transpose() {
+        Ok(after) => after,
+        Err(error) => return problem(StatusCode::BAD_REQUEST, error.to_string()),
+    };
+    // Checked as a search of the one class, so that a filter may name what
+    // a finding holds and nothing else.
+    let search = Search {
+        from: asked.from,
+        to: asked.to,
+        classes: vec![FINDING],
+        filters: asked.filters,
+        limit: asked.limit,
+        after: None,
+    };
+    let checked = match search.check(&shared.limits) {
+        Ok(checked) => checked,
+        Err(error) => return problem(StatusCode::BAD_REQUEST, error.to_string()),
+    };
+    match shared
+        .store
+        .findings(&checked, &asked.severities, after, shared.query)
+        .await
+    {
+        Ok(queue) => {
+            let severities: serde_json::Map<String, Value> = queue
+                .severities
+                .iter()
+                .map(|entry| (entry.severity_id.to_string(), json!(entry.count)))
+                .collect();
+            axum::Json(json!({
+                "findings": queue.findings.iter().map(found).collect::<Vec<_>>(),
+                "next": queue.next.map(|place| place.to_string()),
+                "total": queue.severities.iter().map(|entry| entry.count).sum::<u64>(),
+                "severities": severities,
+            }))
+            .into_response()
+        }
         Err(error) => store_failed(&error),
     }
 }
@@ -696,6 +779,72 @@ mod tests {
             body["error"],
             "`page-2` is not a cursor from a previous page"
         );
+    }
+
+    fn post_findings(body: &str, token: Option<&str>) -> Request<Body> {
+        let mut request =
+            Request::post("/api/v1/findings").header("content-type", "application/json");
+        if let Some(token) = token {
+            request = request.header("authorization", format!("Bearer {token}"));
+        }
+        request.body(Body::from(body.to_owned())).unwrap()
+    }
+
+    #[tokio::test]
+    async fn the_queue_needs_the_token_and_refuses_what_a_finding_does_not_hold() {
+        const RANGE: &str = r#""from":"2026-09-25T00:00:00Z","to":"2026-09-26T00:00:00Z""#;
+        let (status, _, _) = call(
+            test_app(Some(TOKEN)),
+            post_findings(&format!("{{{RANGE}}}"), None),
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+        // A filter is checked against the finding's class, whatever a
+        // client would have named.
+        let body = format!(
+            r#"{{{RANGE},"filters":[{{"path":"process.cmd_line","op":"contains","value":"x"}}]}}"#
+        );
+        let (status, body, _) = call(test_app(None), post_findings(&body, None)).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert!(
+            body["error"].as_str().unwrap().contains("process"),
+            "{body}"
+        );
+        let (status, _, _) = call(
+            test_app(None),
+            post_findings(&format!(r#"{{{RANGE},"classes":[1007]}}"#), None),
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+
+        let (status, body, _) = call(
+            test_app(None),
+            post_findings(&format!(r#"{{{RANGE},"after":"page-2"}}"#), None),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(
+            body["error"],
+            "`page-2` is not where a previous page of findings ended"
+        );
+        let (status, body, _) = call(
+            test_app(None),
+            post_findings(
+                &format!(r#"{{{RANGE},"severities":[1,2,3,4,5,6,99,0,1]}}"#),
+                None,
+            ),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["error"], "`severities` may name 8 at most");
+
+        // What passes every check reaches the store, which here is absent.
+        let body = format!(
+            r#"{{{RANGE},"severities":[4,5],"filters":[{{"path":"finding_info.title","op":"contains","value":"x"}}]}}"#
+        );
+        let (status, _, _) = call(test_app(None), post_findings(&body, None)).await;
+        assert_eq!(status, StatusCode::BAD_GATEWAY);
     }
 
     #[tokio::test]
