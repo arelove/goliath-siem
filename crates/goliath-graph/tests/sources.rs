@@ -2,9 +2,10 @@
 //!
 //! `goliath-normalize` keeps, for each source, the events its definition
 //! makes of the source's fixtures. Each is read here, and what all of a
-//! source's events show must equal `tests/sources/<name>.json` exactly. A
-//! change to how events are read therefore shows in review as a change to
-//! the claims and links they give.
+//! source's events show must equal `tests/sources/<name>.json` exactly:
+//! the claims, the links, and the entities those claims alone resolve to.
+//! A change to how events are read or resolved therefore shows in review
+//! as a change to those files.
 //!
 //! After an intended change, regenerate the files with
 //! `GOLIATH_BLESS=1 cargo test -p goliath-graph --test sources`, and read
@@ -12,11 +13,11 @@
 
 #![allow(clippy::expect_used, clippy::panic)]
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use goliath_graph::observe;
+use goliath_graph::{Evidence, SHARED_OVER, Said, observe, resolve};
 use serde_json::{Value, json};
 
 fn sources() -> PathBuf {
@@ -56,6 +57,7 @@ fn every_source_shows_what_its_file_says() {
             .collect();
         let mut claims = BTreeSet::new();
         let mut links = BTreeSet::new();
+        let mut evidence = Vec::new();
         for outcome in &outcomes {
             let Some(event) = outcome.get("event") else {
                 continue;
@@ -63,12 +65,33 @@ fn every_source_shows_what_its_file_says() {
             let seen = observe(event);
             for claim in seen.claims {
                 claims.insert(format!("{} = {}", claim.one, claim.other));
+                evidence.push(Evidence {
+                    one: claim.one,
+                    other: claim.other,
+                    rule: claim.rule.to_owned(),
+                    events: 1,
+                    first_seen: 0,
+                    last_seen: 0,
+                });
             }
             for link in seen.links {
                 links.insert(format!("{} {} {}", link.from, link.kind.as_str(), link.to));
             }
         }
-        let shown = json!({ "claims": claims, "links": links });
+        // Which identifiers the claims of this source alone make one
+        // entity, each with how it stands in it.
+        let mut entities: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        for resolved in resolve(&evidence, &Said::default(), SHARED_OVER).resolved {
+            entities
+                .entry(resolved.entity.to_string())
+                .or_default()
+                .push(format!(
+                    "{} {}",
+                    resolved.standing.as_str(),
+                    resolved.identifier
+                ));
+        }
+        let shown = json!({ "claims": claims, "links": links, "entities": entities });
         let mut written = serde_json::to_string_pretty(&shown).expect("JSON");
         written.push('\n');
         let file = expected_in.join(format!("{name}.json"));

@@ -6,5 +6,18 @@
     "user:uid:10032000example25 = user:name:jane@contoso.com",
     "user:uid:10032000example27 = user:name:adam@contoso.com"
   ],
+  "entities": {
+    "user:uid:10032000example01": [
+      "member user:uid:10032000example01",
+      "member user:uid:10032000example02",
+      "member user:uid:10032000example27",
+      "member user:name:adam@contoso.com"
+    ],
+    "user:uid:10032000example03": [
+      "member user:uid:10032000example03",
+      "member user:uid:10032000example25",
+      "member user:name:jane@contoso.com"
+    ]
+  },
   "links": []
 }
