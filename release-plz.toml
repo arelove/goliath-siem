@@ -84,3 +84,9 @@ release = false
 name = "goliath-enrich"
 publish = false
 release = false
+
+[[package]]
+# Not released until the platform has used it.
+name = "goliath-graph"
+publish = false
+release = false

@@ -136,10 +136,16 @@ gives the platform users, and PostgreSQL does not arrive with M4.5.**
 
 - Identifiers are of the kinds ADR-0022 already has, and are made
   canonical as it says: `corp\Adam` and `CORP\adam` are one.
-- A weak identifier is made strong by what it is found beside: a bare name
-  or a well known SID with the host it is on is a local account of that
-  host, and a short host name is strong within a scope whose definition
-  says its short names are unique.
+- A weak identifier is made strong by what it is found beside: a bare
+  name, with no strong identifier in its object, is a local account of the
+  host it is on, and a short host name is strong within a scope whose
+  definition says its short names are unique.
+- A well known SID makes no account. Windows writes the system account
+  under the machine's own account of the domain, as `CORP\DC-01$` with
+  `S-1-5-18`, so an account made of the SID and the host would join that
+  name to every machine it is seen on. `S-1-0-0`, which Windows writes
+  where there is no account, is not an identifier at all. Both were found
+  on the fixtures of the Windows Security log.
 - **An entity is referred to by any of its identifiers**, written as kind,
   kind of identifier, and value, such as `user:sid:S-1-5-21-...`. No
   identifier is made up for it. The one shown first is its strongest, by a
