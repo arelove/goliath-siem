@@ -1101,3 +1101,176 @@ async fn an_entity_is_read_with_what_it_holds_and_what_it_was_seen_with() {
     assert_eq!(acted.neighbours[0].events, 5);
     scratch.drop().await;
 }
+
+#[tokio::test]
+async fn a_step_of_a_walk_reads_entities_and_their_degrees() {
+    use goliath_search::Cursor;
+    use goliath_store::{Graphed, LinkSeen, Placed, Resolving, SearchLimits};
+
+    let Some(scratch) = Scratch::new("walk") else {
+        return;
+    };
+    scratch.store.migrate().await.unwrap();
+    let limits = SearchLimits::default();
+    let sid = "user:sid:s-1-5-21-1-2-3-1104";
+    let name = "user:name:adam@corp.example";
+    let ws = "host:name:ws-7.corp.example";
+    let dc = "host:name:dc-1.corp.example";
+    let agent = "host:uid:agent-1";
+    // 2026-09-25T10:00:00Z.
+    let hour = 1_790_330_400_000;
+    let link = |src: &str, link: &str, dst: &str, minute: i64| LinkSeen {
+        src: src.to_owned(),
+        link: link.to_owned(),
+        dst: dst.to_owned(),
+        events: 1,
+        first: Cursor {
+            time: hour + minute * 60_000,
+            id: [1; 16],
+        },
+        last: Cursor {
+            time: hour + minute * 60_000,
+            id: [1; 16],
+        },
+    };
+    let mut links = vec![
+        // One account under two names, and a machine under two names.
+        link(sid, "logged_on_to", ws, 1),
+        link(name, "ran_on", ws, 2),
+        link(name, "logged_on_to", dc, 3),
+        link(sid, "logged_on_to", agent, 4),
+        link(ws, "connected_to", "address:ip:10.0.0.9", 5),
+        // Outside the range asked for.
+        link(sid, "logged_on_to", "host:name:late.corp.example", 200),
+    ];
+    // Many accounts sign in to the machine that has two names.
+    for other in 0..5 {
+        links.push(link(
+            &format!("user:name:u{other}@corp.example"),
+            "logged_on_to",
+            dc,
+            10 + other,
+        ));
+    }
+    scratch
+        .store
+        .write_graph(&[Graphed {
+            scope: String::new(),
+            received: hour,
+            links,
+            claims: Vec::new(),
+        }])
+        .await
+        .unwrap();
+    let placed = |identifier: &str, entity: &str| Placed {
+        scope: String::new(),
+        identifier: identifier.to_owned(),
+        entity: entity.to_owned(),
+        standing: "member".to_owned(),
+        via: if identifier == entity { "" } else { entity }.to_owned(),
+        rule: String::new(),
+        said: String::new(),
+        events: 1,
+        first_seen: hour,
+        last_seen: hour,
+    };
+    let run = Resolving {
+        version: 7000,
+        finished: 7040,
+        claims: 2,
+        entities: 2,
+        members: 4,
+        aliases: 0,
+        shared: 0,
+        held_apart: 0,
+        decisions: String::new(),
+    };
+    scratch
+        .store
+        .write_resolution(
+            &run,
+            &[
+                placed(sid, sid),
+                placed(name, sid),
+                placed(agent, agent),
+                placed(dc, agent),
+            ],
+        )
+        .await
+        .unwrap();
+
+    let range = (hour, hour + 3_600_000);
+    let asked = [
+        sid.to_owned(),
+        agent.to_owned(),
+        "host:name:nothing".to_owned(),
+    ];
+    let degrees = scratch
+        .store
+        .degrees("", &asked, range, &[], limits)
+        .await
+        .unwrap();
+    let degrees: Vec<(&str, u64)> = degrees
+        .iter()
+        .map(|one| (one.entity.as_str(), one.degree))
+        .collect();
+    // The machine under both names is one neighbour of the account, and
+    // the account under both names one of the machine's six.
+    assert_eq!(degrees, [(agent, 6), (sid, 2)]);
+
+    let edges = scratch
+        .store
+        .edges("", &[sid.to_owned()], range, &[], 100, limits)
+        .await
+        .unwrap();
+    let rows: Vec<(&str, &str, &str, &str, u64)> = edges
+        .iter()
+        .map(|edge| {
+            (
+                edge.origin.as_str(),
+                edge.neighbour.as_str(),
+                edge.direction.as_str(),
+                edge.link.as_str(),
+                edge.events,
+            )
+        })
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            (sid, agent, "out", "logged_on_to", 2),
+            (sid, ws, "out", "ran_on", 1),
+            (sid, ws, "out", "logged_on_to", 1),
+        ]
+    );
+    // From several at once, each row under the entity it was read from,
+    // bounded by kind and by number.
+    let both = [sid.to_owned(), ws.to_owned()];
+    let only = ["connected_to".to_owned()];
+    let edges = scratch
+        .store
+        .edges("", &both, range, &only, 100, limits)
+        .await
+        .unwrap();
+    assert_eq!(edges.len(), 1);
+    assert_eq!(
+        (edges[0].origin.as_str(), edges[0].neighbour.as_str()),
+        (ws, "address:ip:10.0.0.9")
+    );
+    let few = scratch
+        .store
+        .edges("", &both, range, &[], 2, limits)
+        .await
+        .unwrap();
+    assert_eq!(few.len(), 2);
+    let none: [String; 0] = [];
+    assert_eq!(
+        scratch
+            .store
+            .edges("", &none, range, &[], 2, limits)
+            .await
+            .unwrap(),
+        []
+    );
+    scratch.drop().await;
+}
