@@ -40,10 +40,12 @@
 #![cfg_attr(test, allow(clippy::expect_used, clippy::panic, clippy::unwrap_used))]
 
 mod identifier;
+mod measure;
 mod observe;
 mod resolve;
 
 pub use identifier::{Form, Identifier, IdentifierError, Kind, Strength};
+pub use measure::{Measured, measure};
 pub use observe::{Claim, Link, LinkKind, Seen, observe};
 pub use resolve::{
     Decision, Decisions, DecisionsError, Evidence, Resolution, Resolved, SHARED_OVER, Said,
