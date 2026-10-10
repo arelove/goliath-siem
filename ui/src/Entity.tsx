@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import type { Held, Neighbour } from "./api";
-import { entity, neighbours } from "./api";
+import type { Held, Link, Neighbour, Path } from "./api";
+import { entity, neighbours, path } from "./api";
 import { ValueMenu } from "./components/ValueMenu";
 import { candidates, LINK_KINDS, linkName, parts, reads } from "./identifier";
 import { when } from "./summary";
@@ -257,6 +257,8 @@ function One({ identifier, span, onOpen, onError }: OneProps) {
         </section>
       </div>
 
+      <Way source={name} range={range} onOpen={onOpen} />
+
       <section className="card">
         <header>
           <h2>
@@ -424,5 +426,158 @@ function Web({ centre, rows, onOpen }: WebProps) {
         </button>
       ))}
     </div>
+  );
+}
+
+interface WayProps {
+  /** The entity the path begins at. */
+  source: string;
+  range: { from: string; to: string };
+  onOpen: (asked: string) => void;
+}
+
+/**
+ * A path from the entity to another: how the two are joined, by which
+ * links, and which hubs the search did not go through.
+ */
+function Way({ source, range, onOpen }: WayProps) {
+  // The other end is in the address, so that a link shows the same path.
+  const [target, setTarget] = useState(
+    () => new URLSearchParams(window.location.search).get("path") ?? "",
+  );
+  const [written, setWritten] = useState(target);
+  const [through, setThrough] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("view") !== "entity") {
+      return;
+    }
+    if (target) {
+      params.set("path", target);
+    } else {
+      params.delete("path");
+    }
+    window.history.replaceState(null, "", `?${params.toString()}`);
+  }, [target]);
+  // A value may be of more than one kind: each reading is asked for, the
+  // likeliest first, and the first that has a path is shown.
+  const ends = useMemo(() => candidates(target), [target]);
+  const end = ends[0];
+  const found = useQuery({
+    queryKey: ["path", source, ends, range, through],
+    queryFn: async ({ signal }) => {
+      let first: Path | undefined;
+      for (const one of ends) {
+        const answer = await path(
+          { source, target: one, ...range, ...(through ? { through_hubs: true } : {}) },
+          signal,
+        );
+        if (answer.found) {
+          return answer;
+        }
+        first ??= answer;
+      }
+      return first as Path;
+    },
+    enabled: end !== undefined,
+    retry: false,
+  });
+  return (
+    <section className="card">
+      <header>
+        <h2>Path to another entity</h2>
+        <form
+          className="entity-bar"
+          onSubmit={(sent) => {
+            sent.preventDefault();
+            setTarget(written.trim());
+          }}
+        >
+          <input
+            aria-label="The other entity"
+            className="mono"
+            placeholder="An address, a name, or an identifier"
+            value={written}
+            onChange={(typed) => setWritten(typed.target.value)}
+          />
+          <button type="submit">Find</button>
+          <button
+            type="button"
+            className="chip"
+            aria-pressed={through}
+            title="A hub is an entity seen with more than 100 others"
+            onClick={() => setThrough(!through)}
+          >
+            through hubs
+          </button>
+        </form>
+      </header>
+      {end === undefined ? (
+        <p className="muted">
+          How this entity is joined to another in the range: four links at most, and not through
+          what everything is joined to.
+        </p>
+      ) : found.isPending ? (
+        <p className="muted">Looking for a path</p>
+      ) : found.error ? (
+        <p className="error">{found.error.message}</p>
+      ) : found.data.path && found.data.hops ? (
+        <>
+          {found.data.hops.length === 0 ? (
+            <p className="muted">It is the same entity.</p>
+          ) : (
+            <ol className="route">
+              <li>
+                <Name identifier={found.data.source} onOpen={onOpen} />
+              </li>
+              {found.data.hops.map((hop) => (
+                <li key={`${hop.from}|${hop.to}`}>
+                  <span className="hop">
+                    {hop.links.map((link) => (
+                      <Seen key={`${link.src}|${link.link}`} link={link} from={hop.from} />
+                    ))}
+                  </span>
+                  <Name identifier={hop.to} onOpen={onOpen} />
+                </li>
+              ))}
+            </ol>
+          )}
+          <p className="meta">
+            {found.data.hops.length} {found.data.hops.length === 1 ? "link" : "links"}, the fewest
+            {found.data.complete ? "" : " found within the bounds"}.
+          </p>
+        </>
+      ) : (
+        <p className="muted">
+          {found.data.complete
+            ? `No path of ${found.data.most} links or fewer joins them in this range.`
+            : "No path was found within the bounds of the search. One may exist: a shorter range or a path through hubs may show it."}
+        </p>
+      )}
+      {found.data && found.data.hubs.length > 0 && (
+        <p className="meta hubs">
+          Not gone through:
+          {found.data.hubs.slice(0, 8).map((hub) => (
+            <span key={hub.entity} className="named">
+              <Name identifier={hub.entity} onOpen={onOpen} />
+              <span className="muted">{number.format(hub.degree)} neighbours</span>
+            </span>
+          ))}
+          {found.data.hubs.length > 8 && ` and ${found.data.hubs.length - 8} more`}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** One way two neighbours on a path were seen together, read along it. */
+function Seen({ link, from }: { link: Link; from: string }) {
+  const along = link.src === from;
+  return (
+    <span title={`${link.src} ${link.link} ${link.dst}`}>
+      <span className="muted">{along ? "\u2192 " : "\u2190 "}</span>
+      {reads(link.link, along ? "out" : "in")}
+      <span className="muted"> {number.format(link.events)}</span>
+    </span>
   );
 }

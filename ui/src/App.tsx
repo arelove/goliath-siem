@@ -138,6 +138,7 @@ export function App() {
     const params = new URLSearchParams(window.location.search);
     params.set("view", next);
     params.delete("finding");
+    params.delete("path");
     if (next === "entity" && entity) {
       params.set("entity", entity);
     } else {
@@ -152,6 +153,7 @@ export function App() {
     const params = new URLSearchParams(window.location.search);
     params.set("view", "entity");
     params.delete("finding");
+    params.delete("path");
     if (asked) {
       params.set("entity", asked);
     } else {

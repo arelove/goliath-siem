@@ -234,6 +234,52 @@ const NEIGHBOURS = {
   ],
 };
 
+const PATH = {
+  source: SID,
+  target: "host:name:files.corp.example",
+  found: true,
+  complete: true,
+  most: 4,
+  hub_over: 100,
+  through_hubs: false,
+  path: [
+    { entity: SID, kind: "user" },
+    { entity: "host:name:ws-7.corp.example", kind: "host" },
+    { entity: "host:name:files.corp.example", kind: "host" },
+  ],
+  hops: [
+    {
+      from: SID,
+      to: "host:name:ws-7.corp.example",
+      links: [
+        {
+          src: SID,
+          dst: "host:name:ws-7.corp.example",
+          link: "logged_on_to",
+          events: 3,
+          first_seen: 1790330460000,
+          last_seen: 1790330520000,
+        },
+      ],
+    },
+    {
+      from: "host:name:ws-7.corp.example",
+      to: "host:name:files.corp.example",
+      links: [
+        {
+          src: "host:name:files.corp.example",
+          dst: "host:name:ws-7.corp.example",
+          link: "connected_to",
+          events: 7,
+          first_seen: 1790330460000,
+          last_seen: 1790330520000,
+        },
+      ],
+    },
+  ],
+  hubs: [{ entity: "host:name:dc-1.corp.example", kind: "host", degree: 412 }],
+};
+
 let calls: Call[] = [];
 let requireToken: string | null = null;
 
@@ -281,6 +327,16 @@ beforeEach(() => {
       }
       if (path === "/entity/neighbours") {
         return reply(200, NEIGHBOURS);
+      }
+      if (path === "/entity/path") {
+        // Nothing is joined to the name read as a domain.
+        const target = (body as unknown as { target: string }).target;
+        return reply(
+          200,
+          target.startsWith("domain:")
+            ? { ...PATH, target, found: false, path: null, hops: null, hubs: [] }
+            : PATH,
+        );
       }
       if (path === "/overview") {
         return reply(200, OVERVIEW);
@@ -559,6 +615,37 @@ describe("the entity view", () => {
       }),
     );
     expect(window.location.search).toContain("entity=address%3Aip%3A10.0.0.5");
+  });
+
+  it("finds a path to another entity, and says what it did not go through", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", `/?view=entity&entity=${SID}`);
+    show();
+    await user.type(await screen.findByLabelText("The other entity"), "files.corp.example");
+    await user.click(screen.getByRole("button", { name: "Find" }));
+    // A name with dots may be a domain or a machine: each is asked for,
+    // and the one that has a path is shown.
+    await waitFor(() =>
+      expect(
+        calls
+          .filter((call) => call.path === "/entity/path")
+          .map((call) => (call.body as unknown as { target: string }).target),
+      ).toEqual(["domain:name:files.corp.example", "host:name:files.corp.example"]),
+    );
+    const way = (await screen.findByText("2 links, the fewest.")).closest("section");
+    // Each link reads along the path, whichever end acted.
+    expect(way).toHaveTextContent("logged on to 3");
+    expect(way).toHaveTextContent("connected from 7");
+    expect(way).toHaveTextContent("Not gone through:");
+    expect(way).toHaveTextContent("412 neighbours");
+    expect(window.location.search).toContain("path=files.corp.example");
+
+    await user.click(screen.getByRole("button", { name: "through hubs" }));
+    await waitFor(() =>
+      expect(calls.findLast((call) => call.path === "/entity/path")?.body).toMatchObject({
+        through_hubs: true,
+      }),
+    );
   });
 
   it("is reached from the value a finding names", async () => {
