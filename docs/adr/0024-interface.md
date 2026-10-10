@@ -284,9 +284,11 @@ Grafana, which reads the same store.
    or written by hand, with the identifiers it holds and why each is in
    it, and what it was seen with in the range as a table and a picture of
    those seen most. A value says its form and not always its kind, so a
-   name that may be a machine or a domain offers both. Not yet: the path
-   between two entities, the findings and events of an entity, and its
-   context from the site's lists. Cases and the decision, with M6.
+   name that may be a machine or a domain offers both. A path from the
+   entity to another is found there too: its entities in order, between
+   each two how they were seen, and the hubs it did not go through. Not
+   yet: the findings and events of an entity, and its context from the
+   site's lists. Cases and the decision, with M6.
 
 ## Options considered
 

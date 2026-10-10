@@ -368,9 +368,9 @@ graph from the store. The API answers for an entity by any of its
 identifiers and for what it was seen with in a range, and the interface
 has a view of one entity, opened from the menu of a value. The API also
 answers what lies within two links of an entity, and a path of four links
-at most between two, neither through a hub unless asked. Findings grouped
-by entity, the walk and the path in the interface, and the measurement
-against the generator's truth follow.
+at most between two, neither through a hub unless asked, and the view of
+an entity finds a path from it to another. Findings grouped by entity and
+the measurement against the generator's truth follow.
 
 **Exit criterion:** on the M3 generator's stream with the hard cases, where
 each entity appears under different identifiers per source, resolution
