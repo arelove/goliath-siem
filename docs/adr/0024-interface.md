@@ -309,8 +309,10 @@ Grafana, which reads the same store.
   first.
 - The first step touches every stylesheet rule that names a colour, the
   mark, the favicon, and the site, with no change to what any view does.
-- The queue of findings needs findings from the API, which serves events
-  alone today.
+- The queue of findings needed findings from the API, which served
+  events alone. `POST /api/v1/findings` is a search of the one class in
+  the queue's order, the most severe first and then the newest, with how
+  many of each severity its range and filters leave.
 - A decision cannot be kept until M6. The queue is useful before that and
   is not complete.
 - The product's own components are work a library would have saved, and
