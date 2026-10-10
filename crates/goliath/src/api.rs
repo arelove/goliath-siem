@@ -11,6 +11,11 @@
 //! - `POST /api/v1/findings`: one page of the queue of findings, the most
 //!   severe first and then the newest, with how many of each severity the
 //!   range and the filters leave. See `docs/adr/0024-interface.md`.
+//! - `POST /api/v1/entity`: the entity an identifier is in, with every
+//!   identifier it holds and why each is there. See
+//!   `docs/adr/0025-entity-graph.md`.
+//! - `POST /api/v1/entity/neighbours`: what an entity was seen with in a
+//!   time range, the most recent first, and how many that is in all.
 //! - `POST /api/v1/overview`: what the events in a time range add up to, for
 //!   a dashboard: counts by time and severity, and the most frequent classes,
 //!   sources, hosts, and users.
@@ -38,6 +43,7 @@ use axum::http::{HeaderName, HeaderValue, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
+use goliath_graph::{Identifier, IdentifierError, LinkKind, Strength};
 use goliath_ocsf::schema::{self, Attribute, Base};
 use goliath_search::{Cursor, Filter, Limits, Search, Window};
 use goliath_store::{FINDING, Found, Frequent, Place, SearchLimits, Store, StoreError, Watched};
@@ -158,6 +164,8 @@ fn app(shared: Shared, ui: Option<PathBuf>) -> Router {
         .route("/schema/classes", get(classes))
         .route("/schema/classes/{uid}/paths", get(paths))
         .route("/findings", post(findings))
+        .route("/entity", post(entity))
+        .route("/entity/neighbours", post(neighbours))
         .route("/overview", post(overview))
         .route("/arrivals", get(arrivals))
         .route("/sources", get(sources))
@@ -332,6 +340,211 @@ async fn event(State(shared): State<Arc<Shared>>, Path(at): Path<String>) -> Res
             axum::Json(body).into_response()
         }
         Ok(None) => problem(StatusCode::NOT_FOUND, "no event is stored there"),
+        Err(error) => store_failed(&error),
+    }
+}
+
+/// An entity, as a client asks for it: by any identifier it has.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OfEntity {
+    /// The identifier, as `kind:form:value`.
+    identifier: String,
+    /// The scope it is of; none if left out.
+    #[serde(default)]
+    scope: String,
+}
+
+/// The neighbours of an entity, as a client asks for them.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OfNeighbours {
+    identifier: String,
+    #[serde(default)]
+    scope: String,
+    from: String,
+    to: String,
+    /// The kinds of link to follow; every kind if empty.
+    #[serde(default)]
+    links: Vec<String>,
+    /// Rows the answer holds at most.
+    #[serde(default)]
+    limit: Option<u32>,
+}
+
+/// The identifier `text` writes, in its canonical form, and a scope that
+/// is short enough to be one.
+fn identifier_of(text: &str, scope: &str, limits: &Limits) -> Result<Identifier, String> {
+    if text.len() > limits.max_text || scope.len() > limits.max_text {
+        return Err(format!(
+            "an identifier or a scope holds {} bytes at most",
+            limits.max_text
+        ));
+    }
+    text.parse()
+        .map_err(|error: IdentifierError| error.to_string())
+}
+
+/// What a kind of thing an identifier's text names, if it is one.
+fn kind_of(identifier: &str) -> Value {
+    identifier
+        .parse::<Identifier>()
+        .map_or(Value::Null, |identifier| json!(identifier.kind().as_str()))
+}
+
+/// An entity as the answer holds it.
+fn entity_body(asked: &Identifier, entity: &goliath_store::Entity) -> Value {
+    let identifiers: Vec<Value> = entity
+        .identifiers
+        .iter()
+        .map(|placed| {
+            let read = placed.identifier.parse::<Identifier>().ok();
+            json!({
+                "identifier": placed.identifier,
+                "form": read.as_ref().map(|identifier| identifier.form().as_str()),
+                "strong": read.as_ref().map(|identifier| identifier.strength() == Strength::Strong),
+                "standing": placed.standing,
+                "via": (!placed.via.is_empty()).then_some(&placed.via),
+                "rule": (!placed.rule.is_empty()).then_some(&placed.rule),
+                "said": (!placed.said.is_empty()).then_some(&placed.said),
+                "events": placed.events,
+                "first_seen": placed.first_seen,
+                "last_seen": placed.last_seen,
+            })
+        })
+        .collect();
+    json!({
+        "asked": asked.to_string(),
+        "entity": entity.entity,
+        "kind": asked.kind().as_str(),
+        // Seen under one weak identifier alone: an entity until a source
+        // names it fully.
+        "provisional": entity.identifiers.is_empty() && asked.strength() == Strength::Weak,
+        "shared": entity.shared,
+        "alias_of": entity.alias_of,
+        "identifiers": identifiers,
+    })
+}
+
+async fn entity(
+    State(shared): State<Arc<Shared>>,
+    body: Result<axum::Json<OfEntity>, JsonRejection>,
+) -> Response {
+    let asked = match body {
+        Ok(axum::Json(asked)) => asked,
+        Err(rejection) => return problem(rejection.status(), rejection.body_text()),
+    };
+    let identifier = match identifier_of(&asked.identifier, &asked.scope, &shared.limits) {
+        Ok(identifier) => identifier,
+        Err(refused) => return problem(StatusCode::BAD_REQUEST, refused),
+    };
+    match shared
+        .store
+        .entity(&asked.scope, &identifier.to_string(), shared.query)
+        .await
+    {
+        Ok(found) => axum::Json(entity_body(&identifier, &found)).into_response(),
+        Err(error) => store_failed(&error),
+    }
+}
+
+async fn neighbours(
+    State(shared): State<Arc<Shared>>,
+    body: Result<axum::Json<OfNeighbours>, JsonRejection>,
+) -> Response {
+    let asked = match body {
+        Ok(axum::Json(asked)) => asked,
+        Err(rejection) => return problem(rejection.status(), rejection.body_text()),
+    };
+    let identifier = match identifier_of(&asked.identifier, &asked.scope, &shared.limits) {
+        Ok(identifier) => identifier,
+        Err(refused) => return problem(StatusCode::BAD_REQUEST, refused),
+    };
+    let window = Window {
+        from: asked.from,
+        to: asked.to,
+    };
+    let range = match window.check(&shared.limits) {
+        Ok(range) => range,
+        Err(error) => return problem(StatusCode::BAD_REQUEST, error.to_string()),
+    };
+    if let Some(unknown) = asked.links.iter().find(|link| {
+        !LinkKind::ALL
+            .iter()
+            .any(|kind| kind.as_str() == link.as_str())
+    }) {
+        let known: Vec<&str> = LinkKind::ALL.iter().map(|kind| kind.as_str()).collect();
+        return problem(
+            StatusCode::BAD_REQUEST,
+            format!(
+                "`{}` is no kind of link; the kinds are {}",
+                unknown.chars().take(64).collect::<String>(),
+                known.join(", ")
+            ),
+        );
+    }
+    let limit = asked.limit.unwrap_or(shared.limits.default_limit);
+    if limit == 0 || limit > shared.limits.max_limit {
+        return problem(
+            StatusCode::BAD_REQUEST,
+            format!("`limit` is from 1 to {}", shared.limits.max_limit),
+        );
+    }
+    let found = match shared
+        .store
+        .entity(&asked.scope, &identifier.to_string(), shared.query)
+        .await
+    {
+        Ok(found) => found,
+        Err(error) => return store_failed(&error),
+    };
+    // Links are under identifiers: the entity's are read together. A weak
+    // identifier seen with it is not one of them, since it may be seen
+    // with others too.
+    let mut members: Vec<String> = found
+        .identifiers
+        .iter()
+        .filter(|placed| placed.standing == "member")
+        .map(|placed| placed.identifier.clone())
+        .collect();
+    if members.is_empty() {
+        members.push(found.entity.clone());
+    }
+    match shared
+        .store
+        .neighbours(
+            &asked.scope,
+            &members,
+            range,
+            &asked.links,
+            limit,
+            shared.query,
+        )
+        .await
+    {
+        Ok(seen) => axum::Json(json!({
+            "entity": found.entity,
+            "kind": identifier.kind().as_str(),
+            "identifiers": members,
+            "from": range.0,
+            "to": range.1,
+            "degree": seen.degree,
+            "limit": limit,
+            "neighbours": seen
+                .neighbours
+                .iter()
+                .map(|one| json!({
+                    "entity": one.entity,
+                    "kind": kind_of(&one.entity),
+                    "direction": one.direction,
+                    "link": one.link,
+                    "events": one.events,
+                    "first_seen": one.first_seen,
+                    "last_seen": one.last_seen,
+                }))
+                .collect::<Vec<_>>(),
+        }))
+        .into_response(),
         Err(error) => store_failed(&error),
     }
 }
@@ -845,6 +1058,137 @@ mod tests {
         );
         let (status, _, _) = call(test_app(None), post_findings(&body, None)).await;
         assert_eq!(status, StatusCode::BAD_GATEWAY);
+    }
+
+    #[tokio::test]
+    async fn an_entity_is_asked_for_by_an_identifier_and_within_bounds() {
+        const RANGE: &str = r#""from":"2026-09-25T00:00:00Z","to":"2026-09-26T00:00:00Z""#;
+        let sid = r#""identifier":"user:sid:S-1-5-21-1-2-3-1104""#;
+        let (status, _, _) = call(
+            test_app(Some(TOKEN)),
+            post("/api/v1/entity", &format!("{{{sid}}}"), None),
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+        // What is not an identifier is refused before the store is asked.
+        for path in ["/api/v1/entity", "/api/v1/entity/neighbours"] {
+            let body = format!(r#"{{"identifier":"adam",{RANGE}}}"#);
+            let body = if path.ends_with("entity") {
+                r#"{"identifier":"adam"}"#.to_owned()
+            } else {
+                body
+            };
+            let (status, body, _) = call(test_app(None), post(path, &body, None)).await;
+            assert_eq!(status, StatusCode::BAD_REQUEST, "{path}");
+            assert_eq!(
+                body["error"],
+                "`adam` is not an identifier: it is written kind:form:value"
+            );
+        }
+        let neighbours = |rest: &str| {
+            let body = format!("{{{sid},{RANGE}{rest}}}");
+            async move {
+                call(
+                    test_app(None),
+                    post("/api/v1/entity/neighbours", &body, None),
+                )
+                .await
+            }
+        };
+        let (status, body, _) = neighbours(r#","links":["logged_on_to","befriended"]"#).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert!(
+            body["error"]
+                .as_str()
+                .unwrap()
+                .starts_with("`befriended` is no kind of link; the kinds are logged_on_to, "),
+            "{body}"
+        );
+        let (status, body, _) = neighbours(r#","limit":0"#).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["error"], "`limit` is from 1 to 1000");
+        // A walk has a range, and the range has the limits a search has.
+        let (status, _, _) = call(
+            test_app(None),
+            post(
+                "/api/v1/entity/neighbours",
+                &format!(r#"{{{sid},"from":"2026-01-01T00:00:00Z","to":"2026-09-26T00:00:00Z"}}"#),
+                None,
+            ),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        let (status, _, _) = call(
+            test_app(None),
+            post("/api/v1/entity/neighbours", &format!("{{{sid}}}"), None),
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+
+        // What passes every check reaches the store, which here is absent.
+        let (status, _, _) = neighbours(r#","links":["held"],"limit":5"#).await;
+        assert_eq!(status, StatusCode::BAD_GATEWAY);
+        let (status, _, _) = call(
+            test_app(None),
+            post("/api/v1/entity", &format!("{{{sid}}}"), None),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_GATEWAY);
+    }
+
+    #[test]
+    fn an_entity_says_why_each_identifier_is_in_it() {
+        let asked: Identifier = "user:name:corp\\adam".parse().unwrap();
+        let placed = |identifier: &str, standing: &str, via: &str| goliath_store::Placed {
+            scope: String::new(),
+            identifier: identifier.to_owned(),
+            entity: "user:sid:s-1-5-21-1-2-3-1104".to_owned(),
+            standing: standing.to_owned(),
+            via: via.to_owned(),
+            rule: if via.is_empty() { "" } else { "user" }.to_owned(),
+            said: String::new(),
+            events: 4,
+            first_seen: 10,
+            last_seen: 20,
+        };
+        let body = entity_body(
+            &asked,
+            &goliath_store::Entity {
+                entity: "user:sid:s-1-5-21-1-2-3-1104".to_owned(),
+                identifiers: vec![
+                    placed("user:sid:s-1-5-21-1-2-3-1104", "member", ""),
+                    placed("user:name:adam", "alias", "user:sid:s-1-5-21-1-2-3-1104"),
+                ],
+                alias_of: Vec::new(),
+                shared: false,
+            },
+        );
+        assert_eq!(body["asked"], "user:name:corp\\adam");
+        assert_eq!(body["kind"], "user");
+        assert_eq!(body["provisional"], false);
+        assert_eq!(body["identifiers"][0]["form"], "sid");
+        assert_eq!(body["identifiers"][0]["strong"], true);
+        assert_eq!(body["identifiers"][0]["via"], Value::Null);
+        assert_eq!(body["identifiers"][1]["strong"], false);
+        assert_eq!(body["identifiers"][1]["rule"], "user");
+        assert_eq!(
+            body["identifiers"][1]["via"],
+            "user:sid:s-1-5-21-1-2-3-1104"
+        );
+
+        // A bare name nothing was resolved for is an entity until a source
+        // names it fully.
+        let bare: Identifier = "user:name:adam".parse().unwrap();
+        let alone = goliath_store::Entity {
+            entity: bare.to_string(),
+            identifiers: Vec::new(),
+            alias_of: Vec::new(),
+            shared: false,
+        };
+        assert_eq!(entity_body(&bare, &alone)["provisional"], true);
+        assert_eq!(kind_of("host:name:ws-7"), "host");
+        assert_eq!(kind_of("nonsense"), Value::Null);
     }
 
     #[tokio::test]
