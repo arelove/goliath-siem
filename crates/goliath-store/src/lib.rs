@@ -11,6 +11,7 @@
 #![cfg_attr(test, allow(clippy::expect_used, clippy::panic, clippy::unwrap_used))]
 
 mod batch;
+mod entity;
 mod error;
 mod findings;
 mod graph;
@@ -25,6 +26,7 @@ mod store;
 mod writer;
 
 pub use batch::Batch;
+pub use entity::{Entity, Neighbour, Neighbours};
 pub use error::StoreError;
 pub use findings::{FINDING, Place, PlaceError, Queue, SeverityCount};
 pub use graph::{ClaimSeen, Graphed, LinkSeen};

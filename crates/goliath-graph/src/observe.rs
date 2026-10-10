@@ -46,6 +46,18 @@ pub enum LinkKind {
 }
 
 impl LinkKind {
+    /// Every kind of link.
+    pub const ALL: [Self; 8] = [
+        Self::LoggedOnTo,
+        Self::RanOn,
+        Self::Ran,
+        Self::Wrote,
+        Self::ConnectedTo,
+        Self::Resolved,
+        Self::ResolvedTo,
+        Self::Held,
+    ];
+
     /// The kind as it is stored and asked for.
     pub fn as_str(self) -> &'static str {
         match self {
