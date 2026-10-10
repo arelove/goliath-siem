@@ -196,10 +196,14 @@ each event:
   detector does under [ADR-0015](0015-pipe-semantics.md), and never slows
   storage. It gathers the claims and links of a batch, adds up those that
   repeat, and sends the rows through the pipe to the writer.
-- If it falls behind and is moved past events, it notes the range and
-  reads those events back from the store, as the detector does. Until
-  that is built it counts them, in `goliath_graph_skipped_records_total`,
-  and their links are not in the graph.
+- If it falls behind and is moved past events, it notes the range of
+  receipt time they lie in and reads those events back from the store, as
+  the detector does.
+- What was stored before the role first ran is read the same way: at its
+  first start it asks the store where what it holds begins, and notes
+  everything from there up to where it began to read the stream. A site
+  that turns the role on has its history in the graph, and a setting
+  bounds how far back.
 - Rows that repeat are added up again in ClickHouse. An event read twice
   is counted twice: the count of a link is a number to look at, as the
   counts of an overview are, and not one to audit. That a link exists,

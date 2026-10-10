@@ -62,7 +62,24 @@ resolve_every_minutes = 15
 # An identifier seen with more strong identifiers of one form than this is
 # shared, and joins nothing.
 shared_over = 3
+# How many days of what was stored before the role first ran are read into
+# the graph: everything if left out, nothing with 0.
+read_back_days = 30
 ```
+
+The role reads the stream. Two kinds of events are stored and were not in
+it, and both are read from the store, an hour of receipt time at once:
+
+- what was stored before the role first ran, so that turning it on fills
+  the graph from the history the store holds;
+- what the role was moved past when it fell further behind than the topic
+  keeps.
+
+The ranges still to read are noted in `graph/unread.json` in the data
+directory, so a restart goes on where it was. A range is read once the
+writer is past it: when a later event is stored, or after ten minutes.
+`goliath_graph_unread_ranges` says how many wait, and
+`goliath_graph_read_back_events_total` how many events were read.
 
 A decisions file says that two identifiers are the same, or are not,
 whatever events show, each with a reason; its shape is in the
