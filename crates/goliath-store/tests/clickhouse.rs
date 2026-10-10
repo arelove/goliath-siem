@@ -906,3 +906,198 @@ async fn a_run_of_resolution_is_read_once_complete_and_old_ones_are_dropped() {
     assert_eq!(scratch.store.resolution().await.unwrap(), Some(run(6000)));
     scratch.drop().await;
 }
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn an_entity_is_read_with_what_it_holds_and_what_it_was_seen_with() {
+    use goliath_search::Cursor;
+    use goliath_store::{Graphed, LinkSeen, Placed, Resolving, SearchLimits};
+
+    let Some(scratch) = Scratch::new("entity") else {
+        return;
+    };
+    scratch.store.migrate().await.unwrap();
+    let limits = SearchLimits::default();
+    let sid = "user:sid:s-1-5-21-1-2-3-1104";
+    let name = "user:name:corp\\adam";
+    let short = "user:name:adam";
+    let dc = "host:name:dc-1.corp.example";
+    let agent = "host:uid:agent-1";
+    // 2026-09-25T10:00:00Z.
+    let hour = 1_790_330_400_000;
+    let link = |src: &str, link: &str, dst: &str, minute: i64, events: u64| LinkSeen {
+        src: src.to_owned(),
+        link: link.to_owned(),
+        dst: dst.to_owned(),
+        events,
+        first: Cursor {
+            time: hour + minute * 60_000,
+            id: [1; 16],
+        },
+        last: Cursor {
+            time: hour + minute * 60_000 + 5,
+            id: [2; 16],
+        },
+    };
+    scratch
+        .store
+        .write_graph(&[Graphed {
+            scope: String::new(),
+            received: hour,
+            links: vec![
+                // One account under two names signs in to one machine under
+                // two names, and runs a program on another.
+                link(sid, "logged_on_to", dc, 1, 2),
+                link(name, "logged_on_to", agent, 2, 3),
+                link(name, "ran_on", "host:name:ws-7.corp.example", 30, 1),
+                // The machine holds an address: the account is not in it.
+                link(dc, "held", "address:ip:10.0.0.5", 3, 9),
+                // Another hour, outside the range asked for.
+                link(sid, "logged_on_to", "host:name:late.corp.example", 200, 4),
+            ],
+            claims: Vec::new(),
+        }])
+        .await
+        .unwrap();
+
+    // Before any resolution every identifier is its own entity.
+    let alone = scratch.store.entity("", name, limits).await.unwrap();
+    assert_eq!((alone.entity.as_str(), alone.identifiers.len()), (name, 0));
+    let range = (hour, hour + 3_600_000);
+    let seen = scratch
+        .store
+        .neighbours("", &[name.to_owned()], range, &[], 100, limits)
+        .await
+        .unwrap();
+    assert_eq!(seen.degree, 2);
+
+    let placed = |identifier: &str, entity: &str, standing: &str, via: &str| Placed {
+        scope: String::new(),
+        identifier: identifier.to_owned(),
+        entity: entity.to_owned(),
+        standing: standing.to_owned(),
+        via: via.to_owned(),
+        rule: if via.is_empty() { "" } else { "user" }.to_owned(),
+        said: String::new(),
+        events: 5,
+        first_seen: hour,
+        last_seen: hour + 60_000,
+    };
+    let run = Resolving {
+        version: 7000,
+        finished: 7040,
+        claims: 3,
+        entities: 2,
+        members: 4,
+        aliases: 1,
+        shared: 0,
+        held_apart: 0,
+        decisions: String::new(),
+    };
+    scratch
+        .store
+        .write_resolution(
+            &run,
+            &[
+                placed(sid, sid, "member", ""),
+                placed(name, sid, "member", sid),
+                placed(short, sid, "alias", sid),
+                placed(agent, agent, "member", ""),
+                placed(dc, agent, "member", agent),
+            ],
+        )
+        .await
+        .unwrap();
+
+    // By any of its identifiers, the same entity, its own name first.
+    for asked in [sid, name] {
+        let entity = scratch.store.entity("", asked, limits).await.unwrap();
+        assert_eq!(entity.entity, sid);
+        let held: Vec<(&str, &str)> = entity
+            .identifiers
+            .iter()
+            .map(|placed| (placed.identifier.as_str(), placed.standing.as_str()))
+            .collect();
+        assert_eq!(held, [(sid, "member"), (name, "member"), (short, "alias")]);
+        assert!(entity.alias_of.is_empty() && !entity.shared);
+    }
+    // A weak identifier is its own, and says what it is an alias of.
+    let weak = scratch.store.entity("", short, limits).await.unwrap();
+    assert_eq!(
+        (weak.entity.as_str(), weak.alias_of),
+        (short, vec![sid.to_owned()])
+    );
+    // Another scope knows nothing of it.
+    let elsewhere = scratch.store.entity("branch", sid, limits).await.unwrap();
+    assert!(elsewhere.identifiers.is_empty());
+
+    // Its neighbours: the two names of the machine are one neighbour, the
+    // newest first, and what lies outside the range is not there.
+    let members = [sid.to_owned(), name.to_owned()];
+    let seen = scratch
+        .store
+        .neighbours("", &members, range, &[], 100, limits)
+        .await
+        .unwrap();
+    let rows: Vec<(&str, &str, &str, u64)> = seen
+        .neighbours
+        .iter()
+        .map(|one| {
+            (
+                one.entity.as_str(),
+                one.direction.as_str(),
+                one.link.as_str(),
+                one.events,
+            )
+        })
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            ("host:name:ws-7.corp.example", "out", "ran_on", 1),
+            (agent, "out", "logged_on_to", 5),
+        ]
+    );
+    assert_eq!(seen.degree, 2);
+    assert_eq!(
+        (seen.neighbours[1].first_seen, seen.neighbours[1].last_seen),
+        (hour + 60_000, hour + 120_005)
+    );
+    // Bounded by kind and by number, with the degree still said.
+    let only = scratch
+        .store
+        .neighbours("", &members, range, &["ran_on".to_owned()], 100, limits)
+        .await
+        .unwrap();
+    assert_eq!((only.neighbours.len(), only.degree), (1, 1));
+    let one = scratch
+        .store
+        .neighbours("", &members, range, &[], 1, limits)
+        .await
+        .unwrap();
+    assert_eq!((one.neighbours.len(), one.degree), (1, 2));
+    // From the other end: who acted on the machine, as one entity.
+    let machine = [agent.to_owned(), dc.to_owned()];
+    let acted = scratch
+        .store
+        .neighbours(
+            "",
+            &machine,
+            range,
+            &["logged_on_to".to_owned()],
+            100,
+            limits,
+        )
+        .await
+        .unwrap();
+    assert_eq!(acted.neighbours.len(), 1);
+    assert_eq!(
+        (
+            acted.neighbours[0].entity.as_str(),
+            acted.neighbours[0].direction.as_str()
+        ),
+        (sid, "in")
+    );
+    assert_eq!(acted.neighbours[0].events, 5);
+    scratch.drop().await;
+}
