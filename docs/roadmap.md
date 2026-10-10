@@ -336,21 +336,28 @@ their users say of them, and cases the answer must serve.
 
 An alert about a process is a row; an alert about a person, on a host, talking
 to an address, is an investigation. The graph is what turns events into the
-things analysts reason about.
+things analysts reason about. [ADR-0025](adr/0025-entity-graph.md) decides
+the model, how identifiers become one entity, where it is kept, and what
+bounds a walk.
 
 | Deliverable | Detail |
 | --- | --- |
-| Entity model | Users, hosts, processes, files, addresses, and domains as typed objects with typed links (logged on to, ran, wrote, connected to), derived from OCSF observables, versioned like the schema |
-| Resolution | One entity under the identifiers each source gives it, such as `CORP\adam`, `adam@corp.example`, and an Entra object id; every merge explainable by the rule and events that made it, and reversible; placement, streaming or at rest, decided by ADR |
-| Graph store | Entities and links in ClickHouse beside the events, with first and last seen and the events behind each link |
-| Graph API | Neighbours of an entity within a time window, and the path between two, under the same checked, parameterized discipline as search |
+| Entity model | Users, hosts, files, addresses, and domains as typed objects with typed links (logged on to, ran, wrote, connected to, resolved, held), derived from the types of the OCSF schema and versioned with it. A process is reached through its events and is not a stored object |
+| Resolution | One entity under the identifiers each source gives it, such as `CORP\adam`, `adam@corp.example`, and an Entra object id. Strong identifiers alone join; a weak or a shared one joins nothing. Every merge is explained by the rule and events that made it, and is undone by a line in a file, since nothing seen is rewritten |
+| Graph store | Claims and links in ClickHouse beside the events, counted by the hour under identifiers, with first and last seen and the events behind each; the mapping from identifiers to entities as a table computed from them |
+| Graph role | A role that derives claims and links from the normalized events beside the writer, and reads back what it missed |
+| Graph API | An entity by any identifier, its neighbours within a time range, and the path between two, under the same checked, parameterized discipline as search, bounded by time, size, and degree |
+| Hard cases in the generator | Address leases that change hands, a machine of several people, a name used again, a shared mailbox, local accounts of one name on every machine |
 
-**Exit criterion:** on the M3 generator's stream, where each entity appears
-under different identifiers per source, resolution reaches measured precision
-and recall against the generator's ground truth, and every entity within two
-links of an alert's subject is returned in under one second.
+**Exit criterion:** on the M3 generator's stream with the hard cases, where
+each entity appears under different identifiers per source, resolution
+reaches a precision of 0.999 and a recall of 0.95 over pairs of identifiers
+against the generator's ground truth, reported apart; and the neighbours
+within two links of an alert's subject are returned in under one second on a
+named size of organization and day of events, with 100 neighbours a node and
+hubs not walked through.
 
-**Review notes (2026-09-27):**
+**Review notes (2026-09-27)**, each answered by ADR-0025:
 
 - Resolve the storage boundary by ADR before implementing the graph. ADR-0003
   puts mutable entities in PostgreSQL; this milestone puts entities and links
