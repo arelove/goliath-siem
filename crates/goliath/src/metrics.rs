@@ -115,6 +115,8 @@ struct Inner {
     graph_seen: Family<GraphSeen, Counter>,
     graph_rows: Family<GraphSeen, Counter>,
     graph_skipped: Counter,
+    graph_resolved: Family<GraphSeen, Gauge>,
+    graph_resolution_timestamp_seconds: Gauge,
     detector_rematched: Counter,
     detector_unmatched_ranges: Gauge,
     detector_look_back_remaining_seconds: Gauge,
@@ -184,6 +186,8 @@ impl Metrics {
         let graph_seen = Family::default();
         let graph_rows = Family::default();
         let graph_skipped = Counter::default();
+        let graph_resolved = Family::default();
+        let graph_resolution_timestamp_seconds = Gauge::default();
         let detector_rematched = Counter::default();
         let detector_unmatched_ranges = Gauge::default();
         let detector_look_back_remaining_seconds = Gauge::default();
@@ -301,6 +305,16 @@ impl Metrics {
             graph_rows.clone(),
         );
         registry.register(
+            "graph_resolved",
+            "What the last resolution found: entities of more than one identifier, their members, aliases, identifiers set aside as shared, and claims held apart by a person's word",
+            graph_resolved.clone(),
+        );
+        registry.register(
+            "graph_resolution_timestamp_seconds",
+            "When identifiers were last resolved into entities",
+            graph_resolution_timestamp_seconds.clone(),
+        );
+        registry.register(
             "graph_skipped_records",
             "Events stored whose links were not read: the graph role fell behind what the topic keeps",
             graph_skipped.clone(),
@@ -393,6 +407,8 @@ impl Metrics {
             graph_seen,
             graph_rows,
             graph_skipped,
+            graph_resolved,
+            graph_resolution_timestamp_seconds,
             detector_rematched,
             detector_unmatched_ranges,
             detector_look_back_remaining_seconds,
@@ -567,6 +583,25 @@ impl Metrics {
                 .get_or_create(&GraphSeen { kind })
                 .inc_by(rows as u64);
         }
+    }
+
+    /// What a run of resolution found.
+    pub(crate) fn resolved(&self, run: &goliath_store::Resolving) {
+        for (kind, count) in [
+            ("entity", run.entities),
+            ("member", run.members),
+            ("alias", run.aliases),
+            ("shared", run.shared),
+            ("held_apart", run.held_apart),
+        ] {
+            self.0
+                .graph_resolved
+                .get_or_create(&GraphSeen { kind })
+                .set(i64::try_from(count).unwrap_or(i64::MAX));
+        }
+        self.0
+            .graph_resolution_timestamp_seconds
+            .set(run.finished / 1000);
     }
 
     /// The graph role was moved past `records` it had not read.

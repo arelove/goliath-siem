@@ -42,6 +42,9 @@ pub struct Config {
     pub normalizer: NormalizerConfig,
     /// The indicators the detector matches; needed by the detector role.
     pub detector: Option<DetectorConfig>,
+    /// How the graph role resolves identifiers into entities.
+    #[serde(default)]
+    pub graph: GraphConfig,
     /// Where and how the API listens.
     #[serde(default)]
     pub api: ApiConfig,
@@ -326,6 +329,34 @@ impl NormalizerConfig {
     }
 }
 
+/// How identifiers become entities. See docs/adr/0025-entity-graph.md.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GraphConfig {
+    /// What people decided about identity, each a YAML file: two
+    /// identifiers that are the same, or are not, whatever events show.
+    #[serde(default)]
+    pub decisions: Vec<PathBuf>,
+    /// The minutes from one resolution to the next; 15 if left out.
+    pub resolve_every_minutes: Option<NonZeroU32>,
+    /// How many strong identifiers of one form an identifier may be seen
+    /// with and still be evidence; 3 if left out.
+    pub shared_over: Option<NonZeroUsize>,
+}
+
+impl GraphConfig {
+    /// The time from one resolution to the next.
+    pub fn resolve_every(&self) -> Duration {
+        Duration::from_secs(u64::from(self.resolve_every_minutes.map_or(15, NonZeroU32::get)) * 60)
+    }
+
+    /// The most strong identifiers of one form that are still evidence.
+    pub fn shared_over(&self) -> usize {
+        self.shared_over
+            .map_or(goliath_graph::SHARED_OVER, NonZeroUsize::get)
+    }
+}
+
 /// The indicators the detector matches, and where it keeps them. See
 /// docs/adr/0021-enrichment-placement.md.
 #[derive(Debug, Clone, Deserialize)]
@@ -562,6 +593,9 @@ impl Config {
             if !is_builtin(&source.definition) {
                 source.definition = base.join(&source.definition).to_string_lossy().into_owned();
             }
+        }
+        for file in &mut config.graph.decisions {
+            *file = base.join(&*file);
         }
         if let Some(detector) = &mut config.detector {
             if let Some(state) = &mut detector.state {

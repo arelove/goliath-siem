@@ -7,16 +7,19 @@
 //! events gave.
 
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 
-use goliath_graph::observe;
+use goliath_graph::{Decisions, Evidence, Said, Summary, observe, resolve};
 use goliath_normalize::{Envelope, Outcome};
 use goliath_pipe::{Delivery, Receiver, Sender};
 use goliath_search::Cursor;
-use goliath_store::{ClaimSeen, Graphed, LinkSeen};
+use goliath_store::{ClaimSeen, Claimed, Graphed, LinkSeen, Placed, Resolving, Standing, Store};
 use tokio::sync::watch;
 use tracing::warn;
 
 use crate::RunError;
+use crate::config::GraphConfig;
+use crate::health::Health;
 use crate::metrics::Metrics;
 use crate::roles::{BATCH, Lag, POLL};
 
@@ -197,6 +200,181 @@ pub(crate) async fn derive(
     Ok(())
 }
 
+/// What people decided about identity, read from `files` as they are now.
+///
+/// # Errors
+///
+/// Returns [`RunError::Config`] naming the file that cannot be read or
+/// used.
+fn decisions(files: &[PathBuf]) -> Result<(Said, String), RunError> {
+    let mut read = Vec::with_capacity(files.len());
+    for file in files {
+        let refuse = |why: String| RunError::Config(format!("{}: {why}", file.display()));
+        let text = std::fs::read_to_string(file).map_err(|error| refuse(error.to_string()))?;
+        read.push(Decisions::from_yaml(&text).map_err(|error| refuse(error.to_string()))?);
+    }
+    let named: Vec<String> = read
+        .iter()
+        .map(|file| format!("{} {}", file.name, file.version))
+        .collect();
+    let said = Said::new(&read).map_err(|error| RunError::Config(error.to_string()))?;
+    Ok((said, named.join(", ")))
+}
+
+/// Decides which identifiers are one entity, scope by scope, from `claimed`
+/// and from what people `said`. A claim that names what is not an
+/// identifier is passed over and counted.
+fn resolve_claims(
+    claimed: &[Claimed],
+    said: &Said,
+    shared_over: usize,
+) -> (Vec<Placed>, Summary, u64) {
+    let mut by_scope: BTreeMap<&str, Vec<Evidence>> = BTreeMap::new();
+    let mut unread = 0;
+    for claim in claimed {
+        let (Ok(one), Ok(other)) = (claim.one.parse(), claim.other.parse()) else {
+            unread += 1;
+            continue;
+        };
+        by_scope.entry(&claim.scope).or_default().push(Evidence {
+            one,
+            other,
+            rule: claim.rule.clone(),
+            events: claim.events,
+            first_seen: claim.first_seen,
+            last_seen: claim.last_seen,
+        });
+    }
+    let mut placed = Vec::new();
+    let mut summary = Summary::default();
+    for (scope, evidence) in by_scope {
+        let resolution = resolve(&evidence, said, shared_over);
+        summary.entities += resolution.summary.entities;
+        summary.members += resolution.summary.members;
+        summary.aliases += resolution.summary.aliases;
+        summary.shared += resolution.summary.shared;
+        summary.held_apart += resolution.summary.held_apart;
+        placed.extend(resolution.resolved.into_iter().map(|resolved| {
+            Placed {
+                scope: scope.to_owned(),
+                identifier: resolved.identifier.to_string(),
+                entity: resolved.entity.to_string(),
+                standing: resolved.standing.as_str().to_owned(),
+                via: resolved
+                    .with
+                    .map(|with| with.to_string())
+                    .unwrap_or_default(),
+                rule: resolved.rule,
+                said: resolved.by.unwrap_or_default(),
+                events: resolved.events,
+                first_seen: resolved.first_seen,
+                last_seen: resolved.last_seen,
+            }
+        }));
+    }
+    (placed, summary, unread)
+}
+
+/// One run: reads the decisions and the claims, decides, and writes the
+/// mapping as a new version.
+async fn resolve_once(store: &Store, settings: &GraphConfig) -> Result<Resolving, RunError> {
+    let (said, named) = decisions(&settings.decisions)?;
+    let version = u64::try_from(crate::raw::now()).unwrap_or(0);
+    let claimed = store.claimed().await?;
+    let claims = claimed.len() as u64;
+    let shared_over = settings.shared_over();
+    let (placed, summary, unread) =
+        tokio::task::spawn_blocking(move || resolve_claims(&claimed, &said, shared_over))
+            .await
+            .map_err(|error| RunError::Role(format!("resolving: {error}")))?;
+    if unread > 0 {
+        warn!(
+            unread,
+            "claims that name what is not an identifier were passed over"
+        );
+    }
+    let run = Resolving {
+        version,
+        finished: crate::raw::now(),
+        claims,
+        entities: summary.entities,
+        members: summary.members,
+        aliases: summary.aliases,
+        shared: summary.shared,
+        held_apart: summary.held_apart,
+        decisions: named,
+    };
+    store.write_resolution(&run, &placed).await?;
+    Ok(run)
+}
+
+/// Resolves identifiers into entities at the start and then on the
+/// schedule of `settings`, and says how that goes as the condition
+/// `resolving`.
+///
+/// A run that fails changes nothing: readers keep the last mapping, and
+/// the next run tries again. A decisions file that cannot be used fails
+/// the run, so that a mistake in it is seen and not half applied.
+pub(crate) async fn resolve_on_schedule(
+    store: Store,
+    settings: GraphConfig,
+    (metrics, health): (Metrics, Health),
+    mut stop: watch::Receiver<bool>,
+) -> Result<(), RunError> {
+    let every = settings.resolve_every();
+    while !*stop.borrow_and_update() {
+        match resolve_once(&store, &settings).await {
+            Ok(run) => {
+                metrics.resolved(&run);
+                health.set(
+                    "graph",
+                    "resolving",
+                    Standing::Ok,
+                    "resolved",
+                    format!(
+                        "{} claims gave {} entities of more than one identifier, with {} members \
+                         and {} aliases; {} identifiers are shared, and {} claims are held apart \
+                         by a person's word.",
+                        run.claims,
+                        run.entities,
+                        run.members,
+                        run.aliases,
+                        run.shared,
+                        run.held_apart
+                    ),
+                );
+            }
+            Err(error) => {
+                warn!(%error, "identifiers were not resolved; the last mapping stands");
+                let (reason, what) = match &error {
+                    RunError::Config(_) => (
+                        "decisions_refused",
+                        "A decisions file cannot be used, so nothing was resolved and the last \
+                         mapping stands",
+                    ),
+                    _ => (
+                        "store_refused",
+                        "The store did not answer, so nothing was resolved and the last mapping \
+                         stands",
+                    ),
+                };
+                health.set(
+                    "graph",
+                    "resolving",
+                    Standing::Failing,
+                    reason,
+                    format!("{what}: {error}"),
+                );
+            }
+        }
+        tokio::select! {
+            () = tokio::time::sleep(every) => {}
+            _ = stop.changed() => {}
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use goliath_normalize::{EventId, Normalized};
@@ -266,6 +444,87 @@ mod tests {
             (4, "user")
         );
         assert_eq!(graphed.claims[0].other, "user:name:corp\\adam");
+    }
+
+    fn claimed(scope: &str, one: &str, other: &str) -> Claimed {
+        Claimed {
+            scope: scope.to_owned(),
+            one: one.to_owned(),
+            other: other.to_owned(),
+            rule: "user".to_owned(),
+            events: 3,
+            first_seen: 10,
+            last_seen: 20,
+        }
+    }
+
+    #[test]
+    fn claims_are_resolved_scope_by_scope_and_what_is_no_identifier_is_passed_over() {
+        let sid = "user:sid:s-1-5-21-1-2-3-1104";
+        let name = "user:name:corp\\adam";
+        let other = "user:name:corp.example\\adam";
+        let (placed, summary, unread) = resolve_claims(
+            &[
+                claimed("", sid, name),
+                // The same pair of another scope is another entity, and a
+                // claim of another scope does not reach this one.
+                claimed("branch", sid, other),
+                claimed("", "nonsense", name),
+            ],
+            &Said::default(),
+            3,
+        );
+        assert_eq!(unread, 1);
+        assert_eq!((summary.entities, summary.members), (2, 4));
+        let rows: Vec<(&str, &str, &str, &str)> = placed
+            .iter()
+            .map(|row| {
+                (
+                    row.scope.as_str(),
+                    row.identifier.as_str(),
+                    row.standing.as_str(),
+                    row.via.as_str(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            rows,
+            [
+                ("", sid, "member", ""),
+                ("", name, "member", sid),
+                ("branch", sid, "member", ""),
+                ("branch", other, "member", sid),
+            ]
+        );
+        assert_eq!((placed[1].events, placed[1].rule.as_str()), (3, "user"));
+    }
+
+    #[test]
+    fn a_decisions_file_that_cannot_be_used_names_itself() {
+        let directory = tempfile::tempdir().unwrap();
+        let good = directory.path().join("identity.yaml");
+        std::fs::write(
+            &good,
+            "name: identity\nversion: 4\ndecisions:\n  - same: ['user:email:a@x.example', 'user:email:b@x.example']\n    reason: Renamed\n",
+        )
+        .unwrap();
+        let (_, named) = decisions(std::slice::from_ref(&good)).unwrap();
+        assert_eq!(named, "identity 4");
+        assert_eq!(decisions(&[]).unwrap().1, "");
+
+        let bad = directory.path().join("bad.yaml");
+        std::fs::write(
+            &bad,
+            "name: bad\nversion: 1\ndecisions:\n  - reason: none\n",
+        )
+        .unwrap();
+        let error = decisions(&[good, bad]).unwrap_err().to_string();
+        assert!(error.contains("decision 1 of `bad`"), "{error}");
+        let missing = directory.path().join("missing.yaml");
+        let error = decisions(std::slice::from_ref(&missing))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("missing.yaml"), "{error}");
     }
 
     #[test]

@@ -44,6 +44,32 @@ SELECT time, event.process.cmd_line FROM goliath.events WHERE class_uid = 1007
 | `graph` | Reads what normalized events show of the things they name, beside the writer: links between things and claims that two identifiers are one, added up ([ADR-0025](../../docs/adr/0025-entity-graph.md)) | The rows are in the graph topic |
 | `api` | Serves searches over the stored events over HTTP, under `/api/v1` | Reads only |
 
+## Entities
+
+With the `graph` role and a `[store]`, identifiers are resolved into
+entities at the start and then every 15 minutes
+([ADR-0025](../../docs/adr/0025-entity-graph.md)): the claims the store
+holds are read, `goliath-graph` decides which identifiers are one entity,
+and the answer is written as a new version beside the last. Links and
+claims are never rewritten, so a run that goes wrong changes nothing a
+reader sees, and a decision that was wrong is gone at the next run.
+
+```toml
+[graph]
+# What people decided about identity, reviewed as rules are.
+decisions = ["identity.yaml"]
+resolve_every_minutes = 15
+# An identifier seen with more strong identifiers of one form than this is
+# shared, and joins nothing.
+shared_over = 3
+```
+
+A decisions file says that two identifiers are the same, or are not,
+whatever events show, each with a reason; its shape is in the
+[README of `goliath-graph`](../goliath-graph/README.md). It is read again
+at every run. A file that cannot be used fails the run, and the condition
+`resolving` says which decision is wrong.
+
 ## Search
 
 With the `api` role, events are searched by OCSF path, checked against the
@@ -152,6 +178,7 @@ A condition is a question, an answer, and why:
 | --- | --- | --- | --- |
 | writer | `storing`, `storing_findings` for what the detector found, and `storing_graph` for what the graph role read | The store took longer than 10 seconds for a batch | The store refused the last batch |
 | writer, normalizer, detector, graph | `keeping_up:<topic>`, one for each topic it reads | The backlog grew through the last ten minutes, and is 1,000 records or more | Not told yet |
+| graph | `resolving`: whether identifiers were resolved into entities at the last run | Never | The store did not answer, or a decisions file cannot be used; the last mapping stands |
 | normalizer | `normalizing:<source>` | More than 1% of the source's records in the last hour became dead letters | More than half did |
 | detector | `feeds_current:<feed>` | The feed is older than twice its refresh, or was not fetched since the process started | No publication of it was ever loaded |
 

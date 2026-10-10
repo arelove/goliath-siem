@@ -1224,6 +1224,19 @@ max_delay_ms = 100
         1,
     )
     .await;
+    // Identifiers were resolved at the start, and the run is complete.
+    eventually(
+        &client,
+        "SELECT toUInt64(count() > 0) FROM graph_resolutions",
+        1,
+    )
+    .await;
+    eventually(
+        &client,
+        "SELECT count() FROM platform_conditions WHERE instance = 'e2e-graph'          AND role = 'graph' AND type = 'resolving' AND status = 'ok'",
+        1,
+    )
+    .await;
     // The role says that it runs, and the writer how storing its rows goes.
     eventually(
         &client,
