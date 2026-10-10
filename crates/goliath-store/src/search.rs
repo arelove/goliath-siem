@@ -72,7 +72,7 @@ pub struct Stored {
 /// A value bound to a query parameter.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(untagged)]
-enum Param {
+pub(crate) enum Param {
     Text(String),
     Integer(i64),
     Float(f64),
@@ -84,14 +84,21 @@ enum Param {
 
 /// A query and its parameters.
 #[derive(Debug, Clone, PartialEq)]
-struct Compiled {
-    sql: String,
-    params: Vec<(String, Param)>,
+pub(crate) struct Compiled {
+    pub(crate) sql: String,
+    pub(crate) params: Vec<(String, Param)>,
 }
 
 impl Compiled {
+    pub(crate) fn new() -> Self {
+        Self {
+            sql: String::new(),
+            params: Vec::new(),
+        }
+    }
+
     /// Adds a parameter and returns its placeholder, such as `{p3:String}`.
-    fn bind(&mut self, param: Param) -> String {
+    pub(crate) fn bind(&mut self, param: Param) -> String {
         let name = format!("p{}", self.params.len());
         let placeholder = format!("{{{name}:{}}}", param.clickhouse_type());
         self.params.push((name, param));
@@ -115,17 +122,17 @@ impl Param {
 
 // Aliases differ from the columns' names: ClickHouse would otherwise read
 // the alias wherever the query names the column, in WHERE and ORDER BY too.
-const COLUMNS: &str = "toUnixTimestamp64Milli(time) AS time_ms, id, class_uid, source, kind, \
+pub(crate) const COLUMNS: &str = "toUnixTimestamp64Milli(time) AS time_ms, id, class_uid, source, kind, \
                        toJSONString(event) AS event_json";
 
 #[derive(Debug, Row, Deserialize)]
-struct FoundRow {
-    time_ms: i64,
-    id: [u8; 16],
-    class_uid: u32,
-    source: String,
-    kind: String,
-    event_json: String,
+pub(crate) struct FoundRow {
+    pub(crate) time_ms: i64,
+    pub(crate) id: [u8; 16],
+    pub(crate) class_uid: u32,
+    pub(crate) source: String,
+    pub(crate) kind: String,
+    pub(crate) event_json: String,
 }
 
 #[derive(Debug, Row, Deserialize)]
@@ -146,7 +153,7 @@ struct StoredRow {
 }
 
 impl FoundRow {
-    fn into_found(self) -> Result<Found, StoreError> {
+    pub(crate) fn into_found(self) -> Result<Found, StoreError> {
         Ok(Found {
             at: Cursor {
                 time: self.time_ms,
@@ -259,11 +266,9 @@ pub(crate) fn with_limits(
         .with_setting("output_format_json_quote_64bit_integers", "0")
 }
 
-fn compile(search: &Checked) -> Compiled {
-    let mut compiled = Compiled {
-        sql: String::new(),
-        params: Vec::new(),
-    };
+/// What `search` asks of an event, but for where its page begins: its
+/// range, its classes, and its filters, each bound to `compiled`.
+pub(crate) fn conditions(compiled: &mut Compiled, search: &Checked) -> Vec<String> {
     let from = compiled.bind(Param::Integer(search.from));
     let to = compiled.bind(Param::Integer(search.to));
     let mut conditions = vec![
@@ -278,16 +283,22 @@ fn compile(search: &Checked) -> Compiled {
             .collect();
         conditions.push(format!("class_uid IN ({})", classes.join(", ")));
     }
+    for condition in &search.conditions {
+        let sql = filter(compiled, condition);
+        conditions.push(sql);
+    }
+    conditions
+}
+
+fn compile(search: &Checked) -> Compiled {
+    let mut compiled = Compiled::new();
+    let mut conditions = conditions(&mut compiled, search);
     if let Some(after) = search.after {
         let time = compiled.bind(Param::Integer(after.time));
         let id = compiled.bind(Param::Text(hex(&after.id)));
         conditions.push(format!(
             "(time, id) < (fromUnixTimestamp64Milli({time}, 'UTC'), toFixedString(unhex({id}), 16))"
         ));
-    }
-    for condition in &search.conditions {
-        let sql = filter(&mut compiled, condition);
-        conditions.push(sql);
     }
     let limit = compiled.bind(Param::Integer(i64::from(search.limit)));
     compiled.sql = format!(
@@ -297,7 +308,7 @@ fn compile(search: &Checked) -> Compiled {
     compiled
 }
 
-fn hex(bytes: &[u8]) -> String {
+pub(crate) fn hex(bytes: &[u8]) -> String {
     bytes.iter().fold(String::new(), |mut hex, byte| {
         let _ = write!(hex, "{byte:02x}");
         hex
