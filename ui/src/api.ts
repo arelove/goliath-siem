@@ -462,3 +462,48 @@ export function neighbours(walk: Walk, signal?: AbortSignal): Promise<Neighbours
     ...(signal ? { signal } : {}),
   });
 }
+
+/** One way two entities were seen together, from the one that acted. */
+export interface Link {
+  src: string;
+  dst: string;
+  link: string;
+  events: number;
+  first_seen: number;
+  last_seen: number;
+}
+
+/** A path between two entities, if one was found. */
+export interface Path {
+  source: string;
+  target: string;
+  found: boolean;
+  /** Whether no bound cut the search short. */
+  complete: boolean;
+  /** Its entities in order; null if none was found. */
+  path: { entity: string; kind: string | null }[] | null;
+  /** For each two neighbours on it, every way they were seen together. */
+  hops: { from: string; to: string; links: Link[] }[] | null;
+  /** Hubs the search met and did not go through. */
+  hubs: { entity: string; kind: string | null; degree: number }[];
+  most: number;
+  hub_over: number;
+  through_hubs: boolean;
+}
+
+/** What is asked of a path. */
+export interface Between {
+  source: string;
+  target: string;
+  from: string;
+  to: string;
+  through_hubs?: boolean;
+}
+
+export function path(between: Between, signal?: AbortSignal): Promise<Path> {
+  return request<Path>("/entity/path", {
+    method: "POST",
+    body: JSON.stringify(between),
+    ...(signal ? { signal } : {}),
+  });
+}
