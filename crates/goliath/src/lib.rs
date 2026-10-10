@@ -210,6 +210,18 @@ async fn start_pipeline<T: Topics>(
             metrics.clone(),
             stopped.clone(),
         ));
+        // Which identifiers are one entity is decided at rest, from what
+        // the store holds; without a store to read, it is not decided.
+        if let Some(store) = &config.store {
+            roles.spawn(graph::resolve_on_schedule(
+                connect(store)?,
+                config.graph.clone(),
+                (metrics.clone(), health.clone()),
+                stopped.clone(),
+            ));
+        } else {
+            info!("no [store]: links and claims are sent on, and identifiers are not resolved");
+        }
     }
     roles.spawn(health::report(
         health.clone(),
