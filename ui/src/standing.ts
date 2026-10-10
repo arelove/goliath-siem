@@ -11,6 +11,7 @@ export const STANDINGS: Record<Standing, { label: string; tone: string }> = {
 const QUESTIONS: Record<string, string> = {
   storing: "Storing events",
   storing_findings: "Storing findings",
+  storing_graph: "Storing the graph",
   keeping_up: "Keeping up with",
   normalizing: "Normalizing",
   feeds_current: "Feed is current",
