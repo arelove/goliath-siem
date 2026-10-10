@@ -1255,3 +1255,92 @@ max_delay_ms = 100
         .await
         .unwrap();
 }
+
+/// Events stored before there was a graph role are read into the graph
+/// from the store when one first starts, once and not again.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn events_stored_before_the_graph_role_are_read_from_the_store() {
+    let Some(url) = clickhouse_url() else {
+        return;
+    };
+    let user = clickhouse_user();
+    let database = format!("goliath_test_regraph_{}", std::process::id());
+    let directory = tempfile::tempdir().unwrap();
+    // A data directory of its own for each run, so that the role finds
+    // nothing in a topic: what it reads of the first file is the store's.
+    let config = |roles: &str, data: &str| {
+        let path = directory.path().join(format!("{data}.toml"));
+        std::fs::write(
+            &path,
+            format!(
+                r#"
+roles = [{roles}]
+data = "{data}"
+
+[[sources]]
+definition = "sysmon"
+inbox = "inbox-{data}"
+
+[store]
+url = "{url}"
+database = "{database}"
+user = "{user}"
+password_env = "GOLIATH_CLICKHOUSE_PASSWORD"
+
+[writer]
+max_rows = 1000
+max_delay_ms = 100
+"#
+            ),
+        )
+        .unwrap();
+        Config::load(&path).unwrap()
+    };
+    let client = connect(&url).with_database(&database);
+    let shown = |input: &str| {
+        let sysmon = Normalizer::from_yaml(SYSMON).unwrap();
+        let mut links = 0;
+        sysmon.normalize(input.as_bytes(), |outcome| {
+            if let Outcome::Event(normalized) = outcome {
+                links += goliath_graph::observe(&normalized.event).links.len() as u64;
+            }
+        });
+        links
+    };
+    let (events, _) = expected(KINDS);
+    let (more_events, _) = expected(MALFORMED);
+    assert!(shown(KINDS) > 0);
+
+    let (stop, running) = start(config(r#""collector", "normalizer", "writer""#, "before"));
+    drop_file(&directory.path().join("inbox-before"), "001.json", KINDS);
+    eventually(&client, "SELECT count() FROM events", events).await;
+    stop.send(()).unwrap();
+    running.await.unwrap().unwrap();
+    assert_eq!(count(&client, "SELECT count() FROM graph_links").await, 0);
+
+    let with_graph = r#""collector", "normalizer", "graph", "writer""#;
+    let (stop, running) = start(config(with_graph, "after"));
+    // A later event says that the writer is past what was stored before.
+    drop_file(&directory.path().join("inbox-after"), "002.json", MALFORMED);
+    eventually(&client, "SELECT count() FROM events", events + more_events).await;
+    eventually(
+        &client,
+        "SELECT sum(events) FROM graph_links",
+        shown(KINDS) + shown(MALFORMED),
+    )
+    .await;
+    stop.send(()).unwrap();
+    running.await.unwrap().unwrap();
+
+    // Started again, it reads nothing of the store again: what it noted is
+    // read, and what it asked for it does not ask for twice.
+    let (stop, running) = start(config(with_graph, "after"));
+    tokio::time::sleep(Duration::from_secs(8)).await;
+    assert_eq!(
+        count(&client, "SELECT sum(events) FROM graph_links").await,
+        shown(KINDS) + shown(MALFORMED)
+    );
+    stop.send(()).unwrap();
+    running.await.unwrap().unwrap();
+    drop_database(&url, &database).await;
+}

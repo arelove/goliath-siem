@@ -115,6 +115,8 @@ struct Inner {
     graph_seen: Family<GraphSeen, Counter>,
     graph_rows: Family<GraphSeen, Counter>,
     graph_skipped: Counter,
+    graph_read_back: Counter,
+    graph_unread_ranges: Gauge,
     graph_resolved: Family<GraphSeen, Gauge>,
     graph_resolution_timestamp_seconds: Gauge,
     detector_rematched: Counter,
@@ -186,6 +188,8 @@ impl Metrics {
         let graph_seen = Family::default();
         let graph_rows = Family::default();
         let graph_skipped = Counter::default();
+        let graph_read_back = Counter::default();
+        let graph_unread_ranges = Gauge::default();
         let graph_resolved = Family::default();
         let graph_resolution_timestamp_seconds = Gauge::default();
         let detector_rematched = Counter::default();
@@ -305,6 +309,16 @@ impl Metrics {
             graph_rows.clone(),
         );
         registry.register(
+            "graph_read_back_events",
+            "Events read back from the store into the graph: stored before the graph role ran, or while it was behind",
+            graph_read_back.clone(),
+        );
+        registry.register(
+            "graph_unread_ranges",
+            "Ranges of receipt time whose events are stored and wait to be read into the graph",
+            graph_unread_ranges.clone(),
+        );
+        registry.register(
             "graph_resolved",
             "What the last resolution found: entities of more than one identifier, their members, aliases, identifiers set aside as shared, and claims held apart by a person's word",
             graph_resolved.clone(),
@@ -407,6 +421,8 @@ impl Metrics {
             graph_seen,
             graph_rows,
             graph_skipped,
+            graph_read_back,
+            graph_unread_ranges,
             graph_resolved,
             graph_resolution_timestamp_seconds,
             detector_rematched,
@@ -583,6 +599,18 @@ impl Metrics {
                 .get_or_create(&GraphSeen { kind })
                 .inc_by(rows as u64);
         }
+    }
+
+    /// The graph role read `events` back from the store.
+    pub(crate) fn graph_read_back(&self, events: u64) {
+        self.0.graph_read_back.inc_by(events);
+    }
+
+    /// `ranges` of receipt time wait to be read into the graph.
+    pub(crate) fn graph_unread_ranges(&self, ranges: usize) {
+        self.0
+            .graph_unread_ranges
+            .set(i64::try_from(ranges).unwrap_or(i64::MAX));
     }
 
     /// What a run of resolution found.

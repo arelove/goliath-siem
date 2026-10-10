@@ -91,6 +91,25 @@ impl Store {
         Ok(Reading { cursor })
     }
 
+    /// When the platform took the earliest event the store holds, in
+    /// milliseconds since the Unix epoch; `None` if it holds none.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError::ClickHouse`] if the query fails.
+    pub async fn first_received(&self) -> Result<Option<i64>, StoreError> {
+        let first = self
+            .client()
+            .query(
+                "SELECT if(count() = 0, toInt64(-1), toUnixTimestamp64Milli(min(received))) \
+                 FROM events",
+            )
+            .with_setting("readonly", "2")
+            .fetch_one::<i64>()
+            .await?;
+        Ok((first >= 0).then_some(first))
+    }
+
     /// Whether an event is stored that the platform took at `from`
     /// milliseconds since the Unix epoch or later. The writer stores in the
     /// order it reads, so this says it has come as far as `from`.

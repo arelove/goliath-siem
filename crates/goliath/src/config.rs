@@ -342,6 +342,13 @@ pub struct GraphConfig {
     /// How many strong identifiers of one form an identifier may be seen
     /// with and still be evidence; 3 if left out.
     pub shared_over: Option<NonZeroUsize>,
+    /// The directory where the role notes which stored events it has not
+    /// read; `graph` in the data directory if left out.
+    pub state: Option<PathBuf>,
+    /// How many days of what was stored before the role first ran are read
+    /// into the graph; everything the store holds if left out, and nothing
+    /// with 0.
+    pub read_back_days: Option<u16>,
 }
 
 impl GraphConfig {
@@ -597,6 +604,9 @@ impl Config {
         for file in &mut config.graph.decisions {
             *file = base.join(&*file);
         }
+        if let Some(state) = &mut config.graph.state {
+            *state = base.join(&*state);
+        }
         if let Some(detector) = &mut config.detector {
             if let Some(state) = &mut detector.state {
                 *state = base.join(&*state);
@@ -739,6 +749,14 @@ impl Config {
             ));
         }
         Ok(())
+    }
+
+    /// The directory where the graph role notes what it has not read.
+    pub fn graph_state(&self) -> Option<PathBuf> {
+        self.graph
+            .state
+            .clone()
+            .or_else(|| self.data.as_ref().map(|data| data.join("graph")))
     }
 
     /// The directory of the detector's indicator store.

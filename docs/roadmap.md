@@ -362,9 +362,10 @@ stream beside the writer, adds up what repeats, and the writer keeps the
 rows in `graph_links` and `graph_claims`. Identifiers are resolved into
 entities at the start and every 15 minutes, from the claims and from a
 file of what people decided, and the answer is kept as a version with the
-reason for every identifier in it. Reading back the events the role was
-moved past, the measurement against the generator's truth, and the API
-follow.
+reason for every identifier in it. What was stored before the role first
+ran, and what it is moved past when it falls behind, is read into the
+graph from the store. The measurement against the generator's truth and
+the API follow.
 
 **Exit criterion:** on the M3 generator's stream with the hard cases, where
 each entity appears under different identifiers per source, resolution
