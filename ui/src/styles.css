@@ -844,3 +844,334 @@ li:hover > .leaf .add {
 .sources th {
   white-space: nowrap;
 }
+
+/* The queue of findings: what is chosen above it, the queue, and beside it
+   what one finding says. */
+.queue {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.queue-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 16px 10px;
+}
+
+.queue-total {
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-right: 6px;
+}
+
+.queue-total .caption {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.chip:hover {
+  background: var(--raised);
+}
+
+.chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--selected);
+}
+
+.chip-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A severity's mark takes its colour from the tone of what holds it. */
+.pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--tone, var(--muted));
+}
+
+.critical {
+  --tone: var(--critical);
+}
+
+.high {
+  --tone: var(--high);
+}
+
+.medium {
+  --tone: var(--medium);
+}
+
+.low {
+  --tone: var(--low);
+}
+
+.info {
+  --tone: var(--info);
+}
+
+.filter-chip {
+  border-color: var(--accent);
+  max-width: 420px;
+}
+
+.filter-chip .mono {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.again {
+  margin-left: auto;
+}
+
+.findings:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.findings thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel);
+}
+
+.findings.sources thead th:nth-child(n + 4) {
+  text-align: left;
+}
+
+.findings.sources thead th:last-child {
+  text-align: right;
+}
+
+/* Beside an open finding the queue keeps what tells its rows apart; the
+   rest is in the panel. */
+.body.split .findings th:nth-child(n + 5),
+.body.split .findings td:nth-child(n + 5) {
+  display: none;
+}
+
+.findings tbody tr {
+  cursor: pointer;
+}
+
+.findings tbody tr:hover {
+  background: var(--raised);
+}
+
+.findings tbody tr.selected {
+  background: var(--selected);
+}
+
+.findings.sources tbody tr td {
+  padding: 3px 10px;
+  height: 28px;
+}
+
+.findings.sources tbody tr td.what {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.nothing p {
+  margin: 0 0 6px;
+  max-width: 560px;
+}
+
+/* A value that names something: a way on. */
+.way {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+button.way-name {
+  max-width: 340px;
+  height: auto;
+  padding: 0 4px;
+  margin: 0 -4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+button.way-name:hover,
+button.way-name[aria-expanded="true"] {
+  background: var(--selected);
+}
+
+.way-note {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: -4px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 210px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--raised);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.menu button {
+  height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.menu button:hover,
+.menu button:focus-visible {
+  background: var(--selected);
+}
+
+/* What one finding says. */
+.finding h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.finding section {
+  border-top: 1px solid var(--grid);
+  margin-top: 10px;
+  padding-top: 2px;
+}
+
+.finding h3 {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.finding p {
+  margin: 4px 0;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px 12px;
+  margin: 4px 0;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.asserted {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+}
+
+.finding .asserted thead th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 2px 8px 2px 0;
+}
+
+.finding .asserted tbody tr td {
+  padding: 2px 8px 2px 0;
+  border-top: 1px solid var(--grid);
+}
+
+.asserted .count {
+  font-variant-numeric: tabular-nums;
+}
+
+.suppressed {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--raised);
+}
+
+.known + .known {
+  margin-top: 8px;
+}
+
+.others {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.others button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+}

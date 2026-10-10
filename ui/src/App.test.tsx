@@ -125,6 +125,42 @@ const PLATFORM = {
   },
 };
 
+const MATCH: Found = {
+  at: `1790330400000-${"cd".repeat(16)}`,
+  class_uid: 2004,
+  source: "goliath-intel",
+  kind: "indicator_match",
+  event: {
+    time: 1790330400000,
+    class_uid: 2004,
+    severity_id: 4,
+    confidence_score: 95,
+    is_alert: true,
+    finding_info: { title: "Indicator match: domain c2.bad.example.com" },
+    evidences: [
+      {
+        uid: "ab".repeat(16),
+        name: "dst_endpoint.hostname",
+        data: { class_uid: 1007, time: 1790330400000, value: "c2.bad.example.com" },
+      },
+    ],
+    enrichments: [
+      {
+        name: "hostname",
+        value: "ws-7",
+        type: "asset",
+        provider: "cmdb",
+        data: { owner: "alice" },
+      },
+    ],
+    unmapped: {
+      indicator_kind: "domain",
+      indicator_value: "c2.bad.example.com",
+      assertions: [{ feed: "threatfox", version: "7", confidence: 95 }],
+    },
+  },
+};
+
 interface Call {
   path: string;
   body: Search | null;
@@ -164,6 +200,14 @@ beforeEach(() => {
       }
       if (path === "/search") {
         return reply(200, { events: [LAUNCH], next: null });
+      }
+      if (path === "/findings") {
+        return reply(200, {
+          findings: [MATCH],
+          next: null,
+          total: 3,
+          severities: { "4": 1, "2": 2 },
+        });
       }
       if (path === "/overview") {
         return reply(200, OVERVIEW);
@@ -329,5 +373,73 @@ describe("platform health", () => {
     expect(screen.getByText("4,200")).toBeInTheDocument();
     expect(screen.getByText("Storing events")).toBeInTheDocument();
     expect(screen.getByText("2 min ago")).toBeInTheDocument();
+  });
+});
+
+describe("the queue of findings", () => {
+  it("shows what was found, and what one finding says beside it", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/?view=findings");
+    show();
+    // The queue, with how many of each severity the range holds.
+    const row = (await screen.findByText("Indicator match: domain")).closest("tr");
+    expect(row).toHaveTextContent("High");
+    expect(row).toHaveTextContent("threatfox");
+    expect(screen.getByRole("button", { name: /Low\s*2/ })).toBeInTheDocument();
+
+    // The panel: why, who and what, and the event it was made of.
+    await user.click(screen.getByText("Indicator match: domain"));
+    const panel = screen.getByRole("complementary", { name: "Finding" });
+    expect(panel).toHaveTextContent("dst_endpoint.hostname of Process Activity");
+    expect(panel).toHaveTextContent("hostname ws-7 · asset from cmdb");
+    expect(panel).toHaveTextContent("owner");
+    expect(await screen.findByText("powershell -enc AAAA")).toBeInTheDocument();
+    expect(calls.some((call) => call.path === `/events/1790330400000-${"ab".repeat(16)}`)).toBe(
+      true,
+    );
+  });
+
+  it("asks again for the severities chosen, and for a value from its menu", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/?view=findings");
+    show();
+    await user.click(await screen.findByRole("button", { name: /High\s*1/ }));
+    await waitFor(() =>
+      expect(
+        calls.some((call) => call.path === "/findings" && "severities" in (call.body ?? {})),
+      ).toBe(true),
+    );
+    const chosen = calls.findLast((call) => call.path === "/findings")?.body as unknown as {
+      severities: number[];
+    };
+    expect(chosen.severities).toEqual([4]);
+
+    const value = (await screen.findAllByRole("button", { name: "c2.bad.example.com" }))[0];
+    await user.click(value as HTMLElement);
+    await user.click(screen.getByRole("menuitem", { name: "Show only findings of it" }));
+    await waitFor(() =>
+      expect(calls.findLast((call) => call.path === "/findings")?.body?.filters).toEqual([
+        { path: "unmapped.indicator_value", op: "equals", value: "c2.bad.example.com" },
+      ]),
+    );
+    expect(screen.getByTitle("Remove this filter")).toHaveTextContent(
+      "value is c2.bad.example.com",
+    );
+  });
+
+  it("leads from a value to the events that hold it", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/?view=findings");
+    show();
+    const named = (await screen.findAllByRole("button", { name: "c2.bad.example.com" }))[0];
+    await user.click(named as HTMLElement);
+    await user.click(screen.getByRole("menuitem", { name: "Show events that hold it" }));
+    await waitFor(() =>
+      expect(calls.findLast((call) => call.path === "/search")?.body).toMatchObject({
+        classes: [1007],
+        filters: [{ path: "dst_endpoint.hostname", op: "equals", value: "c2.bad.example.com" }],
+      }),
+    );
+    expect(screen.getByRole("tab", { name: "Events" })).toHaveAttribute("aria-selected", "true");
   });
 });

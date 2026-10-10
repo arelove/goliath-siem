@@ -273,7 +273,11 @@ Grafana, which reads the same store.
 1. The tokens, the shell with its bar, and the palette, with the
    three views that exist moved into it.
 2. Platform, as ADR-0023 is built.
-3. Findings: the queue, the panel, the menu of a value.
+3. Findings: the queue, the panel, the menu of a value. Built: the
+   queue with its severities and filters, the panel but for the decision,
+   and the menu, which leads to the findings of a value and to the events
+   that hold it. Not yet: groups by entity, the events around a finding on
+   its host, and an entity to open, which wait for M4.5.
 4. Overview rebuilt on findings, sources, and platform.
 5. Coverage.
 6. Entity, with M4.5. Cases and the decision, with M6.
