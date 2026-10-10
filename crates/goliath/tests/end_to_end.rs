@@ -1148,3 +1148,97 @@ max_delay_ms = 100
         .await
         .unwrap();
 }
+
+/// The links and claims of a dropped file's events reach the store through
+/// the graph role, beside the events and without waiting for them.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn what_events_show_reaches_the_graph_tables() {
+    let Some(url) = clickhouse_url() else {
+        return;
+    };
+    let user = clickhouse_user();
+    let database = format!("goliath_test_graph_{}", std::process::id());
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("goliath.toml");
+    std::fs::write(
+        &path,
+        format!(
+            r#"
+roles = ["collector", "normalizer", "graph", "writer"]
+instance = "e2e-graph"
+data = "data"
+
+[[sources]]
+definition = "sysmon"
+inbox = "inbox/sysmon"
+
+[store]
+url = "{url}"
+database = "{database}"
+user = "{user}"
+password_env = "GOLIATH_CLICKHOUSE_PASSWORD"
+
+[writer]
+max_rows = 1000
+max_delay_ms = 100
+"#
+        ),
+    )
+    .unwrap();
+    let client = connect(&url).with_database(&database);
+    let inbox = directory.path().join("inbox/sysmon");
+
+    // What the events of the file show, read here as the role reads it.
+    let sysmon = Normalizer::from_yaml(SYSMON).unwrap();
+    let mut links = std::collections::BTreeSet::new();
+    let mut seen = 0;
+    sysmon.normalize(KINDS.as_bytes(), |outcome| {
+        if let Outcome::Event(normalized) = outcome {
+            for link in goliath_graph::observe(&normalized.event).links {
+                seen += 1;
+                links.insert((
+                    link.from.to_string(),
+                    link.kind.as_str(),
+                    link.to.to_string(),
+                ));
+            }
+        }
+    });
+    assert!(links.len() >= 4, "the fixture shows links: {links:?}");
+
+    let (stop, running) = start(Config::load(&path).unwrap());
+    drop_file(&inbox, "001-kinds.json", KINDS);
+    eventually(
+        &client,
+        "SELECT count() FROM (SELECT src, link, dst FROM graph_links GROUP BY src, link, dst)",
+        links.len() as u64,
+    )
+    .await;
+    eventually(&client, "SELECT sum(events) FROM graph_links", seen).await;
+    // A link names where its events are: the first is a stored event.
+    eventually(
+        &client,
+        "SELECT count() FROM (SELECT min(first_event) AS first FROM graph_links \
+         WHERE link = 'connected_to') AS link \
+         INNER JOIN events ON events.id = toFixedString(substring(link.first, 9, 16), 16)",
+        1,
+    )
+    .await;
+    // The role says that it runs, and the writer how storing its rows goes.
+    eventually(
+        &client,
+        "SELECT uniqExact(type) FROM platform_conditions WHERE instance = 'e2e-graph' \
+         AND ((role = 'graph' AND type = 'keeping_up:normalized') \
+         OR (role = 'writer' AND type = 'storing_graph' AND status = 'ok'))",
+        2,
+    )
+    .await;
+    stop.send(()).unwrap();
+    running.await.unwrap().unwrap();
+
+    connect(&url)
+        .query(&format!("DROP DATABASE IF EXISTS {database}"))
+        .execute()
+        .await
+        .unwrap();
+}

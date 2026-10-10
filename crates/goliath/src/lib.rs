@@ -14,6 +14,7 @@ mod api;
 pub mod config;
 mod detector;
 mod fetch;
+mod graph;
 mod health;
 mod metrics;
 mod otlp;
@@ -158,6 +159,8 @@ async fn start_pipeline<T: Topics>(
     let findings = topics.open("findings", "writer").await?;
     // What every process says of itself, for the writer to keep.
     let reports = topics.open("health", "writer").await?;
+    // What events show of the things they name, for the writer to keep.
+    let graphed = topics.open("graph", "writer").await?;
 
     // Readers subscribe before anything is sent, so that no record is sent
     // before the group that needs it exists.
@@ -187,9 +190,24 @@ async fn start_pipeline<T: Topics>(
                 stopped.clone(),
             ));
         }
+        roles.spawn(roles::keep_graph(
+            store.clone(),
+            topics.subscribe(&graphed, "writer").await?,
+            (metrics.clone(), health.clone()),
+            stopped.clone(),
+        ));
         roles.spawn(roles::keep_reports(
             store,
             topics.subscribe(&reports, "writer").await?,
+            stopped.clone(),
+        ));
+    }
+    if config.roles.contains(&Role::Graph) {
+        roles.spawn(graph::derive(
+            // As an observer: the writer's topic never waits for it.
+            topics.observe(&outcomes, "graph").await?,
+            T::sender(&graphed),
+            metrics.clone(),
             stopped.clone(),
         ));
     }

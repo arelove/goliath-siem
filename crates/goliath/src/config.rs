@@ -80,6 +80,9 @@ pub enum Role {
     /// Matches indicators against normalized events, and sends each match
     /// on as a finding for the writer to store.
     Detector,
+    /// Reads what normalized events show of the things they name, and sends
+    /// the links and claims on for the writer to store.
+    Graph,
 }
 
 impl Role {
@@ -92,6 +95,7 @@ impl Role {
             Self::Api => "api",
             Self::Receiver => "receiver",
             Self::Detector => "detector",
+            Self::Graph => "graph",
         }
     }
 }
@@ -591,7 +595,12 @@ impl Config {
         self.roles.iter().any(|role| {
             matches!(
                 role,
-                Role::Collector | Role::Normalizer | Role::Writer | Role::Receiver | Role::Detector
+                Role::Collector
+                    | Role::Normalizer
+                    | Role::Writer
+                    | Role::Receiver
+                    | Role::Detector
+                    | Role::Graph
             )
         })
     }

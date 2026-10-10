@@ -12,7 +12,7 @@ use std::time::Duration;
 
 use goliath_normalize::{Envelope, Normalizer, Outcome};
 use goliath_pipe::{Delivery, Receiver, Sender};
-use goliath_store::{Batch, Limits, Report, Standing, Store, StoreError, Writer};
+use goliath_store::{Batch, Graphed, Limits, Report, Standing, Store, StoreError, Writer};
 use tokio::sync::watch;
 use tracing::{info, warn};
 
@@ -558,6 +558,63 @@ pub(crate) async fn keep_reports(
     }
     Ok(())
 }
+
+/// Keeps what events show of the things they name, from the `graph` topic.
+///
+/// Rows the store refuses are held and tried again, as events are: what
+/// was read from events is not given up. A record that cannot be read is
+/// a bug of what sent it, and is passed over with a warning.
+pub(crate) async fn keep_graph(
+    store: Store,
+    mut graphed: impl Receiver + Sync,
+    (metrics, health): (Metrics, Health),
+    mut stop: watch::Receiver<bool>,
+) -> Result<(), RunError> {
+    let storing = Storing {
+        health,
+        kind: "storing_graph",
+    };
+    let mut lag = Lag::new("graph".to_owned(), "writer");
+    while !*stop.borrow_and_update() {
+        lag.report(&graphed, &metrics).await;
+        let deliveries = graphed.receive(BATCH, POLL).await?;
+        let Some(last) = deliveries.last().map(|delivery| delivery.offset) else {
+            continue;
+        };
+        let read: Vec<Graphed> = deliveries
+            .iter()
+            .filter_map(|delivery| match serde_json::from_slice(&delivery.payload) {
+                Ok(graphed) => Some(graphed),
+                Err(error) => {
+                    warn!(%error, "a record on the graph topic cannot be read");
+                    None
+                }
+            })
+            .collect();
+        loop {
+            let started = std::time::Instant::now();
+            match store.write_graph(&read).await {
+                Ok(()) => {
+                    storing.stored(started.elapsed());
+                    break;
+                }
+                Err(error) => {
+                    warn!(%error, "rows of the graph were not stored; trying again");
+                    storing.refused(&error);
+                }
+            }
+            tokio::select! {
+                () = tokio::time::sleep(RETRY_GRAPH) => {}
+                _ = stop.changed() => return Ok(()),
+            }
+        }
+        graphed.acknowledge(last).await?;
+    }
+    Ok(())
+}
+
+/// How soon rows of the graph the store refused are tried again.
+const RETRY_GRAPH: Duration = Duration::from_secs(5);
 
 fn io(path: &Path, error: &std::io::Error) -> RunError {
     RunError::Io(format!("{}: {error}", path.display()))

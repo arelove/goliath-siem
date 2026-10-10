@@ -86,6 +86,12 @@ struct Hit {
     status: &'static str,
 }
 
+/// What the graph role counts: links, or claims.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, EncodeLabelSet)]
+struct GraphSeen {
+    kind: &'static str,
+}
+
 /// The metrics of one process, cheap to clone.
 #[derive(Clone)]
 pub(crate) struct Metrics(Arc<Inner>);
@@ -105,6 +111,10 @@ struct Inner {
     detected_events: Counter,
     detected_observables: Counter,
     detector_skipped: Counter,
+    graph_events: Counter,
+    graph_seen: Family<GraphSeen, Counter>,
+    graph_rows: Family<GraphSeen, Counter>,
+    graph_skipped: Counter,
     detector_rematched: Counter,
     detector_unmatched_ranges: Gauge,
     detector_look_back_remaining_seconds: Gauge,
@@ -170,6 +180,10 @@ impl Metrics {
         let detected_events = Counter::default();
         let detected_observables = Counter::default();
         let detector_skipped = Counter::default();
+        let graph_events = Counter::default();
+        let graph_seen = Family::default();
+        let graph_rows = Family::default();
+        let graph_skipped = Counter::default();
         let detector_rematched = Counter::default();
         let detector_unmatched_ranges = Gauge::default();
         let detector_look_back_remaining_seconds = Gauge::default();
@@ -272,6 +286,26 @@ impl Metrics {
             detector_skipped.clone(),
         );
         registry.register(
+            "graph_events",
+            "Events the graph role read",
+            graph_events.clone(),
+        );
+        registry.register(
+            "graph_seen",
+            "Links and claims the events showed, each event's counted",
+            graph_seen.clone(),
+        );
+        registry.register(
+            "graph_rows",
+            "Rows of links and claims sent to the writer, after adding up what repeats",
+            graph_rows.clone(),
+        );
+        registry.register(
+            "graph_skipped_records",
+            "Events stored whose links were not read: the graph role fell behind what the topic keeps",
+            graph_skipped.clone(),
+        );
+        registry.register(
             "detector_rematched_events",
             "Events read back from the store and matched: what the detector had been moved past",
             detector_rematched.clone(),
@@ -355,6 +389,10 @@ impl Metrics {
             detected_events,
             detected_observables,
             detector_skipped,
+            graph_events,
+            graph_seen,
+            graph_rows,
+            graph_skipped,
             detector_rematched,
             detector_unmatched_ranges,
             detector_look_back_remaining_seconds,
@@ -510,6 +548,30 @@ impl Metrics {
     /// The detector was moved past `records` it did not match.
     pub(crate) fn detector_skipped(&self, records: u64) {
         self.0.detector_skipped.inc_by(records);
+    }
+
+    /// What the graph role read in a batch, and the rows of links and of
+    /// claims it sent for it.
+    pub(crate) fn graphed(&self, tally: &crate::graph::Tally, links: usize, claims: usize) {
+        self.0.graph_events.inc_by(tally.events);
+        for (kind, seen, rows) in [
+            ("link", tally.links, links),
+            ("claim", tally.claims, claims),
+        ] {
+            self.0
+                .graph_seen
+                .get_or_create(&GraphSeen { kind })
+                .inc_by(seen);
+            self.0
+                .graph_rows
+                .get_or_create(&GraphSeen { kind })
+                .inc_by(rows as u64);
+        }
+    }
+
+    /// The graph role was moved past `records` it had not read.
+    pub(crate) fn graph_skipped(&self, records: u64) {
+        self.0.graph_skipped.inc_by(records);
     }
 
     /// The detector matched `events` read back from the store.

@@ -766,6 +766,7 @@ dependencies = [
  "clickhouse",
  "flate2",
  "goliath-enrich",
+ "goliath-graph",
  "goliath-intel",
  "goliath-normalize",
  "goliath-ocsf",
