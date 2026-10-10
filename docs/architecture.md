@@ -98,6 +98,7 @@ the dominant barrier to adoption for open-source systems of this class.
 | `goliath-sigma-clickhouse` | Rust | crates.io | library |
 | `goliath-match` | Rust | crates.io | `detector` |
 | `goliath-enrich` | Rust | crates.io | inside `detector` |
+| `goliath-graph` | Rust | crates.io | the graph role |
 | `goliath-intel` | Rust | crates.io | inside `detector` |
 | `goliath-attack` | Rust | crates.io | inside `api` |
 | `goliath-pipe` | Rust | - | shared transport |

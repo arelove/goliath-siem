@@ -355,6 +355,11 @@ bounds a walk.
 | Graph API | An entity by any identifier, its neighbours within a time range, and the path between two, under the same checked, parameterized discipline as search, bounded by time, size, and degree |
 | Hard cases in the generator | Address leases that change hands, a machine of several people, a name used again, a shared mailbox, local accounts of one name on every machine |
 
+Built so far: `goliath-graph` reads an event's identifiers, with their
+strength, and the claims and links it shows, and is tested on the fixture
+events of every shipped source. The tables, the role, resolution, and the
+API follow.
+
 **Exit criterion:** on the M3 generator's stream with the hard cases, where
 each entity appears under different identifiers per source, resolution
 reaches a precision of 0.999 and a recall of 0.95 over pairs of identifiers
