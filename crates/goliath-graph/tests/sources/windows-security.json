@@ -1,0 +1,27 @@
+{
+  "claims": [
+    "user:local:dc-01.corp.example\\adam = user:name:adam",
+    "user:name:corp\\dc-01$ = user:sid:s-1-5-18",
+    "user:sid:s-1-5-21-1004336348-1177238915-682003330-1105 = user:name:corp\\it-admin",
+    "user:sid:s-1-5-21-1004336348-1177238915-682003330-1107 = user:name:adam",
+    "user:sid:s-1-5-21-1004336348-1177238915-682003330-1107 = user:name:corp.example\\adam",
+    "user:sid:s-1-5-21-1004336348-1177238915-682003330-1107 = user:name:corp\\adam",
+    "user:sid:s-1-5-21-1004336348-1177238915-682003330-1204 = user:name:corp\\ws-old-03$",
+    "user:sid:s-1-5-21-1004336348-1177238915-682003330-1311 = user:name:cn=jane doe,ou=finance,dc=corp,dc=example",
+    "user:sid:s-1-5-21-1004336348-1177238915-682003330-1311 = user:name:corp\\jdoe",
+    "user:sid:s-1-5-21-1004336348-1177238915-682003330-1420 = user:name:svc-backup",
+    "user:sid:s-1-5-21-1004336348-1177238915-682003330-1830 = user:name:corp\\ws-new-12$"
+  ],
+  "links": [
+    "host:name:laptop-guest held address:ip:10.20.9.200",
+    "user:local:dc-01.corp.example\\adam logged_on_to host:name:dc-01.corp.example",
+    "user:name:adam@corp.example logged_on_to host:name:dc-01.corp.example",
+    "user:name:corp\\adam logged_on_to host:name:dc-01.corp.example",
+    "user:name:corp\\svc-backup logged_on_to host:name:dc-01.corp.example",
+    "user:name:corp\\svc-backup logged_on_to host:name:fs-02.corp.example",
+    "user:sid:s-1-5-21-1004336348-1177238915-682003330-1105 ran_on host:name:ws-finance-07.corp.example",
+    "user:sid:s-1-5-21-1004336348-1177238915-682003330-1107 logged_on_to host:name:dc-01.corp.example",
+    "user:sid:s-1-5-21-1004336348-1177238915-682003330-1107 logged_on_to host:name:ws-finance-07.corp.example",
+    "user:sid:s-1-5-21-1004336348-1177238915-682003330-1420 logged_on_to host:name:dc-01.corp.example"
+  ]
+}

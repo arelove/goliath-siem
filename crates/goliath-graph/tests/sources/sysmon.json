@@ -1,0 +1,10 @@
+{
+  "claims": [],
+  "links": [
+    "host:name:ws-finance-07 ran file:hash:0000000000000000000000000000000000000000000000000000000000000001",
+    "host:name:ws-finance-07 ran file:hash:0000000000000000000000000000000000000000000000000000000000000002",
+    "host:name:ws-finance-07.corp.example connected_to address:ip:192.0.2.10",
+    "host:name:ws-finance-07.corp.example held address:ip:10.20.30.40",
+    "user:name:corp\\adam ran_on host:name:ws-finance-07"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "claims": [],
+  "links": [
+    "address:ip:10.20.30.40 connected_to address:ip:10.20.30.21",
+    "address:ip:10.20.30.40 connected_to address:ip:10.20.30.22",
+    "address:ip:10.20.30.40 connected_to address:ip:10.20.30.5",
+    "address:ip:10.20.30.40 connected_to address:ip:10.20.30.53",
+    "address:ip:10.20.30.40 connected_to address:ip:203.0.113.80",
+    "address:ip:10.20.30.40 connected_to address:ip:203.0.113.81",
+    "address:ip:10.20.30.40 resolved domain:name:missing.example.com",
+    "address:ip:10.20.30.40 resolved domain:name:www.example.com"
+  ]
+}

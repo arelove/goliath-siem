@@ -1,0 +1,10 @@
+{
+  "claims": [
+    "user:uid:10032000example01 = user:name:adam@contoso.com",
+    "user:uid:10032000example02 = user:name:adam@contoso.com",
+    "user:uid:10032000example03 = user:name:jane@contoso.com",
+    "user:uid:10032000example25 = user:name:jane@contoso.com",
+    "user:uid:10032000example27 = user:name:adam@contoso.com"
+  ],
+  "links": []
+}

@@ -847,6 +847,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "goliath-graph"
+version = "0.1.0"
+dependencies = [
+ "goliath-ocsf",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "goliath-intel"
 version = "0.1.0"
 dependencies = [

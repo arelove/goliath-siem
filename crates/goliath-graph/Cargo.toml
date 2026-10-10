@@ -1,0 +1,22 @@
+[package]
+name = "goliath-graph"
+description = "The entity graph of the Goliath security platform: the identifiers an OCSF event gives the things it names, which of them it gives as one thing, and which thing it shows acting on which"
+keywords = ["entity", "graph", "identity", "siem", "security"]
+categories = ["data-structures"]
+readme = "README.md"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+# Not published until the platform has used it.
+publish = false
+
+[dependencies]
+goliath-ocsf = { path = "../goliath-ocsf", version = "0.1.2" }
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

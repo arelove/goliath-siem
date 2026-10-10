@@ -1,0 +1,17 @@
+{
+  "claims": [],
+  "links": [
+    "address:ip:10.215.173.1 connected_to address:ip:10.215.173.2",
+    "address:ip:10.215.173.1 connected_to address:ip:192.0.2.1",
+    "address:ip:10.215.173.1 connected_to address:ip:192.0.2.10",
+    "address:ip:10.215.173.1 connected_to address:ip:192.0.2.44",
+    "address:ip:10.215.173.1 connected_to address:ip:192.0.2.80",
+    "address:ip:10.215.173.1 connected_to address:ip:198.51.100.7",
+    "address:ip:10.215.173.1 connected_to address:ip:203.0.113.25",
+    "address:ip:10.215.173.1 resolved domain:name:www.example.com",
+    "address:ip:fd00:1:fd00:1:fd00:1:fd00:1 connected_to address:ip:2001:db8::123",
+    "host:name:media.example.net held address:ip:192.0.2.80",
+    "host:name:sync.example.org held address:ip:192.0.2.44",
+    "host:name:www.example.com held address:ip:192.0.2.10"
+  ]
+}
