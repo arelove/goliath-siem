@@ -378,3 +378,87 @@ export function findings(asked: Asked, signal?: AbortSignal): Promise<Queue> {
     ...(signal ? { signal } : {}),
   });
 }
+
+/** One identifier of an entity, and why it is in it. */
+export interface Held {
+  identifier: string;
+  form: string | null;
+  strong: boolean | null;
+  /** `member`, `alias` or `shared`. */
+  standing: string;
+  /** The identifier it was seen with. */
+  via: string | null;
+  /** The rule that read the two as one. */
+  rule: string | null;
+  /** A person's reason, if a person decided. */
+  said: string | null;
+  events: number;
+  first_seen: number;
+  last_seen: number;
+}
+
+/** An entity: see docs/adr/0025-entity-graph.md. */
+export interface Entity {
+  asked: string;
+  /** Its strongest identifier, which names it. */
+  entity: string;
+  kind: string;
+  /** Seen under one weak identifier alone. */
+  provisional: boolean;
+  /** Claimed by too many to be evidence of any. */
+  shared: boolean;
+  /** The entities a weak identifier is another name of. */
+  alias_of: string[];
+  identifiers: Held[];
+}
+
+/** Something an entity was seen with. */
+export interface Neighbour {
+  entity: string;
+  kind: string | null;
+  /** `out` from the entity asked for, `in` to it. */
+  direction: string;
+  link: string;
+  events: number;
+  first_seen: number;
+  last_seen: number;
+}
+
+export interface Neighbours {
+  entity: string;
+  kind: string;
+  /** The identifiers whose links were read. */
+  identifiers: string[];
+  from: number;
+  to: number;
+  /** Neighbours there are in all, whatever the limit. */
+  degree: number;
+  limit: number;
+  /** The most recently seen first. */
+  neighbours: Neighbour[];
+}
+
+export function entity(identifier: string, signal?: AbortSignal): Promise<Entity> {
+  return request<Entity>("/entity", {
+    method: "POST",
+    body: JSON.stringify({ identifier }),
+    ...(signal ? { signal } : {}),
+  });
+}
+
+/** What is asked of an entity's neighbours. */
+export interface Walk {
+  identifier: string;
+  from: string;
+  to: string;
+  links?: string[];
+  limit?: number;
+}
+
+export function neighbours(walk: Walk, signal?: AbortSignal): Promise<Neighbours> {
+  return request<Neighbours>("/entity/neighbours", {
+    method: "POST",
+    body: JSON.stringify(walk),
+    ...(signal ? { signal } : {}),
+  });
+}
