@@ -41,6 +41,11 @@
 
 mod identifier;
 mod observe;
+mod resolve;
 
 pub use identifier::{Form, Identifier, IdentifierError, Kind, Strength};
 pub use observe::{Claim, Link, LinkKind, Seen, observe};
+pub use resolve::{
+    Decision, Decisions, DecisionsError, Evidence, Resolution, Resolved, SHARED_OVER, Said,
+    Standing, Summary, resolve,
+};

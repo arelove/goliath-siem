@@ -5,5 +5,19 @@
     "user:local:worker-1\\root = user:name:root",
     "user:local:worker-2\\root = user:name:root"
   ],
+  "entities": {
+    "user:local:falco-k8saudit-0\\system:serviceaccount:ci:deployer": [
+      "alias user:name:system:serviceaccount:ci:deployer"
+    ],
+    "user:local:web-3\\www-data": [
+      "alias user:name:www-data"
+    ],
+    "user:local:worker-1\\root": [
+      "alias user:name:root"
+    ],
+    "user:local:worker-2\\root": [
+      "alias user:name:root"
+    ]
+  },
   "links": []
 }

@@ -1,5 +1,6 @@
 {
   "claims": [],
+  "entities": {},
   "links": [
     "address:ip:10.215.173.1 connected_to address:ip:10.215.173.2",
     "address:ip:10.215.173.1 connected_to address:ip:192.0.2.1",

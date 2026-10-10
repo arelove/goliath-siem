@@ -85,8 +85,44 @@ A link is written under the strongest identifier the event gives each end.
 A sensor that sees addresses alone gives links between addresses; which
 machine held an address then is answered when the graph is read.
 
+## Resolution
+
+`resolve` decides which identifiers are one entity, from claims added up
+over events and from what people said. It is a function of its evidence:
+nothing seen is rewritten, so the answer is computed again whenever it is
+asked for, and a wrong one is corrected by correcting its cause.
+
+1. Two strong identifiers in one claim are one entity. Nothing else joins.
+2. An identifier claimed with more than three strong identifiers of one
+   form is shared and joins nothing: a mailbox that forty accounts list as
+   their address.
+3. A weak identifier joins nothing. It is an alias of each entity it was
+   claimed with.
+4. A person's word is last, from a file reviewed as rules are:
+
+```yaml
+name: identity
+version: 2
+decisions:
+  - same: ["user:email:a.jones@corp.example", "user:email:a.smith@corp.example"]
+    reason: Renamed, HR ticket 4411
+  - different: ["user:email:helpdesk@corp.example", "user:sid:s-1-5-21-1-2-3-1107"]
+    reason: The helpdesk mailbox is shared
+```
+
+`same` joins two identifiers no event shows together. `different` holds two
+apart: claims are followed from the most seen to the least, and one that
+would bring the two into one entity is not followed.
+
+Every identifier in the answer says why it is there: the identifier it was
+seen with, the rule that read the claim or the person's reason, how often,
+and from when until when. An entity is named by its strongest identifier,
+whatever the order of the evidence. An identifier that is in no entity of
+more than one is an entity of its own, and is not in the answer.
+
 ## Tested on every source
 
 `tests/sources/` holds, for each source definition the platform ships, the
-claims and links its fixture events give. A change to how events are read
-shows in review as a change to those files.
+claims and links its fixture events give, and the entities those claims
+resolve to. A change to how events are read or resolved shows in review as a
+change to those files.

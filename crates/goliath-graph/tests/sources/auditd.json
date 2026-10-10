@@ -2,6 +2,11 @@
   "claims": [
     "user:local:build-7\\bob = user:name:bob"
   ],
+  "entities": {
+    "user:local:build-7\\bob": [
+      "alias user:name:bob"
+    ]
+  },
   "links": [
     "user:local:build-7\\bob ran_on host:name:build-7"
   ]

@@ -4,5 +4,19 @@
     "user:uid:00u1adminexampl0h7 = user:name:it-admin@contoso.com",
     "user:uid:00u1janeexample0h7 = user:name:jane@contoso.com"
   ],
+  "entities": {
+    "user:uid:00u1adamexample0h7": [
+      "member user:uid:00u1adamexample0h7",
+      "member user:name:adam@contoso.com"
+    ],
+    "user:uid:00u1adminexampl0h7": [
+      "member user:uid:00u1adminexampl0h7",
+      "member user:name:it-admin@contoso.com"
+    ],
+    "user:uid:00u1janeexample0h7": [
+      "member user:uid:00u1janeexample0h7",
+      "member user:name:jane@contoso.com"
+    ]
+  },
   "links": []
 }

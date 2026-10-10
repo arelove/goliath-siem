@@ -852,6 +852,8 @@ name = "goliath-graph"
 version = "0.1.0"
 dependencies = [
  "goliath-ocsf",
+ "goliath-sigma",
+ "serde",
  "serde_json",
  "thiserror",
 ]

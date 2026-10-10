@@ -15,6 +15,8 @@ publish = false
 
 [dependencies]
 goliath-ocsf = { path = "../goliath-ocsf", version = "0.1.2" }
+goliath-sigma = { path = "../goliath-sigma", version = "0.1.2" }
+serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 

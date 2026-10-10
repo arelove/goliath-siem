@@ -4,5 +4,16 @@
     "user:uid:aidaexampleadam00001 = user:uid:arn:aws:iam::111122223333:user/adam",
     "user:uid:aroaexampleops000001:jane = user:uid:arn:aws:sts::111122223333:assumed-role/ops/jane"
   ],
+  "entities": {
+    "user:uid:aidaexampleadam00001": [
+      "member user:uid:aidaexampleadam00001",
+      "member user:uid:arn:aws:iam::111122223333:user/adam",
+      "alias user:name:adam"
+    ],
+    "user:uid:arn:aws:sts::111122223333:assumed-role/ops/jane": [
+      "member user:uid:arn:aws:sts::111122223333:assumed-role/ops/jane",
+      "member user:uid:aroaexampleops000001:jane"
+    ]
+  },
   "links": []
 }
