@@ -276,11 +276,17 @@ Grafana, which reads the same store.
 3. Findings: the queue, the panel, the menu of a value. Built: the
    queue with its severities and filters, the panel but for the decision,
    and the menu, which leads to the findings of a value and to the events
-   that hold it. Not yet: groups by entity, the events around a finding on
-   its host, and an entity to open, which wait for M4.5.
+   that hold it, and to its entity. Not yet: groups by entity and the
+   events around a finding on its host.
 4. Overview rebuilt on findings, sources, and platform.
 5. Coverage.
-6. Entity, with M4.5. Cases and the decision, with M6.
+6. Entity, with M4.5. Built: one entity, opened from the menu of a value
+   or written by hand, with the identifiers it holds and why each is in
+   it, and what it was seen with in the range as a table and a picture of
+   those seen most. A value says its form and not always its kind, so a
+   name that may be a machine or a domain offers both. Not yet: the path
+   between two entities, the findings and events of an entity, and its
+   context from the site's lists. Cases and the decision, with M6.
 
 ## Options considered
 
