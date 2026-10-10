@@ -20,6 +20,7 @@ mod metrics;
 mod otlp;
 pub mod raw;
 mod receiver;
+mod regraph;
 mod rematch;
 mod roles;
 mod syslog;
@@ -203,25 +204,15 @@ async fn start_pipeline<T: Topics>(
         ));
     }
     if config.roles.contains(&Role::Graph) {
-        roles.spawn(graph::derive(
-            // As an observer: the writer's topic never waits for it.
-            topics.observe(&outcomes, "graph").await?,
-            T::sender(&graphed),
-            metrics.clone(),
-            stopped.clone(),
-        ));
-        // Which identifiers are one entity is decided at rest, from what
-        // the store holds; without a store to read, it is not decided.
-        if let Some(store) = &config.store {
-            roles.spawn(graph::resolve_on_schedule(
-                connect(store)?,
-                config.graph.clone(),
-                (metrics.clone(), health.clone()),
-                stopped.clone(),
-            ));
-        } else {
-            info!("no [store]: links and claims are sent on, and identifiers are not resolved");
-        }
+        start_graph(
+            config,
+            topics,
+            (&outcomes, &graphed),
+            (metrics, health),
+            roles,
+            stopped,
+        )
+        .await?;
     }
     roles.spawn(health::report(
         health.clone(),
@@ -241,6 +232,62 @@ async fn start_pipeline<T: Topics>(
         .await?;
     }
     start_sources(config, topics, &outcomes, metrics, roles, stopped).await
+}
+
+/// Starts the graph role: it reads what the writer's topic holds, reads
+/// from the store what it did not read from there, and resolves
+/// identifiers into entities.
+async fn start_graph<T: Topics>(
+    config: &Config,
+    topics: &T,
+    (outcomes, graphed): (&T::Topic, &T::Topic),
+    (metrics, health): (&Metrics, &Health),
+    roles: &mut JoinSet<Result<(), RunError>>,
+    stopped: &watch::Receiver<bool>,
+) -> Result<(), RunError> {
+    // What is stored and not in the graph is noted where there is a place
+    // to note it, and read from the store where there is one.
+    let unread = if let (Some(state), Some(_)) = (config.graph_state(), &config.store) {
+        Some(std::sync::Arc::new(std::sync::Mutex::new(
+            regraph::Unread::open(&state, raw::now())?,
+        )))
+    } else {
+        info!(
+            "no [store] or no place for the graph role's notes: stored events it did not read are not read into the graph"
+        );
+        None
+    };
+    roles.spawn(graph::derive(
+        // As an observer: the writer's topic never waits for it.
+        topics.observe(outcomes, "graph").await?,
+        T::sender(graphed),
+        unread.clone(),
+        metrics.clone(),
+        stopped.clone(),
+    ));
+    let Some(store) = &config.store else {
+        // Which identifiers are one entity is decided at rest, from what
+        // the store holds; without a store to read, it is not decided.
+        info!("no [store]: links and claims are sent on, and identifiers are not resolved");
+        return Ok(());
+    };
+    if let Some(unread) = unread {
+        roles.spawn(regraph::read_back(
+            connect(store)?,
+            unread,
+            config.graph.read_back_days,
+            T::sender(graphed),
+            metrics.clone(),
+            stopped.clone(),
+        ));
+    }
+    roles.spawn(graph::resolve_on_schedule(
+        connect(store)?,
+        config.graph.clone(),
+        (metrics.clone(), health.clone()),
+        stopped.clone(),
+    ));
+    Ok(())
 }
 
 /// Starts the detector: it matches what the writer's topic holds and what

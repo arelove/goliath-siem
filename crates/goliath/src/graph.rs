@@ -13,7 +13,9 @@ use goliath_graph::{Decisions, Evidence, Said, Summary, observe, resolve};
 use goliath_normalize::{Envelope, Outcome};
 use goliath_pipe::{Delivery, Receiver, Sender};
 use goliath_search::Cursor;
-use goliath_store::{ClaimSeen, Claimed, Graphed, LinkSeen, Placed, Resolving, Standing, Store};
+use goliath_store::{
+    ClaimSeen, Claimed, Graphed, Kept, LinkSeen, Placed, Resolving, Standing, Store,
+};
 use tokio::sync::watch;
 use tracing::warn;
 
@@ -21,6 +23,7 @@ use crate::RunError;
 use crate::config::GraphConfig;
 use crate::health::Health;
 use crate::metrics::Metrics;
+use crate::regraph::{self, Shared};
 use crate::roles::{BATCH, Lag, POLL};
 
 const HOUR: i64 = 3_600_000;
@@ -66,42 +69,34 @@ pub(crate) struct Tally {
     pub(crate) claims: u64,
 }
 
-/// What `deliveries` show, added up: a link once for each hour its events
-/// are in, a claim once for each day.
-///
-/// The time of an event is its own where it has one, and when the platform
-/// took it otherwise, as the store has it. All of it is under the time the
-/// last record was received, which decides how long the rows are kept.
-///
-/// # Errors
-///
-/// Returns [`RunError::Corrupt`] if a record is not an envelope.
-fn gather(deliveries: &[Delivery], now: i64) -> Result<(Graphed, Tally), RunError> {
-    let mut links: BTreeMap<(String, &'static str, String, i64), Count> = BTreeMap::new();
-    let mut claims: BTreeMap<(String, String, &'static str, i64), Count> = BTreeMap::new();
-    let mut tally = Tally::default();
-    let mut received = 0;
-    for delivery in deliveries {
-        let envelope = Envelope::decode(&delivery.payload)
-            .map_err(|error| RunError::Corrupt(error.to_string()))?;
-        let Outcome::Event(normalized) = &envelope.outcome else {
-            continue;
-        };
-        let taken = envelope.received.unwrap_or(now);
-        received = received.max(taken);
+/// What events show, added up as they are read: a link once for each hour
+/// its events are in, a claim once for each day.
+#[derive(Default)]
+struct Gathered {
+    links: BTreeMap<(String, &'static str, String, i64), Count>,
+    claims: BTreeMap<(String, String, &'static str, i64), Count>,
+    tally: Tally,
+    received: i64,
+}
+
+impl Gathered {
+    /// Adds what `event`, of the identity `id`, shows. Its time is its own
+    /// where it has one, and `taken`, when the platform took it, otherwise,
+    /// as the store has it.
+    fn add(&mut self, event: &serde_json::Value, id: [u8; 16], taken: i64) {
+        self.received = self.received.max(taken);
         let at = Cursor {
-            time: normalized
-                .event
+            time: event
                 .get("time")
                 .and_then(serde_json::Value::as_i64)
                 .filter(|time| *time >= 0)
                 .unwrap_or(taken),
-            id: *normalized.id.as_bytes(),
+            id,
         };
-        let seen = observe(&normalized.event);
-        tally.events += 1;
-        tally.links += seen.links.len() as u64;
-        tally.claims += seen.claims.len() as u64;
+        let seen = observe(event);
+        self.tally.events += 1;
+        self.tally.links += seen.links.len() as u64;
+        self.tally.claims += seen.claims.len() as u64;
         for link in seen.links {
             let key = (
                 link.from.to_string(),
@@ -109,7 +104,7 @@ fn gather(deliveries: &[Delivery], now: i64) -> Result<(Graphed, Tally), RunErro
                 link.to.to_string(),
                 at.time.div_euclid(HOUR),
             );
-            links
+            self.links
                 .entry(key)
                 .and_modify(|count| count.add(at))
                 .or_insert_with(|| Count::one(at));
@@ -121,40 +116,82 @@ fn gather(deliveries: &[Delivery], now: i64) -> Result<(Graphed, Tally), RunErro
                 claim.rule,
                 at.time.div_euclid(DAY),
             );
-            claims
+            self.claims
                 .entry(key)
                 .and_modify(|count| count.add(at))
                 .or_insert_with(|| Count::one(at));
         }
     }
-    let graphed = Graphed {
-        // No scope yet: every source of events is one site's.
-        scope: String::new(),
-        received,
-        links: links
-            .into_iter()
-            .map(|((src, link, dst, _), count)| LinkSeen {
-                src,
-                link: link.to_owned(),
-                dst,
-                events: count.events,
-                first: count.first,
-                last: count.last,
-            })
-            .collect(),
-        claims: claims
-            .into_iter()
-            .map(|((one, other, rule, _), count)| ClaimSeen {
-                one,
-                other,
-                rule: rule.to_owned(),
-                events: count.events,
-                first: count.first,
-                last: count.last,
-            })
-            .collect(),
-    };
-    Ok((graphed, tally))
+
+    /// The rows, all under the time the last event was taken, which decides
+    /// how long they are kept.
+    fn finish(self) -> (Graphed, Tally) {
+        let graphed = Graphed {
+            // No scope yet: every source of events is one site's.
+            scope: String::new(),
+            received: self.received,
+            links: self
+                .links
+                .into_iter()
+                .map(|((src, link, dst, _), count)| LinkSeen {
+                    src,
+                    link: link.to_owned(),
+                    dst,
+                    events: count.events,
+                    first: count.first,
+                    last: count.last,
+                })
+                .collect(),
+            claims: self
+                .claims
+                .into_iter()
+                .map(|((one, other, rule, _), count)| ClaimSeen {
+                    one,
+                    other,
+                    rule: rule.to_owned(),
+                    events: count.events,
+                    first: count.first,
+                    last: count.last,
+                })
+                .collect(),
+        };
+        (graphed, self.tally)
+    }
+}
+
+/// What the events of `deliveries` show, added up.
+///
+/// # Errors
+///
+/// Returns [`RunError::Corrupt`] if a record is not an envelope.
+fn gather(deliveries: &[Delivery], now: i64) -> Result<(Graphed, Tally), RunError> {
+    let mut gathered = Gathered::default();
+    for delivery in deliveries {
+        let envelope = Envelope::decode(&delivery.payload)
+            .map_err(|error| RunError::Corrupt(error.to_string()))?;
+        let Outcome::Event(normalized) = &envelope.outcome else {
+            continue;
+        };
+        gathered.add(
+            &normalized.event,
+            *normalized.id.as_bytes(),
+            envelope.received.unwrap_or(now),
+        );
+    }
+    Ok(gathered.finish())
+}
+
+/// What events read back from the store show, added up as [`gather`] adds
+/// up events from the topic: the same event gives the same rows. An event
+/// the store holds as text that is not JSON shows nothing.
+pub(crate) fn gather_kept(kept: &[Kept]) -> (Graphed, Tally) {
+    let mut gathered = Gathered::default();
+    for one in kept {
+        if let Ok(event) = serde_json::from_str(&one.event) {
+            gathered.add(&event, one.id, one.received);
+        }
+    }
+    gathered.finish()
 }
 
 /// Reads the links and claims of every event, and sends each batch's on,
@@ -162,11 +199,13 @@ fn gather(deliveries: &[Delivery], now: i64) -> Result<(Graphed, Tally), RunErro
 ///
 /// It reads as an observer, so it never slows the writer. If it falls
 /// further behind than the topic keeps, it is moved past the events
-/// between, which is counted and logged: they are stored, and their links
-/// are not in the graph.
+/// between, which is counted and logged: they are stored, and the range of
+/// receipt time they lie in is noted in `unread`, where there is a place
+/// to note it, to be read from the store.
 pub(crate) async fn derive(
     mut events: impl Receiver + Sync,
     graph: impl Sender + Sync,
+    unread: Option<Shared>,
     metrics: Metrics,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), RunError> {
@@ -181,6 +220,15 @@ pub(crate) async fn derive(
                 "the graph role fell behind what the topic keeps, and was moved past events whose links it did not read"
             );
             metrics.graph_skipped(skipped);
+            if let Some(unread) = &unread {
+                // Up to the first record it was moved to; with none yet, up
+                // to now, which nothing it missed can be later than.
+                let resumed = deliveries
+                    .first()
+                    .and_then(|delivery| Envelope::decode(&delivery.payload).ok()?.received)
+                    .unwrap_or_else(crate::raw::now);
+                regraph::lock(unread).skipped(resumed);
+            }
         }
         let Some(last) = deliveries.last().map(|delivery| delivery.offset) else {
             continue;
@@ -196,6 +244,14 @@ pub(crate) async fn derive(
             graph.send(vec![encoded]).await?;
         }
         events.acknowledge(last).await?;
+        if let Some(unread) = &unread
+            && graphed.received > 0
+        {
+            regraph::lock(unread).read(graphed.received);
+        }
+    }
+    if let Some(unread) = &unread {
+        regraph::lock(unread).save();
     }
     Ok(())
 }
@@ -525,6 +581,30 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(error.contains("missing.yaml"), "{error}");
+    }
+
+    #[test]
+    fn events_read_back_from_the_store_give_the_rows_the_stream_gave() {
+        let received = 1_790_340_000_000;
+        let events = [("a", sign_in(5)), ("b", sign_in(20)), ("c", sign_in(70))];
+        let deliveries: Vec<Delivery> = events
+            .iter()
+            .zip(0..)
+            .map(|((raw, event), offset)| delivery(offset, raw, received, event.clone()))
+            .collect();
+        let mut kept: Vec<Kept> = events
+            .iter()
+            .map(|(raw, event)| Kept {
+                received,
+                id: *EventId::of("test", raw.as_bytes()).as_bytes(),
+                source: "test".to_owned(),
+                event: event.to_string(),
+            })
+            .collect();
+        assert_eq!(gather(&deliveries, 0).unwrap(), gather_kept(&kept));
+        // What the store holds that is not JSON shows nothing.
+        kept[0].event = "{".to_owned();
+        assert_eq!(gather_kept(&kept).1.events, 2);
     }
 
     #[test]
