@@ -12,6 +12,7 @@ const QUESTIONS: Record<string, string> = {
   storing: "Storing events",
   storing_findings: "Storing findings",
   storing_graph: "Storing the graph",
+  resolving: "Resolving entities",
   keeping_up: "Keeping up with",
   normalizing: "Normalizing",
   feeds_current: "Feed is current",
