@@ -273,8 +273,11 @@ query is read-only and within limits.
   seen.
 - **Its neighbours** within a time range, optionally of some kinds of
   link: for each, the kinds of link, the counts, the first and last time.
+- **What lies within two links** of an entity within a time range: the
+  entities reached, each with its distance, and the links between them.
 - **A path** between two entities within a time range, of four links at
-  most.
+  most. It is searched from both ends, a whole step at once, so that the
+  path found is a shortest one within the bounds.
 
 Three bounds hold for every answer:
 
@@ -289,6 +292,10 @@ Three bounds hold for every answer:
 
 A walk is made by the API one step at a time, each step one bounded query,
 and not as a recursive query in the store: the bounds apply between steps.
+A step is made from a bounded number of entities and reads a bounded
+number of rows, and an answer that a bound cut short says so: "no path"
+and "no path found within the bounds" are different answers. The hubs a
+path met and did not go through are named in its answer.
 
 ### How it is measured
 

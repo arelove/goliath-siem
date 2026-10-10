@@ -366,9 +366,11 @@ reason for every identifier in it. What was stored before the role first
 ran, and what it is moved past when it falls behind, is read into the
 graph from the store. The API answers for an entity by any of its
 identifiers and for what it was seen with in a range, and the interface
-has a view of one entity, opened from the menu of a value. The path
-between two entities, the walk of two links, findings grouped by entity,
-and the measurement against the generator's truth follow.
+has a view of one entity, opened from the menu of a value. The API also
+answers what lies within two links of an entity, and a path of four links
+at most between two, neither through a hub unless asked. Findings grouped
+by entity, the walk and the path in the interface, and the measurement
+against the generator's truth follow.
 
 **Exit criterion:** on the M3 generator's stream with the hard cases, where
 each entity appears under different identifiers per source, resolution

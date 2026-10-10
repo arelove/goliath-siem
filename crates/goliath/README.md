@@ -116,6 +116,48 @@ limits a search has; an answer holds 100 rows unless it asks for up to
 1,000; and `degree` says how many neighbours there are in all, so that a
 machine everything talks to is seen as one before it is walked through.
 
+What lies within two links of an entity is asked for in one request:
+
+```sh
+curl -s localhost:8080/api/v1/entity/walk -H 'content-type: application/json' -d '{
+  "identifier": "host:name:ws-7.corp.example",
+  "from": "2026-09-24T00:00:00Z", "to": "2026-09-25T00:00:00Z",
+  "depth": 2, "hub_over": 100
+}'
+```
+
+The answer is `nodes`, each with its distance from the entity, and
+`links`, each from the entity that acted to the one acted on. A node seen
+with more others than `hub_over` is a hub: it is in the answer with its
+`degree` and `"hub": true`, and the walk does not go through it, so what
+everybody is two links from does not flood the answer. The entity asked
+for is walked from whatever its degree. `hub_over` is 100 unless the
+request says, and 1,000 at most; `depth` is 1 or 2.
+
+A path between two entities, of four links at most:
+
+```sh
+curl -s localhost:8080/api/v1/entity/path -H 'content-type: application/json' -d '{
+  "source": "user:sid:S-1-5-21-1004336348-1177238915-682003330-1105",
+  "target": "address:ip:203.0.113.80",
+  "from": "2026-09-24T00:00:00Z", "to": "2026-09-25T00:00:00Z",
+  "most": 4
+}'
+```
+
+It is searched from both ends, so the path found is a shortest one within
+the bounds. `path` names its entities in order and `hops` holds, for each
+two neighbours on it, every way they were seen together. A path does not
+pass through a hub unless the request says `"through_hubs": true`; the
+hubs it met are in `hubs`, with their degree, so that a person sees what
+was not gone through. Either end may be a hub: it was asked for by name.
+
+Both are made one step at a time, each step one bounded query: from 200
+entities at most, reading 5,000 rows at most. An answer a bound cut short
+says `"complete": false`. For a path that was not found, this is the
+difference between "there is none" and "none was found within the
+bounds".
+
 ## Search
 
 With the `api` role, events are searched by OCSF path, checked against the
