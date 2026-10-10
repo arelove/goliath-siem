@@ -13,6 +13,7 @@
 mod batch;
 mod error;
 mod findings;
+mod graph;
 mod health;
 mod migrate;
 mod overview;
@@ -25,6 +26,7 @@ mod writer;
 pub use batch::Batch;
 pub use error::StoreError;
 pub use findings::{FINDING, Place, PlaceError, Queue, SeverityCount};
+pub use graph::{ClaimSeen, Graphed, LinkSeen};
 pub use health::{
     DEFAULT_SILENT_AFTER_MINUTES, DeadLetterHour, Health, SourceHour, Status, Watched, judge,
 };

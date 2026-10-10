@@ -92,6 +92,16 @@ pub const MIGRATIONS: &[Migration] = &[
         name: "platform_conditions",
         sql: include_str!("../migrations/0012_platform_conditions.sql"),
     },
+    Migration {
+        version: 13,
+        name: "graph_links",
+        sql: include_str!("../migrations/0013_graph_links.sql"),
+    },
+    Migration {
+        version: 14,
+        name: "graph_claims",
+        sql: include_str!("../migrations/0014_graph_claims.sql"),
+    },
 ];
 
 /// Where applied migrations are recorded. Created before any migration runs,

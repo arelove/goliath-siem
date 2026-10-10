@@ -187,19 +187,54 @@ impl Store {
     ///
     /// Returns [`StoreError::ClickHouse`] if a request fails.
     pub async fn set_retention(&self, days: Option<NonZeroU16>) -> Result<(), StoreError> {
-        if self.retention().await? == days {
-            return Ok(());
-        }
-        for table in ["events", "dead_letters"] {
+        let kept = self.kept().await?;
+        for (table, column) in KEPT {
+            let now = kept
+                .iter()
+                .find(|(name, _)| name == table)
+                .and_then(|(_, days)| *days);
+            // Each table by itself: one added by a later migration has no
+            // TTL yet while the others have theirs.
+            if now == days {
+                continue;
+            }
             let change = match days {
                 Some(days) => format!(
-                    "ALTER TABLE {table} MODIFY TTL toDateTime(received) + toIntervalDay({days})"
+                    "ALTER TABLE {table} MODIFY TTL toDateTime({column}) + toIntervalDay({days})"
                 ),
                 None => format!("ALTER TABLE {table} REMOVE TTL"),
             };
             self.client.query(&change).execute().await?;
         }
         Ok(())
+    }
+
+    /// Each table the retention applies to that exists, with the days its
+    /// TTL keeps.
+    async fn kept(&self) -> Result<Vec<(String, Option<NonZeroU16>)>, StoreError> {
+        #[derive(clickhouse::Row, serde::Deserialize)]
+        struct Table {
+            name: String,
+            engine_full: String,
+        }
+        // The names are this file's own, and no one else's text.
+        let names: Vec<String> = KEPT.iter().map(|(table, _)| format!("'{table}'")).collect();
+        let tables = self
+            .client
+            .query(&format!(
+                "SELECT name, engine_full FROM system.tables \
+                 WHERE database = currentDatabase() AND name IN ({}) ORDER BY name",
+                names.join(", ")
+            ))
+            .fetch_all::<Table>()
+            .await?;
+        Ok(tables
+            .into_iter()
+            .map(|table| {
+                let days = days_kept(&table.engine_full);
+                (table.name, days)
+            })
+            .collect())
     }
 
     /// The retention in days, as [`set_retention`](Self::set_retention)
@@ -209,15 +244,12 @@ impl Store {
     ///
     /// Returns [`StoreError::ClickHouse`] if a request fails.
     pub async fn retention(&self) -> Result<Option<NonZeroU16>, StoreError> {
-        let engines = self
-            .client
-            .query(
-                "SELECT engine_full FROM system.tables                  WHERE database = currentDatabase() AND name IN ('events', 'dead_letters')                  ORDER BY name",
-            )
-            .fetch_all::<String>()
-            .await?;
-        let days: Vec<Option<NonZeroU16>> =
-            engines.iter().map(|engine| days_kept(engine)).collect();
+        let days: Vec<Option<NonZeroU16>> = self
+            .kept()
+            .await?
+            .into_iter()
+            .map(|(_, days)| days)
+            .collect();
         // The tables are changed one after the other; if a change stopped
         // between them, they disagree, and neither answer is the retention.
         Ok(match days.as_slice() {
@@ -255,9 +287,20 @@ impl Store {
     }
 }
 
+/// The tables the retention applies to, each with the column that says
+/// when its rows were received. The links of the graph are kept as long as
+/// the events they were read from: a link without its events cannot be
+/// explained.
+const KEPT: [(&str, &str); 3] = [
+    ("events", "received"),
+    ("dead_letters", "received"),
+    ("graph_links", "received_day"),
+];
+
 /// The days in a table's TTL, as [`Store::set_retention`] writes it.
 fn days_kept(engine: &str) -> Option<NonZeroU16> {
-    let (_, rest) = engine.split_once("TTL toDateTime(received) + toIntervalDay(")?;
+    let (_, rest) = engine.split_once("TTL toDateTime(")?;
+    let (_, rest) = rest.split_once(") + toIntervalDay(")?;
     let (days, _) = rest.split_once(')')?;
     days.parse().ok()
 }
@@ -271,6 +314,14 @@ mod tests {
         let engine = "MergeTree PARTITION BY toDate(received) ORDER BY x                       TTL toDateTime(received) + toIntervalDay(30) SETTINGS ttl_only_drop_parts = 1";
         assert_eq!(days_kept(engine), NonZeroU16::new(30));
         assert_eq!(days_kept("MergeTree ORDER BY x"), None);
+        let links = "AggregatingMergeTree PARTITION BY received_day ORDER BY (scope, src) \
+                     TTL toDateTime(received_day) + toIntervalDay(7) SETTINGS ttl_only_drop_parts = 1";
+        assert_eq!(days_kept(links), NonZeroU16::new(7));
+        // A TTL of its own, as the claims have, is not the retention.
+        assert_eq!(
+            days_kept("MergeTree ORDER BY x TTL day + toIntervalDay(365)"),
+            None
+        );
     }
 
     #[test]
